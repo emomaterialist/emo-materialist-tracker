@@ -74,6 +74,6 @@ def load_app_html():
 
 components.html(
     load_app_html(),
-    height=1600,
+    height=900,
     scrolling=True,
 )
