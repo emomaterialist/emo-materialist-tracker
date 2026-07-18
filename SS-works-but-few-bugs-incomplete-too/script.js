@@ -90,6 +90,12 @@ function onLoggedIn() {
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('tracker-screen').style.display = 'block';
   document.getElementById('settings-email').textContent = currentUser.email;
+  // Load saved theme from Supabase user metadata
+  var savedTheme = (currentUser.user_metadata && currentUser.user_metadata.preferred_theme) || null;
+  try { savedTheme = savedTheme || localStorage.getItem('habitTrackerTheme') || 'vaporwave'; } catch(e) { savedTheme = savedTheme || 'vaporwave'; }
+  document.body.setAttribute('data-theme', savedTheme);
+  var sel = document.getElementById('theme-select');
+  if (sel) sel.value = savedTheme;
   initMonthYearPickers();
   loadAndRender();
 }
@@ -106,9 +112,13 @@ function toggleSettings(forceState) {
   if (isOpening) buildScheduleRows();
 }
 
-function changeTheme(theme) {
+async function changeTheme(theme) {
   document.body.setAttribute('data-theme', theme);
   try { localStorage.setItem('habitTrackerTheme', theme); } catch(e) {}
+  // Save to Supabase so it persists across devices
+  if (currentUser) {
+    await sb.auth.updateUser({ data: { preferred_theme: theme } });
+  }
   renderEverything();
 }
 
@@ -335,6 +345,7 @@ function buildScheduleLookup() {
 async function loadAndRender() {
   await loadHabits();
   await loadLogs();
+  await loadAllTimeLogs();
   DAYS_IN_MONTH = new Date(currentYear, currentMonth, 0).getDate();
   firstDayMonBased = (new Date(currentYear, currentMonth - 1, 1).getDay() + 6) % 7;
   renderEverything();
@@ -347,11 +358,17 @@ function getThemeColor(varName) {
   return getComputedStyle(document.body).getPropertyValue(varName).trim();
 }
 
+var allTimeChartInstance = null;
+
 var HABIT_COLOR_CONFIG = {
   vaporwave:  { mode: 'hsl-band', baseHue: 0,   hueRange: 360, sat: 80, light: 62 },
   vaporwave2: { mode: 'hsl-band', baseHue: 180, hueRange: 160, sat: 85, light: 55 },
   basic:      { mode: 'hsl-band', baseHue: 200, hueRange: 80,  sat: 55, light: 50 },
-  classic: { mode: 'curated', palette: ['#7A2E3A','#B08D8D','#C9A876','#5C3A3F','#E8D9C3','#946B6B','#D8C49A','#4A2B30','#BFA0A0','#F0E2C8','#8C5A5F','#A88B5F'] }
+  classic:    { mode: 'curated', palette: ['#7A2E3A','#B08D8D','#C9A876','#5C3A3F','#E8D9C3','#946B6B','#D8C49A','#4A2B30','#BFA0A0','#F0E2C8','#8C5A5F','#A88B5F'] },
+  retro95:    { mode: 'curated', palette: ['#FFFFFF','#FF6600','#FF2E92','#9933FF','#39FF14','#00F0FF','#FFB347','#FF0055','#FFFF00','#AA00FF','#00FF88','#FF9900'] },
+  gothic:     { mode: 'curated', palette: ['#8B0000','#1A4A1A','#1A1A5C','#4A0E5C','#5C3A00','#005C5C','#2A2A2A','#FF6B6B','#DC143C','#5C0000','#FF9999','#FFB3B3'] },
+  tron:       { mode: 'curated', palette: ['#00FFFF','#FF00FF','#FFFF00','#00FF88','#FF6600','#AA00FF','#FF0055','#00CCFF','#FF99FF','#99FF00','#FF9900','#00FFCC'] },
+  superpink:  { mode: 'curated', palette: ['#FFB3C6','#FF85A1','#FF5C8A','#E8407A','#C2446E','#FF9EBA','#FFD6E5','#FF6E96','#FFE0EB','#FF3399','#FFAAC8','#D96080'] }
 };
 var GOLDEN_ANGLE = 137.508;
 
@@ -791,7 +808,10 @@ function updateProgressCell(hid, hi) {
       totalDone += (logsLookup[hid] && logsLookup[hid][isoDate]) || 0;
     }
   }
-  if (totalRequired === 0) totalRequired = DAYS_IN_MONTH;
+  if (totalRequired === 0) {
+    totalDone = Object.values(logsLookup[hid] || {}).reduce(function(a, b) { return a + b; }, 0);
+    totalRequired = DAYS_IN_MONTH;
+  }
   var pct = Math.round((totalDone / totalRequired) * 100);
   if (!extraCreditEnabled) pct = Math.min(pct, 100);
   cell.innerHTML = '<div style="display:flex;justify-content:flex-end;font-size:11px;margin-bottom:3px;"><span style="color:var(--c-text-muted);font-weight:600;">'+pct+'%</span></div><div style="background:var(--c-body-bg-alt);border:2px solid var(--c-dark);border-radius:var(--radius-sm);height:9px;overflow:hidden;"><div style="background:'+h.colorClass+';width:'+Math.min(pct,100)+'%;height:100%;"></div></div>';
@@ -838,6 +858,9 @@ function renderWeeklyTasks() {
     var header = document.createElement('div');
     header.className = 'week-col-header';
     header.style.background = weekColors[w] || '#ccc';
+    // FIX 3: Apply the contrast-aware text color so "Week 5" (and all headers)
+    // are always readable — this was unset before, inheriting whatever color
+    // CSS happened to cascade in, which was too dark on dark theme colors.
     header.style.color = weekTextColors[w] || '#fff';
     header.textContent = wd.week;
     col.appendChild(header);
@@ -849,23 +872,7 @@ function renderWeeklyTasks() {
       var cb = document.createElement('input'); cb.type='checkbox'; cb.checked=task.c; cb.style.accentColor=weekColors[w]||'#ccc';
       var inp = document.createElement('input'); inp.type='text'; inp.value=task.t; inp.placeholder='';
       if (task.c) inp.classList.add('task-done');
-
-      // Save checkbox state back to weeklyTaskData and refresh chart
-      (function(weekIdx, taskIdx, textEl) {
-        cb.addEventListener('change', function() {
-          textEl.classList.toggle('task-done', this.checked);
-          if (!weeklyTaskData[weekIdx].tasks[taskIdx]) weeklyTaskData[weekIdx].tasks[taskIdx] = {t:'',c:false};
-          weeklyTaskData[weekIdx].tasks[taskIdx].c = this.checked;
-          renderPlannedActualChart();
-        });
-        // Save text back to weeklyTaskData on input
-        textEl.addEventListener('input', function() {
-          if (!weeklyTaskData[weekIdx].tasks[taskIdx]) weeklyTaskData[weekIdx].tasks[taskIdx] = {t:'',c:false};
-          weeklyTaskData[weekIdx].tasks[taskIdx].t = this.value;
-          renderPlannedActualChart();
-        });
-      })(w, i, inp);
-
+      cb.addEventListener('change', function(textEl){ return function(){ textEl.classList.toggle('task-done', this.checked); }; }(inp));
       row.appendChild(cb); row.appendChild(inp);
       col.appendChild(row);
     }
@@ -876,14 +883,8 @@ function renderWeeklyTasks() {
 function renderPlannedActualChart() {
   var numWeeks = getWeekCount();
   var weekLabels = weeklyTaskData.slice(0,numWeeks).map(function(w){return w.week;});
-  // Planned = tasks that have text entered (regardless of checked state)
-  var planned = weeklyTaskData.slice(0,numWeeks).map(function(wd){
-    return wd.tasks.filter(function(t){return t && t.t && t.t.trim() !== '';}).length;
-  });
-  // Actual = tasks that are checked
-  var actual = weeklyTaskData.slice(0,numWeeks).map(function(wd){
-    return wd.tasks.filter(function(t){return t && t.c;}).length;
-  });
+  var planned = weeklyTaskData.slice(0,numWeeks).map(function(){return 0;});
+  var actual = weeklyTaskData.slice(0,numWeeks).map(function(wd){return wd.tasks.filter(function(t){return t.c;}).length;});
   if (plannedActualChartInstance) plannedActualChartInstance.destroy();
   plannedActualChartInstance = new Chart(document.getElementById('plannedActualChart'),{
     type:'bar',data:{labels:weekLabels,datasets:[
@@ -895,103 +896,148 @@ function renderPlannedActualChart() {
 }
 
 // ============================================
-// HISTORY PAGE
+// ALL-TIME HISTORY
 // ============================================
-function toggleHistoryPage() {
-  var page = document.getElementById('history-page');
-  var isShowing = page.style.display === 'block';
-  page.style.display = isShowing ? 'none' : 'block';
-  if (!isShowing) renderHistoryPage();
-}
+var allTimeLogs = {}; // hid -> { 'YYYY-MM-DD': count }
 
-function renderHistoryPage() {
-  var el = document.getElementById('history-content');
-  el.innerHTML = '';
-  if (RAW_HABITS.length === 0) {
-    el.innerHTML = '<p style="color:var(--c-text-muted); font-size:13px;">No habits added yet.</p>';
-    return;
-  }
-  RAW_HABITS.forEach(function(h, hi) {
-    var hid = String(h.id);
-    var createdAt = h.created_at ? new Date(h.created_at) : null;
-    var createdStr = createdAt ? createdAt.toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric'}) : 'Unknown';
-    var ageDays = createdAt ? Math.floor((Date.now() - createdAt) / 86400000) : '?';
-    // Count total logs ever
-    var totalLogs = Object.values(allTimeLogs[hid] || {}).reduce(function(a,b){return a+b;},0);
-    // Best streak
-    var dates = Object.keys(allTimeLogs[hid] || {}).filter(function(d){return allTimeLogs[hid][d]>0;}).sort();
-    var bestStreak = 0, curStreak = 0, prev = null;
-    dates.forEach(function(d) {
-      if (prev && (new Date(d)-new Date(prev))/86400000===1) { curStreak++; } else { curStreak=1; }
-      if (curStreak > bestStreak) bestStreak = curStreak;
-      prev = d;
-    });
-    var color = habits[hi] ? habits[hi].colorClass : getThemeColor('--c-pink');
-    var card = document.createElement('div');
-    card.style.cssText = 'border:2px solid var(--c-dark);border-radius:var(--radius-sm);padding:14px;background:var(--c-body-bg-alt);';
-    card.innerHTML = [
-      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">',
-        '<div style="width:12px;height:12px;background:'+color+';border-radius:2px;flex-shrink:0;"></div>',
-        '<span style="font-size:14px;font-weight:700;color:var(--c-text);">'+h.icon+' '+h.name+'</span>',
-        '<span style="font-size:11px;color:var(--c-text-muted);margin-left:auto;">'+h.category+'</span>',
-      '</div>',
-      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;">',
-        '<div style="background:var(--c-body-bg);padding:8px;border-radius:var(--radius-sm);">',
-          '<div style="font-size:18px;font-weight:700;color:var(--c-pink);">'+ageDays+'</div>',
-          '<div style="font-size:10px;color:var(--c-text-muted);">days old</div>',
-        '</div>',
-        '<div style="background:var(--c-body-bg);padding:8px;border-radius:var(--radius-sm);">',
-          '<div style="font-size:18px;font-weight:700;color:var(--c-orange);">'+totalLogs+'</div>',
-          '<div style="font-size:10px;color:var(--c-text-muted);">total completions</div>',
-        '</div>',
-        '<div style="background:var(--c-body-bg);padding:8px;border-radius:var(--radius-sm);">',
-          '<div style="font-size:18px;font-weight:700;color:var(--c-purple);">'+bestStreak+'</div>',
-          '<div style="font-size:10px;color:var(--c-text-muted);">best streak</div>',
-        '</div>',
-      '</div>',
-      '<div style="margin-top:10px;font-size:11px;color:var(--c-text-muted);">Created '+createdStr+'</div>'
-    ].join('');
-    el.appendChild(card);
+async function loadAllTimeLogs() {
+  var habitIds = RAW_HABITS.map(function(h) { return h.id; });
+  if (habitIds.length === 0) { allTimeLogs = {}; return; }
+  var { data } = await sb.from('habit_logs').select('habit_id, log_date, times_completed').in('habit_id', habitIds).order('log_date', { ascending: true });
+  allTimeLogs = {};
+  (data || []).forEach(function(log) {
+    var hid = String(log.habit_id);
+    if (!allTimeLogs[hid]) allTimeLogs[hid] = {};
+    allTimeLogs[hid][log.log_date] = log.times_completed;
   });
 }
 
-// ============================================
-// EXPORT TO CSV
-// ============================================
-function exportToCSV() {
-  if (RAW_HABITS.length === 0) { alert('No habits to export.'); return; }
-  var rows = [['Habit','Icon','Category','Created','Total Completions','Best Streak (days)','Days Old']];
-  RAW_HABITS.forEach(function(h, hi) {
-    var hid = String(h.id);
-    var createdAt = h.created_at ? new Date(h.created_at) : null;
-    var createdStr = createdAt ? createdAt.toISOString().split('T')[0] : '';
-    var ageDays = createdAt ? Math.floor((Date.now()-createdAt)/86400000) : '';
-    var totalLogs = Object.values(allTimeLogs[hid]||{}).reduce(function(a,b){return a+b;},0);
-    var dates = Object.keys(allTimeLogs[hid]||{}).filter(function(d){return allTimeLogs[hid][d]>0;}).sort();
-    var best=0,cur=0,prev=null;
-    dates.forEach(function(d){
-      if(prev&&(new Date(d)-new Date(prev))/86400000===1){cur++;}else{cur=1;}
-      if(cur>best)best=cur; prev=d;
-    });
-    rows.push([h.name, h.icon, h.category||'General', createdStr, totalLogs, best, ageDays]);
-  });
-  // Also export all log data
-  rows.push([]);
-  rows.push(['--- Daily Log Data ---']);
-  rows.push(['Habit','Date','Times Completed']);
+function renderAllTimeSection() {
+  renderAllTimeChart();
+  renderStreaks();
+  renderHeatmap();
+  renderBestMonth();
+  renderHabitAge();
+}
+
+function renderAllTimeChart() {
+  if (allTimeChartInstance) allTimeChartInstance.destroy();
+  // Collect all unique dates across all habits
+  var dateSet = {};
   RAW_HABITS.forEach(function(h) {
     var hid = String(h.id);
-    Object.keys(allTimeLogs[hid]||{}).sort().forEach(function(date) {
-      var val = allTimeLogs[hid][date];
-      if (val > 0) rows.push([h.name, date, val]);
+    Object.keys(allTimeLogs[hid] || {}).forEach(function(d) { dateSet[d] = true; });
+  });
+  var dates = Object.keys(dateSet).sort();
+  if (dates.length === 0) return;
+  var totals = dates.map(function(d) {
+    var sum = 0;
+    RAW_HABITS.forEach(function(h) {
+      var hid = String(h.id);
+      if (allTimeLogs[hid] && allTimeLogs[hid][d]) sum += allTimeLogs[hid][d];
+    });
+    return sum;
+  });
+  var labels = dates.map(function(d) {
+    var parts = d.split('-');
+    return parts[1] + '/' + parts[2];
+  });
+  var pink = getThemeColor('--c-pink');
+  allTimeChartInstance = new Chart(document.getElementById('allTimeLineChart'), {
+    type: 'line',
+    data: { labels: labels, datasets: [{ data: totals, borderColor: pink, backgroundColor: hexToRgba(pink, 0.15), fill: true, tension: 0.3, pointRadius: 1, borderWidth: 2 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } }, x: { ticks: { autoSkip: true, maxTicksLimit: 12, font: { size: 9 } } } } }
+  });
+}
+
+function renderStreaks() {
+  var el = document.getElementById('streaks-container');
+  if (!el) return;
+  el.innerHTML = '';
+  if (RAW_HABITS.length === 0) { el.innerHTML = '<p style="font-size:11px;color:var(--c-text-muted);">No habits yet</p>'; return; }
+  var maxStreak = 0;
+  RAW_HABITS.forEach(function(h, hi) {
+    var hid = String(h.id);
+    var dates = Object.keys(allTimeLogs[hid] || {}).filter(function(d) { return allTimeLogs[hid][d] > 0; }).sort();
+    var best = 0, cur = 0, prev = null;
+    dates.forEach(function(d) {
+      if (prev) {
+        var diff = (new Date(d) - new Date(prev)) / 86400000;
+        cur = diff === 1 ? cur + 1 : 1;
+      } else { cur = 1; }
+      if (cur > best) best = cur;
+      prev = d;
+    });
+    if (best > maxStreak) maxStreak = best;
+    var color = habits[hi] ? habits[hi].colorClass : getThemeColor('--c-pink');
+    var pct = maxStreak > 0 ? Math.round((best / maxStreak) * 100) : 0;
+    var row = document.createElement('div');
+    row.innerHTML = '<div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="font-size:11px;color:var(--c-text);">' + h.icon + ' ' + h.name + '</span><span style="font-size:11px;color:var(--c-text-muted);font-weight:600;">' + best + ' days</span></div><div style="background:var(--c-body-bg-alt);border:2px solid var(--c-dark);border-radius:var(--radius-sm);height:8px;overflow:hidden;"><div style="background:' + color + ';width:' + pct + '%;height:100%;"></div></div>';
+    el.appendChild(row);
+  });
+}
+
+function renderHeatmap() {
+  var el = document.getElementById('heatmap-container');
+  if (!el) return;
+  el.innerHTML = '';
+  // Collect all dates from all habits
+  var dateMap = {};
+  RAW_HABITS.forEach(function(h) {
+    var hid = String(h.id);
+    Object.keys(allTimeLogs[hid] || {}).forEach(function(d) {
+      dateMap[d] = (dateMap[d] || 0) + (allTimeLogs[hid][d] || 0);
     });
   });
-  var csv = rows.map(function(r){ return r.map(function(c){ return '"'+(String(c||'').replace(/"/g,'""'))+'"'; }).join(','); }).join('\n');
-  var blob = new Blob([csv], {type:'text/csv'});
-  var a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'emo-materialist-habits-' + new Date().toISOString().split('T')[0] + '.csv';
-  a.click();
+  var maxVal = Math.max(1, Math.max.apply(null, Object.values(dateMap).concat([0])));
+  // Show last 91 days
+  for (var i = 90; i >= 0; i--) {
+    var d = new Date(); d.setDate(d.getDate() - i);
+    var iso = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    var val = dateMap[iso] || 0;
+    var opacity = val === 0 ? 0.1 : 0.2 + (val / maxVal) * 0.8;
+    var cell = document.createElement('div');
+    var pink = getThemeColor('--c-pink');
+    cell.style.cssText = 'width:12px;height:12px;background:' + pink + ';opacity:' + opacity.toFixed(2) + ';cursor:default;';
+    cell.title = iso + ': ' + val + ' completed';
+    el.appendChild(cell);
+  }
+}
+
+function renderBestMonth() {
+  var el = document.getElementById('best-month-container');
+  if (!el) return;
+  // Aggregate by month
+  var monthMap = {};
+  RAW_HABITS.forEach(function(h) {
+    var hid = String(h.id);
+    Object.keys(allTimeLogs[hid] || {}).forEach(function(d) {
+      var ym = d.substring(0,7);
+      monthMap[ym] = (monthMap[ym] || 0) + (allTimeLogs[hid][d] || 0);
+    });
+  });
+  var months = Object.keys(monthMap).sort();
+  if (months.length === 0) { el.innerHTML = '<p style="font-size:11px;color:var(--c-text-muted);">Not enough data yet</p>'; return; }
+  var best = months.reduce(function(a,b) { return monthMap[a] >= monthMap[b] ? a : b; });
+  var parts = best.split('-');
+  var monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var label = monthNames[parseInt(parts[1])-1] + ' ' + parts[0];
+  el.innerHTML = '<div style="display:flex;align-items:center;gap:10px;"><span style="font-size:32px;font-weight:700;color:var(--c-orange);">' + label + '</span><div><div style="font-size:16px;font-weight:700;color:var(--c-text);">' + monthMap[best] + ' done</div><div style="font-size:10px;color:var(--c-text-muted);">your personal best month</div></div></div>';
+}
+
+function renderHabitAge() {
+  var el = document.getElementById('habit-age-container');
+  if (!el) return;
+  el.innerHTML = '';
+  if (RAW_HABITS.length === 0) return;
+  RAW_HABITS.forEach(function(h) {
+    var createdAt = h.created_at ? new Date(h.created_at) : null;
+    var days = createdAt ? Math.floor((Date.now() - createdAt) / 86400000) : '?';
+    var row = document.createElement('div');
+    row.className = 'top-habit-row';
+    row.innerHTML = '<span>' + h.icon + ' ' + h.name + '</span><span class="top-habit-count">' + days + ' days</span>';
+    el.appendChild(row);
+  });
 }
 
 // ============================================
@@ -1011,6 +1057,7 @@ function renderEverything() {
   renderWeeklyDonut();
   renderWeeklyTasks();
   renderPlannedActualChart();
+  renderAllTimeSection();
 }
 
 // ============================================

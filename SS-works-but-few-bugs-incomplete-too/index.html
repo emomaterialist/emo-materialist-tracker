@@ -86,6 +86,10 @@
       <option value="vaporwave2">Vaporwave (Alt)</option>
       <option value="classic">Classic Elegant</option>
       <option value="basic">Basic</option>
+      <option value="retro95">Retro 95</option>
+      <option value="gothic">Light Gothic</option>
+      <option value="tron">Tron / Neon</option>
+      <option value="superpink">Super Pink</option>
     </select>
   </div>
 
@@ -162,25 +166,6 @@
 
 <!-- Settings toggle button — always visible in top-left corner -->
 <button class="settings-toggle-btn" onclick="toggleSettings()" title="Settings">⚙</button>
-
-<!-- History + Export buttons -->
-<div style="position:fixed; top:14px; left:58px; z-index:1000; display:flex; gap:8px;">
-  <button class="settings-toggle-btn" onclick="toggleHistoryPage()" title="History" style="width:auto; padding:0 10px; font-size:12px; letter-spacing:1px;">📋 History</button>
-  <button class="settings-toggle-btn" onclick="exportToCSV()" title="Export" style="width:auto; padding:0 10px; font-size:12px; letter-spacing:1px;">⬇ Export</button>
-</div>
-
-<!-- =============================================
-     HISTORY PAGE
-============================================= -->
-<div id="history-page" style="display:none; position:fixed; top:0; left:0; width:100%; height:100vh; background:var(--c-body-bg); z-index:998; overflow-y:auto; padding:24px; box-sizing:border-box;">
-  <div style="max-width:800px; margin:0 auto;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
-      <h2 style="color:var(--c-pink); margin:0; font-size:18px; text-transform:uppercase; letter-spacing:2px;">📋 Habit History</h2>
-      <button onclick="toggleHistoryPage()" style="background:none; border:2px solid var(--c-pink); color:var(--c-pink); padding:6px 12px; cursor:pointer; border-radius:var(--radius-sm); font-size:12px;">✕ Close</button>
-    </div>
-    <div id="history-content" class="stack-md"></div>
-  </div>
-</div>
 
 <!-- =============================================
      MAIN TRACKER (hidden until logged in)
@@ -289,6 +274,78 @@
         </td>
       </tr>
     </table>
+
+    <!-- ALL-TIME HISTORY SECTION -->
+    <div class="tracker" style="margin-top:14px;">
+      <table class="layout">
+        <tr>
+          <td class="cell-outer" colspan="3">
+            <div class="cell-border">
+              <div class="title-bar">
+                <span class="title-glyph"></span>
+                <span class="title-text">All-time history</span>
+                <span class="title-dots"><span></span><span></span><span></span></span>
+              </div>
+              <div class="cell-body">
+                <p class="cell-subtitle">Habits completed per day (all time)</p>
+                <div class="chart-wrap"><canvas id="allTimeLineChart"></canvas></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td class="cell-outer">
+            <div class="cell-border">
+              <div class="title-bar">
+                <span class="title-glyph"></span>
+                <span class="title-text">Best streaks 🔥</span>
+                <span class="title-dots"><span></span><span></span><span></span></span>
+              </div>
+              <div class="cell-body">
+                <div id="streaks-container" class="stack-sm"></div>
+              </div>
+            </div>
+          </td>
+          <td class="cell-outer">
+            <div class="cell-border">
+              <div class="title-bar">
+                <span class="title-glyph"></span>
+                <span class="title-text">Completion heatmap</span>
+                <span class="title-dots"><span></span><span></span><span></span></span>
+              </div>
+              <div class="cell-body">
+                <div id="heatmap-container" style="display:flex;flex-wrap:wrap;gap:3px;"></div>
+                <div style="display:flex;align-items:center;gap:6px;margin-top:8px;">
+                  <span class="cell-subtitle" style="margin:0;">less</span>
+                  <div style="width:12px;height:12px;background:var(--c-pink);opacity:0.15;"></div>
+                  <div style="width:12px;height:12px;background:var(--c-pink);opacity:0.4;"></div>
+                  <div style="width:12px;height:12px;background:var(--c-pink);opacity:0.65;"></div>
+                  <div style="width:12px;height:12px;background:var(--c-pink);opacity:0.85;"></div>
+                  <div style="width:12px;height:12px;background:var(--c-pink);opacity:1;"></div>
+                  <span class="cell-subtitle" style="margin:0;">more</span>
+                </div>
+              </div>
+            </div>
+          </td>
+          <td class="cell-outer">
+            <div class="cell-border">
+              <div class="title-bar">
+                <span class="title-glyph"></span>
+                <span class="title-text">Best month 🏆 &amp; habit age 🌱</span>
+                <span class="title-dots"><span></span><span></span><span></span></span>
+              </div>
+              <div class="cell-body">
+                <div id="best-month-container"></div>
+                <div style="margin-top:12px;">
+                  <p class="cell-subtitle">Habit age</p>
+                  <div id="habit-age-container" class="stack-sm"></div>
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+      </table>
+    </div>
   </div>
 </div>
 
