@@ -161,28 +161,24 @@
 </div>
 
 <!-- Settings toggle button — always visible in top-left corner -->
-<div style="position:fixed; top:14px; left:14px; z-index:1000; display:flex; flex-direction:column; gap:6px;">
-  <button class="settings-toggle-btn" onclick="toggleSettings()" title="Settings" style="position:static;">⚙</button>
-  <button class="settings-toggle-btn" onclick="toggleHistoryPage()" title="History" style="position:static; width:36px; height:36px; font-size:14px;">📋</button>
-  <button class="settings-toggle-btn" onclick="exportToCSV()" title="Export CSV" style="position:static; width:36px; height:36px; font-size:14px;">⬇</button>
+<button class="settings-toggle-btn" onclick="toggleSettings()" title="Settings">⚙</button>
+
+<!-- History + Export buttons -->
+<div style="position:fixed; top:14px; left:58px; z-index:1000; display:flex; gap:8px;">
+  <button class="settings-toggle-btn" onclick="toggleHistoryPage()" title="History" style="width:auto; padding:0 10px; font-size:12px; letter-spacing:1px;">📋 History</button>
+  <button class="settings-toggle-btn" onclick="exportToCSV()" title="Export" style="width:auto; padding:0 10px; font-size:12px; letter-spacing:1px;">⬇ Export</button>
 </div>
 
 <!-- =============================================
      HISTORY PAGE
 ============================================= -->
-<div id="history-page" style="display:none; position:fixed; top:0; left:0; width:100%; height:100vh; z-index:998; overflow-y:auto; padding:60px 24px 24px; box-sizing:border-box; background:radial-gradient(circle, var(--c-grid-dot) 1px, transparent 1px), linear-gradient(180deg, var(--c-page-bg-1) 0%, var(--c-page-bg-2) 100%); background-size:16px 16px, 100% 100%;">
-  <div style="max-width:900px; margin:0 auto;">
-    <div class="cell-border" style="margin-bottom:16px;">
-      <div class="title-bar">
-        <span class="title-glyph"></span>
-        <span class="title-text">📋 All Habits — History</span>
-        <button onclick="toggleHistoryPage()" style="background:none; border:none; color:var(--c-text); cursor:pointer; font-size:14px; padding:0;">✕</button>
-      </div>
-      <div class="cell-body">
-        <p class="cell-subtitle" id="history-summary"></p>
-        <div id="history-content" class="stack-md"></div>
-      </div>
+<div id="history-page" style="display:none; position:fixed; top:0; left:0; width:100%; height:100vh; background:var(--c-body-bg); z-index:998; overflow-y:auto; padding:24px; box-sizing:border-box;">
+  <div style="max-width:800px; margin:0 auto;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+      <h2 style="color:var(--c-pink); margin:0; font-size:18px; text-transform:uppercase; letter-spacing:2px;">📋 Habit History</h2>
+      <button onclick="toggleHistoryPage()" style="background:none; border:2px solid var(--c-pink); color:var(--c-pink); padding:6px 12px; cursor:pointer; border-radius:var(--radius-sm); font-size:12px;">✕ Close</button>
     </div>
+    <div id="history-content" class="stack-md"></div>
   </div>
 </div>
 

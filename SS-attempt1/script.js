@@ -332,25 +332,9 @@ function buildScheduleLookup() {
   });
 }
 
-async function loadAllTimeLogs() {
-  var habitIds = RAW_HABITS.map(function(h) { return h.id; });
-  if (habitIds.length === 0) { allTimeLogs = {}; return; }
-  var { data } = await sb.from('habit_logs').select('habit_id, log_date, times_completed').in('habit_id', habitIds).order('log_date', { ascending: true });
-  allTimeLogs = {};
-  (data || []).forEach(function(log) {
-    var hid = String(log.habit_id);
-    if (!allTimeLogs[hid]) allTimeLogs[hid] = {};
-    allTimeLogs[hid][log.log_date] = log.times_completed;
-  });
-}
-
-var allTimeLogs = {};
-var allTimeChartInstance = null;
-
 async function loadAndRender() {
   await loadHabits();
   await loadLogs();
-  await loadAllTimeLogs();
   DAYS_IN_MONTH = new Date(currentYear, currentMonth, 0).getDate();
   firstDayMonBased = (new Date(currentYear, currentMonth - 1, 1).getDay() + 6) % 7;
   renderEverything();
@@ -922,109 +906,51 @@ function toggleHistoryPage() {
 
 function renderHistoryPage() {
   var el = document.getElementById('history-content');
-  var summary = document.getElementById('history-summary');
   el.innerHTML = '';
   if (RAW_HABITS.length === 0) {
     el.innerHTML = '<p style="color:var(--c-text-muted); font-size:13px;">No habits added yet.</p>';
     return;
   }
-
-  var monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-
-  if (summary) summary.textContent = RAW_HABITS.length + ' habit' + (RAW_HABITS.length > 1 ? 's' : '') + ' tracked';
-
   RAW_HABITS.forEach(function(h, hi) {
     var hid = String(h.id);
-    var logs = allTimeLogs[hid] || {};
     var createdAt = h.created_at ? new Date(h.created_at) : null;
-    var createdStr = createdAt ? createdAt.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}) : 'Unknown';
-    var ageDays = createdAt ? Math.floor((Date.now()-createdAt)/86400000) : '?';
-    var totalLogs = Object.values(logs).reduce(function(a,b){return a+b;},0);
-
+    var createdStr = createdAt ? createdAt.toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric'}) : 'Unknown';
+    var ageDays = createdAt ? Math.floor((Date.now() - createdAt) / 86400000) : '?';
+    // Count total logs ever
+    var totalLogs = Object.values(allTimeLogs[hid] || {}).reduce(function(a,b){return a+b;},0);
     // Best streak
-    var dates = Object.keys(logs).filter(function(d){return logs[d]>0;}).sort();
-    var bestStreak=0,curStreak=0,prev=null;
-    dates.forEach(function(d){
-      if(prev&&(new Date(d)-new Date(prev))/86400000===1){curStreak++;}else{curStreak=1;}
-      if(curStreak>bestStreak)bestStreak=curStreak; prev=d;
+    var dates = Object.keys(allTimeLogs[hid] || {}).filter(function(d){return allTimeLogs[hid][d]>0;}).sort();
+    var bestStreak = 0, curStreak = 0, prev = null;
+    dates.forEach(function(d) {
+      if (prev && (new Date(d)-new Date(prev))/86400000===1) { curStreak++; } else { curStreak=1; }
+      if (curStreak > bestStreak) bestStreak = curStreak;
+      prev = d;
     });
-
-    // Monthly breakdown
-    var monthMap = {};
-    dates.forEach(function(d){
-      var ym = d.substring(0,7);
-      monthMap[ym] = (monthMap[ym]||0) + (logs[d]||0);
-    });
-    var monthKeys = Object.keys(monthMap).sort();
-
     var color = habits[hi] ? habits[hi].colorClass : getThemeColor('--c-pink');
-
     var card = document.createElement('div');
-    card.className = 'cell-border';
-    card.style.marginBottom = '12px';
-
-    // Title bar
-    var titleBar = document.createElement('div');
-    titleBar.className = 'title-bar';
-    titleBar.innerHTML = '<span class="title-glyph" style="background:'+color+';"></span><span class="title-text">'+h.icon+' '+h.name+'</span><span style="font-size:10px;color:var(--c-text-muted);opacity:0.8;">'+h.category+'</span>';
-    card.appendChild(titleBar);
-
-    // Body
-    var body = document.createElement('div');
-    body.className = 'cell-body';
-
-    // Stats row
-    var stats = document.createElement('div');
-    stats.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;';
-    [
-      [ageDays, 'days old', '--c-pink'],
-      [totalLogs, 'total done', '--c-orange'],
-      [bestStreak, 'best streak', '--c-purple'],
-      [monthKeys.length, 'active months', '--c-text-muted']
-    ].forEach(function(item) {
-      var s = document.createElement('div');
-      s.style.cssText = 'background:var(--c-body-bg-alt);padding:8px;border-radius:var(--radius-sm);text-align:center;border:1px solid var(--c-dark);';
-      s.innerHTML = '<div style="font-size:20px;font-weight:700;color:var('+item[2]+');">'+item[0]+'</div><div style="font-size:10px;color:var(--c-text-muted);">'+item[1]+'</div>';
-      stats.appendChild(s);
-    });
-    body.appendChild(stats);
-
-    // Monthly breakdown bars
-    if (monthKeys.length > 0) {
-      var maxVal = Math.max.apply(null, Object.values(monthMap));
-      var breakdownLabel = document.createElement('p');
-      breakdownLabel.className = 'cell-subtitle';
-      breakdownLabel.textContent = 'Monthly completions';
-      body.appendChild(breakdownLabel);
-      var bars = document.createElement('div');
-      bars.style.cssText = 'display:flex;flex-direction:column;gap:4px;';
-      monthKeys.forEach(function(ym) {
-        var parts = ym.split('-');
-        var label = monthNames[parseInt(parts[1])-1]+' '+parts[0];
-        var val = monthMap[ym];
-        var pct = Math.round((val/maxVal)*100);
-        var row = document.createElement('div');
-        row.style.cssText = 'display:grid;grid-template-columns:60px 1fr 30px;gap:6px;align-items:center;';
-        row.innerHTML = '<span style="font-size:11px;color:var(--c-text-muted);">'+label+'</span>'
-          +'<div style="background:var(--c-body-bg-alt);height:8px;border-radius:var(--radius-sm);overflow:hidden;"><div style="background:'+color+';width:'+pct+'%;height:100%;"></div></div>'
-          +'<span style="font-size:11px;color:var(--c-text-muted);text-align:right;">'+val+'</span>';
-        bars.appendChild(row);
-      });
-      body.appendChild(bars);
-    } else {
-      var noData = document.createElement('p');
-      noData.style.cssText = 'font-size:11px;color:var(--c-text-muted);';
-      noData.textContent = 'No completions logged yet — but this habit exists since '+createdStr+'.';
-      body.appendChild(noData);
-    }
-
-    // Created date
-    var created = document.createElement('div');
-    created.style.cssText = 'margin-top:10px;font-size:11px;color:var(--c-text-muted);border-top:1px solid var(--c-body-bg-alt);padding-top:8px;';
-    created.textContent = 'Created '+createdStr;
-    body.appendChild(created);
-
-    card.appendChild(body);
+    card.style.cssText = 'border:2px solid var(--c-dark);border-radius:var(--radius-sm);padding:14px;background:var(--c-body-bg-alt);';
+    card.innerHTML = [
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">',
+        '<div style="width:12px;height:12px;background:'+color+';border-radius:2px;flex-shrink:0;"></div>',
+        '<span style="font-size:14px;font-weight:700;color:var(--c-text);">'+h.icon+' '+h.name+'</span>',
+        '<span style="font-size:11px;color:var(--c-text-muted);margin-left:auto;">'+h.category+'</span>',
+      '</div>',
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;">',
+        '<div style="background:var(--c-body-bg);padding:8px;border-radius:var(--radius-sm);">',
+          '<div style="font-size:18px;font-weight:700;color:var(--c-pink);">'+ageDays+'</div>',
+          '<div style="font-size:10px;color:var(--c-text-muted);">days old</div>',
+        '</div>',
+        '<div style="background:var(--c-body-bg);padding:8px;border-radius:var(--radius-sm);">',
+          '<div style="font-size:18px;font-weight:700;color:var(--c-orange);">'+totalLogs+'</div>',
+          '<div style="font-size:10px;color:var(--c-text-muted);">total completions</div>',
+        '</div>',
+        '<div style="background:var(--c-body-bg);padding:8px;border-radius:var(--radius-sm);">',
+          '<div style="font-size:18px;font-weight:700;color:var(--c-purple);">'+bestStreak+'</div>',
+          '<div style="font-size:10px;color:var(--c-text-muted);">best streak</div>',
+        '</div>',
+      '</div>',
+      '<div style="margin-top:10px;font-size:11px;color:var(--c-text-muted);">Created '+createdStr+'</div>'
+    ].join('');
     el.appendChild(card);
   });
 }
