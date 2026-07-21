@@ -618,14 +618,14 @@ function renderAllTimeSection() {
 
 function render52WeekScatter() {
   if(allTimeScatterInstance)allTimeScatterInstance.destroy();
-  // Build 52 weeks of data from allTimeLogs
-  var weekData=[];
+  var weekData=[], weekLabels={};
   for(var w=51;w>=0;w--){
+    var weekNum=52-w; // 1..52
     var weekStart=new Date(); weekStart.setDate(weekStart.getDate()-w*7-6);
     var weekEnd=new Date(); weekEnd.setDate(weekEnd.getDate()-w*7);
     var totalDone=0,totalPossible=0,habitsTracked=0;
     RAW_HABITS.forEach(function(h){
-      var hid=String(h.id), hadAny=false;
+      var hid=String(h.id),hadAny=false;
       for(var d=new Date(weekStart);d<=weekEnd;d.setDate(d.getDate()+1)){
         var iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
         var val=(allTimeLogs[hid]&&allTimeLogs[hid][iso])||0;
@@ -634,16 +634,29 @@ function render52WeekScatter() {
       }
       if(hadAny)habitsTracked++;
     });
+    // Only plot weeks where something was actually logged
+    if(totalDone===0) continue;
     var pct=totalPossible>0?Math.round((totalDone/totalPossible)*100):0;
-    weekData.push({x:52-w,y:pct,r:Math.max(3,Math.min(12,habitsTracked*2))});
+    weekLabels[weekNum]={pct,habitsTracked};
+    weekData.push({x:weekNum,y:pct,r:Math.max(4,Math.min(14,habitsTracked*3))});
   }
   var pink=getThemeColor('--c-pink');
   allTimeScatterInstance=new Chart(document.getElementById('allTimeScatterChart'),{
     type:'bubble',
     data:{datasets:[{label:'Completion rate',data:weekData,backgroundColor:hexToRgba(pink,0.55),borderColor:pink,borderWidth:1}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-      scales:{x:{min:0,max:53,ticks:{stepSize:4,callback:function(v){return'Wk '+v;},font:{size:9}},title:{display:true,text:'Week number',font:{size:10}}},
-              y:{min:0,max:110,ticks:{callback:function(v){return v+'%';},font:{size:9}},title:{display:true,text:'Completion rate',font:{size:10}}}}}
+    options:{responsive:true,maintainAspectRatio:false,plugins:{
+      legend:{display:false},
+      tooltip:{callbacks:{
+        label:function(ctx){
+          var wn=ctx.raw.x, info=weekLabels[wn]||{};
+          return['Week '+wn,'Completion: '+(info.pct||0)+'%','Habits tracked: '+(info.habitsTracked||0)];
+        }
+      }}
+    },
+    scales:{
+      x:{min:1,max:52,ticks:{stepSize:4,callback:function(v){return'Wk '+v;},font:{size:9}},title:{display:true,text:'Week number',font:{size:10}}},
+      y:{min:0,max:110,ticks:{callback:function(v){return v+'%';},font:{size:9}},title:{display:true,text:'Completion rate',font:{size:10}}}
+    }}
   });
 }
 
