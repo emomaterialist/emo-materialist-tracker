@@ -616,30 +616,38 @@ function renderAllTimeSection() {
   render52WeekScatter(); renderHeatmap(); renderRadar(); renderStreaks(); renderBestMonth(); renderHabitAge();
 }
 
+function getISOWeek(date) {
+  var d = new Date(date);
+  d.setHours(0,0,0,0);
+  d.setDate(d.getDate()+4-(d.getDay()||7));
+  var yearStart = new Date(d.getFullYear(),0,1);
+  return Math.ceil((((d-yearStart)/86400000)+1)/7);
+}
+
 function render52WeekScatter() {
   if(allTimeScatterInstance)allTimeScatterInstance.destroy();
-  var weekData=[], weekLabels={};
-  for(var w=51;w>=0;w--){
-    var weekNum=52-w; // 1..52
-    var weekStart=new Date(); weekStart.setDate(weekStart.getDate()-w*7-6);
-    var weekEnd=new Date(); weekEnd.setDate(weekEnd.getDate()-w*7);
-    var totalDone=0,totalPossible=0,habitsTracked=0;
-    RAW_HABITS.forEach(function(h){
-      var hid=String(h.id),hadAny=false;
-      for(var d=new Date(weekStart);d<=weekEnd;d.setDate(d.getDate()+1)){
-        var iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-        var val=(allTimeLogs[hid]&&allTimeLogs[hid][iso])||0;
-        if(val>0){totalDone+=val;hadAny=true;}
-        totalPossible++;
-      }
-      if(hadAny)habitsTracked++;
+  // Aggregate all logs by ISO week number
+  var weekMap={}; // weekNum -> {done, possible, habitsTracked set}
+  RAW_HABITS.forEach(function(h){
+    var hid=String(h.id);
+    Object.keys(allTimeLogs[hid]||{}).forEach(function(iso){
+      var val=allTimeLogs[hid][iso]; if(!val||val<=0)return;
+      var wn=getISOWeek(new Date(iso));
+      if(!weekMap[wn])weekMap[wn]={done:0,possible:0,habits:{}};
+      weekMap[wn].done+=val;
+      weekMap[wn].possible++;
+      weekMap[wn].habits[hid]=true;
     });
-    // Only plot weeks where something was actually logged
-    if(totalDone===0) continue;
-    var pct=totalPossible>0?Math.round((totalDone/totalPossible)*100):0;
-    weekLabels[weekNum]={pct,habitsTracked};
-    weekData.push({x:weekNum,y:pct,r:Math.max(4,Math.min(14,habitsTracked*3))});
-  }
+  });
+  var weekData=[], weekLabels={};
+  Object.keys(weekMap).forEach(function(wn){
+    wn=parseInt(wn); if(wn<1||wn>52)return;
+    var info=weekMap[wn];
+    var pct=info.possible>0?Math.round((info.done/info.possible)*100):0;
+    var habitsTracked=Object.keys(info.habits).length;
+    weekLabels[wn]={pct,habitsTracked};
+    weekData.push({x:wn,y:pct,r:Math.max(4,Math.min(14,habitsTracked*3))});
+  });
   var pink=getThemeColor('--c-pink');
   allTimeScatterInstance=new Chart(document.getElementById('allTimeScatterChart'),{
     type:'bubble',
@@ -654,7 +662,7 @@ function render52WeekScatter() {
       }}
     },
     scales:{
-      x:{min:1,max:52,ticks:{stepSize:4,callback:function(v){return'Wk '+v;},font:{size:9}},title:{display:true,text:'Week number',font:{size:10}}},
+      x:{min:1,max:52,ticks:{stepSize:4,callback:function(v){return'Wk '+v;},font:{size:9}},title:{display:true,text:'Week of year',font:{size:10}}},
       y:{min:0,max:110,ticks:{callback:function(v){return v+'%';},font:{size:9}},title:{display:true,text:'Completion rate',font:{size:10}}}
     }}
   });
