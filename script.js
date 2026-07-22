@@ -485,36 +485,51 @@ function applyCheckboxThemeStyle(box, isFlexible) {
 function applyBoxVisual(box, timesLogged, timesRequired, week, isFlexible) {
   var theme=document.body.getAttribute('data-theme')||'vaporwave';
   var baseColor=weekColors[week]||'#8C5FD9';
-  var doneColor=weekFillColors[week]||'#D7C5F0';
   var isGlowTheme=(theme==='vaporwave2'||theme==='tron');
   var isBoldTheme=(theme==='basic'||theme==='classic');
 
   if(timesLogged<=0){
     box.style.background='transparent';
     box.style.color='transparent'; box.textContent='';
+    box.style.display=''; box.style.fontSize='';
     if(isFlexible){
-      box.style.border='1.5px dashed '+baseColor;
-      if(isGlowTheme) box.style.boxShadow='0 0 2px '+hexToRgba(baseColor,0.3);
-      else box.style.boxShadow='none';
+      // Flexible: always dashed, dim
+      box.style.border='1.5px dashed '+hexToRgba(baseColor,0.5);
+      box.style.boxShadow='none';
     } else {
-      if(isGlowTheme){ box.style.border='2px solid '+baseColor; box.style.boxShadow='0 0 5px '+hexToRgba(baseColor,0.6)+', inset 0 0 3px '+hexToRgba(baseColor,0.1); }
-      else if(isBoldTheme){ box.style.border='2.5px solid '+baseColor; box.style.boxShadow='none'; }
-      else { box.style.border='1.5px solid '+baseColor; box.style.boxShadow='none'; }
+      // Required unchecked — make it clearly visible
+      if(isGlowTheme){
+        box.style.border='2px solid '+baseColor;
+        box.style.boxShadow='0 0 8px '+hexToRgba(baseColor,0.7)+', 0 0 3px '+hexToRgba(baseColor,0.4)+', inset 0 0 4px '+hexToRgba(baseColor,0.15);
+      } else if(isBoldTheme){
+        box.style.border='3px solid '+baseColor;
+        box.style.boxShadow='none';
+      } else {
+        box.style.border='2px solid '+baseColor;
+        box.style.boxShadow='none';
+      }
     }
   } else if(timesLogged>=timesRequired){
     box.style.background=baseColor; box.style.color=weekTextColors[week]||'#fff'; box.textContent='✓';
     box.style.fontSize='11px'; box.style.display='flex'; box.style.alignItems='center'; box.style.justifyContent='center';
-    if(isFlexible){ box.style.border='1.5px dashed '+baseColor; box.style.boxShadow='none'; }
-    else if(isGlowTheme){ box.style.border='2px solid '+baseColor; box.style.boxShadow='0 0 8px '+hexToRgba(baseColor,0.8)+', 0 0 16px '+hexToRgba(baseColor,0.4); }
-    else if(isBoldTheme){ box.style.border='2.5px solid '+baseColor; box.style.boxShadow='none'; }
-    else { box.style.border='1.5px solid '+baseColor; box.style.boxShadow='none'; }
+    if(isFlexible){
+      box.style.border='1.5px dashed '+baseColor; box.style.boxShadow='none';
+    } else if(isGlowTheme){
+      box.style.border='2px solid '+baseColor;
+      box.style.boxShadow='0 0 10px '+hexToRgba(baseColor,0.9)+', 0 0 20px '+hexToRgba(baseColor,0.5);
+    } else if(isBoldTheme){
+      box.style.border='3px solid '+baseColor; box.style.boxShadow='none';
+    } else {
+      box.style.border='2px solid '+baseColor; box.style.boxShadow='none';
+    }
   } else {
     var frac=timesLogged/timesRequired, opacity=0.15+frac*0.6;
     var rgb=hexToRgb(baseColor); var bg=rgb?'rgba('+rgb.r+','+rgb.g+','+rgb.b+','+opacity.toFixed(2)+')':baseColor;
     box.style.background=bg; box.style.border='1.5px solid '+baseColor; box.style.color=weekTextColors[week]||'#333';
     box.textContent=timesLogged+'/'+timesRequired; box.style.fontSize='8px'; box.style.display='flex';
     box.style.alignItems='center'; box.style.justifyContent='center'; box.style.lineHeight='1';
-    if(isGlowTheme) box.style.boxShadow='0 0 4px '+hexToRgba(baseColor,0.5);
+    if(isGlowTheme) box.style.boxShadow='0 0 5px '+hexToRgba(baseColor,0.6);
+    else box.style.boxShadow='none';
   }
   box.setAttribute('data-tip',timesLogged+' / '+timesRequired+' done');
 }
@@ -616,6 +631,13 @@ function renderAllTimeSection() {
   render52WeekScatter(); renderHeatmap(); renderRadar(); renderStreaks(); renderBestMonth(); renderHabitAge();
 }
 
+function getMonthFromISOWeek(weekNum) {
+  // Approximate the month from week number (week 1=Jan, 5=Feb, 9=Mar, etc)
+  var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var approxMonth = Math.min(11, Math.floor((weekNum-1)/4.33));
+  return months[approxMonth];
+}
+
 function getISOWeek(date) {
   var d = new Date(date);
   d.setHours(0,0,0,0);
@@ -657,12 +679,18 @@ function render52WeekScatter() {
       tooltip:{callbacks:{
         label:function(ctx){
           var wn=ctx.raw.x, info=weekLabels[wn]||{};
-          return['Week '+wn,'Completion: '+(info.pct||0)+'%','Habits tracked: '+(info.habitsTracked||0)];
+          var month=getMonthFromISOWeek(wn);
+          return['Week '+wn+' ('+month+')','Completion: '+(info.pct||0)+'%','Habits tracked: '+(info.habitsTracked||0)];
         }
       }}
     },
     scales:{
-      x:{min:1,max:52,ticks:{stepSize:4,callback:function(v){return'Wk '+v;},font:{size:9}},title:{display:true,text:'Week of year',font:{size:10}}},
+      x:{min:1,max:52,
+        ticks:{stepSize:4,font:{size:9},callback:function(v){
+          var months=['','Jan','','','Feb','','','Mar','','','Apr','','','May','','','Jun','','','Jul','','','Aug','','','Sep','','','Oct','','','Nov','','','Dec','','','',''];
+          return months[v]?'Wk '+v+' '+months[v]:'Wk '+v;
+        }},
+        title:{display:true,text:'Week of year',font:{size:10}}},
       y:{min:0,max:110,ticks:{callback:function(v){return v+'%';},font:{size:9}},title:{display:true,text:'Completion rate',font:{size:10}}}
     }}
   });
