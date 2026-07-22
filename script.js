@@ -266,7 +266,15 @@ async function saveLog(habitId, logDate, timesCompleted) {
 }
 function buildScheduleLookup() {
   scheduleLookup={};
-  RAW_HABITS.forEach(function(h){ var hid=String(h.id); scheduleLookup[hid]={}; (h.habit_schedule||[]).forEach(function(s){ scheduleLookup[hid][s.day_of_week]={required:s.times_required,flexible:s.is_flexible}; }); });
+  RAW_HABITS.forEach(function(h){
+    var hid=String(h.id);
+    scheduleLookup[hid]={};
+    (h.habit_schedule||[]).forEach(function(s){
+      // Explicitly coerce is_flexible to boolean in case Supabase returns a string
+      var isFlexible = s.is_flexible === true || s.is_flexible === 'true';
+      scheduleLookup[hid][s.day_of_week]={required:s.times_required, flexible:isFlexible};
+    });
+  });
 }
 async function loadAndRender() {
   await loadHabits(); await loadLogs(); await loadAllTimeLogs();
@@ -435,8 +443,9 @@ function renderGrid() {
       var cell=document.createElement('td'), box=document.createElement('div'); box.className='day-box';
       var isoDate=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(b.day).padStart(2,'0');
       var dow=(firstDayMonBased+b.day-1)%7, sched=scheduleLookup[hid]&&scheduleLookup[hid][dow];
-      var timesRequired=sched?sched.required:(h.id===-1?0:1), timesLogged=(logsLookup[hid]&&logsLookup[hid][isoDate])||0;
-      var isFlexible=sched?sched.flexible:false;
+      var timesRequired=sched?sched.required:(h.id===-1?0:0); // unscheduled = 0 required
+      var timesLogged=(logsLookup[hid]&&logsLookup[hid][isoDate])||0;
+      var isFlexible=sched?sched.flexible:true; // unscheduled days treated as flexible (dim/dashed)
       completionState[hid][b.day]=timesLogged;
 
       // Theme-aware checkbox style
