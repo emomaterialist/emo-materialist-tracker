@@ -486,50 +486,35 @@ function applyBoxVisual(box, timesLogged, timesRequired, week, isFlexible) {
   var theme=document.body.getAttribute('data-theme')||'vaporwave';
   var baseColor=weekColors[week]||'#8C5FD9';
   var isGlowTheme=(theme==='vaporwave2'||theme==='tron');
-  var isBoldTheme=(theme==='basic'||theme==='classic');
 
   if(timesLogged<=0){
     box.style.background='transparent';
     box.style.color='transparent'; box.textContent='';
     box.style.display=''; box.style.fontSize='';
     if(isFlexible){
-      // Flexible: always dashed, dim
-      box.style.border='1.5px dashed '+hexToRgba(baseColor,0.5);
+      box.style.border='1.5px dashed '+hexToRgba(baseColor,0.45);
       box.style.boxShadow='none';
     } else {
-      // Required unchecked — make it clearly visible
-      if(isGlowTheme){
-        box.style.border='2px solid '+baseColor;
-        box.style.boxShadow='0 0 8px '+hexToRgba(baseColor,0.7)+', 0 0 3px '+hexToRgba(baseColor,0.4)+', inset 0 0 4px '+hexToRgba(baseColor,0.15);
-      } else if(isBoldTheme){
-        box.style.border='3px solid '+baseColor;
-        box.style.boxShadow='none';
-      } else {
-        box.style.border='2px solid '+baseColor;
-        box.style.boxShadow='none';
-      }
+      // Required unchecked — thick bold border on ALL themes
+      box.style.border='3px solid '+baseColor;
+      box.style.boxShadow=isGlowTheme?'0 0 7px '+hexToRgba(baseColor,0.8):'none';
     }
   } else if(timesLogged>=timesRequired){
     box.style.background=baseColor; box.style.color=weekTextColors[week]||'#fff'; box.textContent='✓';
     box.style.fontSize='11px'; box.style.display='flex'; box.style.alignItems='center'; box.style.justifyContent='center';
     if(isFlexible){
       box.style.border='1.5px dashed '+baseColor; box.style.boxShadow='none';
-    } else if(isGlowTheme){
-      box.style.border='2px solid '+baseColor;
-      box.style.boxShadow='0 0 10px '+hexToRgba(baseColor,0.9)+', 0 0 20px '+hexToRgba(baseColor,0.5);
-    } else if(isBoldTheme){
-      box.style.border='3px solid '+baseColor; box.style.boxShadow='none';
     } else {
-      box.style.border='2px solid '+baseColor; box.style.boxShadow='none';
+      box.style.border='3px solid '+baseColor;
+      box.style.boxShadow=isGlowTheme?'0 0 10px '+hexToRgba(baseColor,0.9)+', 0 0 20px '+hexToRgba(baseColor,0.5):'none';
     }
   } else {
     var frac=timesLogged/timesRequired, opacity=0.15+frac*0.6;
     var rgb=hexToRgb(baseColor); var bg=rgb?'rgba('+rgb.r+','+rgb.g+','+rgb.b+','+opacity.toFixed(2)+')':baseColor;
-    box.style.background=bg; box.style.border='1.5px solid '+baseColor; box.style.color=weekTextColors[week]||'#333';
+    box.style.background=bg; box.style.border='2px solid '+baseColor; box.style.color=weekTextColors[week]||'#333';
     box.textContent=timesLogged+'/'+timesRequired; box.style.fontSize='8px'; box.style.display='flex';
     box.style.alignItems='center'; box.style.justifyContent='center'; box.style.lineHeight='1';
-    if(isGlowTheme) box.style.boxShadow='0 0 5px '+hexToRgba(baseColor,0.6);
-    else box.style.boxShadow='none';
+    box.style.boxShadow=isGlowTheme?'0 0 5px '+hexToRgba(baseColor,0.6):'none';
   }
   box.setAttribute('data-tip',timesLogged+' / '+timesRequired+' done');
 }
@@ -631,8 +616,20 @@ function renderAllTimeSection() {
   render52WeekScatter(); renderHeatmap(); renderRadar(); renderStreaks(); renderBestMonth(); renderHabitAge();
 }
 
+function getWeekDateRange(weekNum, year) {
+  // Get the Monday of ISO week weekNum in given year
+  var jan4 = new Date(year, 0, 4);
+  var startOfWeek1 = new Date(jan4);
+  startOfWeek1.setDate(jan4.getDate() - (jan4.getDay() || 7) + 1);
+  var weekStart = new Date(startOfWeek1);
+  weekStart.setDate(startOfWeek1.getDate() + (weekNum - 1) * 7);
+  var weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return months[weekStart.getMonth()] + ' ' + weekStart.getDate();
+}
+
 function getMonthFromISOWeek(weekNum) {
-  // Approximate the month from week number (week 1=Jan, 5=Feb, 9=Mar, etc)
   var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var approxMonth = Math.min(11, Math.floor((weekNum-1)/4.33));
   return months[approxMonth];
@@ -655,7 +652,8 @@ function render52WeekScatter() {
     Object.keys(allTimeLogs[hid]||{}).forEach(function(iso){
       var val=allTimeLogs[hid][iso]; if(!val||val<=0)return;
       var wn=getISOWeek(new Date(iso));
-      if(!weekMap[wn])weekMap[wn]={done:0,possible:0,habits:{}};
+      var yr=new Date(iso).getFullYear();
+      if(!weekMap[wn])weekMap[wn]={done:0,possible:0,habits:{},year:yr};
       weekMap[wn].done+=val;
       weekMap[wn].possible++;
       weekMap[wn].habits[hid]=true;
@@ -667,7 +665,8 @@ function render52WeekScatter() {
     var info=weekMap[wn];
     var pct=info.possible>0?Math.round((info.done/info.possible)*100):0;
     var habitsTracked=Object.keys(info.habits).length;
-    weekLabels[wn]={pct,habitsTracked};
+    var dateLabel=getWeekDateRange(wn, info.year||new Date().getFullYear());
+    weekLabels[wn]={pct,habitsTracked,dateLabel};
     weekData.push({x:wn,y:pct,r:Math.max(4,Math.min(14,habitsTracked*3))});
   });
   var pink=getThemeColor('--c-pink');
@@ -679,8 +678,7 @@ function render52WeekScatter() {
       tooltip:{callbacks:{
         label:function(ctx){
           var wn=ctx.raw.x, info=weekLabels[wn]||{};
-          var month=getMonthFromISOWeek(wn);
-          return['Week '+wn+' ('+month+')','Completion: '+(info.pct||0)+'%','Habits tracked: '+(info.habitsTracked||0)];
+          return['Week '+wn+' ('+( info.dateLabel||'')+')', 'Completion: '+(info.pct||0)+'%','Habits tracked: '+(info.habitsTracked||0)];
         }
       }}
     },
