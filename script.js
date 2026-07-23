@@ -80,6 +80,7 @@ function onLoggedIn() {
   var sel = document.getElementById('theme-select');
   if (sel) sel.value = savedTheme;
   buildCatPills();
+  buildScheduleRows();
   initMonthYearPickers();
   loadAndRender();
 }
@@ -208,24 +209,40 @@ async function submitAddHabit() {
   var timesPerDay = parseInt(document.getElementById('habit-times-per-day').value)||1;
   var flexNeeded = parseInt(document.getElementById('habit-flex-needed').value)||0;
   if (!name) return showMsg('add-habit-msg','Please enter a habit name.','error');
+
   var fixedDays=[], flexDays=[];
   document.querySelectorAll('#fixed-days-row .day-toggle.selected').forEach(function(btn){fixedDays.push(parseInt(btn.dataset.index));});
   document.querySelectorAll('#flex-days-row .day-toggle.selected').forEach(function(btn){flexDays.push(parseInt(btn.dataset.index));});
-  if (fixedDays.length===0&&(flexDays.length===0||flexNeeded===0)) return showMsg('add-habit-msg','Select at least one fixed day, or set a flexible pool.','error');
-  showMsg('add-habit-msg','Saving...','info');
+
+  // Debug: show what days were picked
+  showMsg('add-habit-msg','Fixed days: ['+fixedDays+'] Flex days: ['+flexDays+'] flex needed: '+flexNeeded,'info');
+
+  if (fixedDays.length===0&&(flexDays.length===0||flexNeeded===0)) return showMsg('add-habit-msg','Select at least one fixed day, or set a flexible pool + how many days needed.','error');
+
+  showMsg('add-habit-msg','Saving habit...','info');
   var { data, error } = await sb.from('habits').insert({ user_id:currentUser.id, name, icon, category, color:'auto' }).select();
-  if (error) return showMsg('add-habit-msg', error.message, 'error');
+  if (error) return showMsg('add-habit-msg','❌ habits insert error: '+error.message,'error');
+
   var habitId = data[0].id;
   var schedRows = [];
   fixedDays.forEach(function(dow){ schedRows.push({habit_id:habitId,day_of_week:dow,times_required:timesPerDay,is_flexible:false}); });
   flexDays.forEach(function(dow){ schedRows.push({habit_id:habitId,day_of_week:dow,times_required:timesPerDay,is_flexible:true}); });
   if (flexNeeded>0&&flexDays.length>0) schedRows.push({habit_id:habitId,day_of_week:7,times_required:flexNeeded,is_flexible:true});
-  if (schedRows.length>0) await sb.from('habit_schedule').insert(schedRows);
+
+  if (schedRows.length>0) {
+    var { error: sErr } = await sb.from('habit_schedule').insert(schedRows);
+    if (sErr) return showMsg('add-habit-msg','❌ schedule insert error: '+sErr.message,'error');
+    showMsg('add-habit-msg','✅ Saved '+schedRows.length+' schedule rows for habit '+habitId,'success');
+  } else {
+    showMsg('add-habit-msg','⚠️ No schedule rows to save — habit created with no schedule','info');
+  }
+
   document.getElementById('habit-name').value='';
   document.getElementById('habit-times-per-day').value='1';
   document.getElementById('habit-flex-needed').value='0';
   document.querySelectorAll('.day-toggle.selected').forEach(function(b){b.classList.remove('selected');});
-  showMsg('add-habit-msg','✅ Added: '+icon+' '+name,'success');
+
+  setTimeout(function(){ showMsg('add-habit-msg','✅ Added: '+icon+' '+name,'success'); }, 1500);
   await loadHabits(); renderEverything();
 }
 async function archiveHabit(habitId) {
@@ -498,23 +515,42 @@ function applyBoxVisual(box, timesLogged, timesRequired, week, isFlexible) {
   var baseColor=weekColors[week]||'#8C5FD9';
   var isGlowTheme=(theme==='vaporwave2'||theme==='tron');
 
-  if(timesLogged<=0){
+  box.style.display='flex';
+  box.style.alignItems='center';
+  box.style.justifyContent='center';
+
+  if(timesRequired===0){
     box.style.background='transparent';
-    box.style.color='transparent'; box.textContent='';
-    box.style.display=''; box.style.fontSize='';
+    box.style.color='transparent';
+    box.textContent='';
+    box.style.border='1px solid '+hexToRgba(baseColor,0.2);
+    box.style.boxShadow='none';
+    box.style.fontSize='';
+  } else if(timesLogged<=0){
+    box.style.background='transparent';
+    box.style.boxShadow=isGlowTheme?'0 0 7px '+hexToRgba(baseColor,0.8):'none';
     if(isFlexible){
-      box.style.border='1.5px dashed '+hexToRgba(baseColor,0.45);
-      box.style.boxShadow='none';
+      box.style.border='1.5px dashed '+baseColor;
+      box.style.color=baseColor;
+      box.style.fontSize='10px';
+      box.style.fontWeight='700';
+      box.textContent='?';
     } else {
-      // Required unchecked — thick bold border on ALL themes
       box.style.border='3px solid '+baseColor;
-      box.style.boxShadow=isGlowTheme?'0 0 7px '+hexToRgba(baseColor,0.8):'none';
+      box.style.color=baseColor;
+      box.style.fontSize='9px';
+      box.style.fontWeight='700';
+      box.textContent='\u2715';
     }
   } else if(timesLogged>=timesRequired){
-    box.style.background=baseColor; box.style.color=weekTextColors[week]||'#fff'; box.textContent='✓';
-    box.style.fontSize='11px'; box.style.display='flex'; box.style.alignItems='center'; box.style.justifyContent='center';
+    box.style.background=baseColor;
+    box.style.color=weekTextColors[week]||'#fff';
+    box.textContent='\u2713';
+    box.style.fontSize='11px';
+    box.style.fontWeight='700';
     if(isFlexible){
-      box.style.border='1.5px dashed '+baseColor; box.style.boxShadow='none';
+      box.style.border='1.5px dashed '+baseColor;
+      box.style.boxShadow='none';
     } else {
       box.style.border='3px solid '+baseColor;
       box.style.boxShadow=isGlowTheme?'0 0 10px '+hexToRgba(baseColor,0.9)+', 0 0 20px '+hexToRgba(baseColor,0.5):'none';
