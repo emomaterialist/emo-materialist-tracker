@@ -217,7 +217,8 @@ async function submitAddHabit() {
   // Debug: show what days were picked
   showMsg('add-habit-msg','Fixed days: ['+fixedDays+'] Flex days: ['+flexDays+'] flex needed: '+flexNeeded,'info');
 
-  if (fixedDays.length===0&&(flexDays.length===0||flexNeeded===0)) return showMsg('add-habit-msg','Select at least one fixed day, or set a flexible pool + how many days needed.','error');
+  if (fixedDays.length===0 && flexDays.length===0) return showMsg('add-habit-msg','Select at least one day.','error');
+  if (flexDays.length>0 && flexNeeded===0) return showMsg('add-habit-msg','If you picked flexible days, set how many per week are needed.','error');
 
   showMsg('add-habit-msg','Saving habit...','info');
   var { data, error } = await sb.from('habits').insert({ user_id:currentUser.id, name, icon, category, color:'auto' }).select();
