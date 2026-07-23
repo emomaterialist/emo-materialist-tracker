@@ -443,9 +443,11 @@ function renderGrid() {
       var cell=document.createElement('td'), box=document.createElement('div'); box.className='day-box';
       var isoDate=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(b.day).padStart(2,'0');
       var dow=(firstDayMonBased+b.day-1)%7, sched=scheduleLookup[hid]&&scheduleLookup[hid][dow];
-      var timesRequired=sched?sched.required:(h.id===-1?0:0); // unscheduled = 0 required
+      var timesRequired=sched?sched.required:0;
       var timesLogged=(logsLookup[hid]&&logsLookup[hid][isoDate])||0;
-      var isFlexible=sched?sched.flexible:true; // unscheduled days treated as flexible (dim/dashed)
+      var isFlexible=sched?sched.flexible:true;
+      // Stamp the box so CSS can target required vs flexible directly
+      box.dataset.required = (!isFlexible && timesRequired > 0) ? 'true' : 'false';
       completionState[hid][b.day]=timesLogged;
 
       // Theme-aware checkbox style

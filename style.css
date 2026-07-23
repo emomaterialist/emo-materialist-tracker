@@ -742,6 +742,24 @@ body {
   cursor: pointer;
 }
 
+/* Required day boxes — thicker border on ALL themes */
+.day-box[data-required="true"] {
+  border-width: 3px !important;
+}
+
+/* Flexible / unscheduled — thinner dashed */
+.day-box[data-required="false"] {
+  border-style: dashed !important;
+  border-width: 1.5px !important;
+  opacity: 0.5;
+}
+
+/* Glow themes — add glow on required */
+body[data-theme="vaporwave2"] .day-box[data-required="true"],
+body[data-theme="tron"] .day-box[data-required="true"] {
+  box-shadow: 0 0 6px currentColor;
+}
+
 .progress-cell {
   min-width: 120px;
   padding-left: 10px !important;
