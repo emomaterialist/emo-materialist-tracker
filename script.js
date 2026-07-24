@@ -697,30 +697,59 @@ function renderWeeklyTasks() {
   var el=document.getElementById('weekly-tasks'); el.innerHTML='';
   var numWeeks=getWeekCount();
   var theme=document.body.getAttribute('data-theme')||'vaporwave';
-  var cssHandlesWeekBg=(theme==='vaporwave2'||theme==='tron');
+  var isVW2=(theme==='vaporwave2');
+  var isTron=(theme==='tron');
+
+  var vw2Colors=['#00F0FF','#FFFF00','#FF2E92','#CC88FF','#FFC857'];
+  var vw2HeaderBgs=['rgba(0,240,255,0.35)','rgba(255,255,0,0.30)','rgba(255,46,146,0.35)','rgba(153,51,255,0.35)','rgba(255,200,87,0.30)'];
+  var vw2RowBgs=['rgba(0,240,255,0.08)','rgba(255,255,0,0.06)','rgba(255,46,146,0.08)','rgba(153,51,255,0.08)','rgba(255,200,87,0.06)'];
+  var tronColors=['#00FFFF','#FF00FF','#FFFF00','#00FF88','#FF6600'];
+  var tronHeaderBgs=['rgba(0,255,255,0.20)','rgba(255,0,255,0.20)','rgba(255,255,0,0.20)','rgba(0,255,136,0.20)','rgba(255,102,0,0.20)'];
+  var tronRowBgs=['rgba(0,255,255,0.06)','rgba(255,0,255,0.06)','rgba(255,255,0,0.06)','rgba(0,255,136,0.06)','rgba(255,102,0,0.06)'];
 
   weeklyTaskData.slice(0,numWeeks).forEach(function(wd,w){
     var col=document.createElement('div'); col.className='week-col';
     var header=document.createElement('div'); header.className='week-col-header';
-    if(!cssHandlesWeekBg){ header.style.background=weekColors[w]||'#ccc'; header.style.color=weekTextColors[w]||'#fff'; }
+
+    if(isVW2){
+      header.style.background=vw2HeaderBgs[w];
+      header.style.color=vw2Colors[w];
+      header.style.borderBottom='2px solid '+vw2Colors[w];
+    } else if(isTron){
+      header.style.background=tronHeaderBgs[w];
+      header.style.color=tronColors[w];
+      header.style.textShadow='0 0 6px '+tronColors[w];
+      header.style.borderBottom='2px solid '+tronColors[w];
+    } else {
+      header.style.background=weekColors[w]||'#ccc';
+      header.style.color=weekTextColors[w]||'#fff';
+    }
     header.textContent=wd.week; col.appendChild(header);
 
     for(var i=0;i<10;i++){
       var task=wd.tasks[i]||{t:'',c:false,pinned:false,id:null};
       var row=document.createElement('div'); row.className='task-row';
-      if(!cssHandlesWeekBg) row.style.background=(i%2===1)?(weekFillColors[w]||'transparent'):'transparent';
 
-      var cb=document.createElement('input'); cb.type='checkbox'; cb.checked=task.c||false; cb.style.accentColor=weekColors[w]||'#ccc';
+      if(isVW2){
+        row.style.background=i%2===1?vw2RowBgs[w]:'transparent';
+      } else if(isTron){
+        row.style.background=i%2===1?tronRowBgs[w]:'#050510';
+      } else {
+        row.style.background=i%2===1?(weekFillColors[w]||'transparent'):'transparent';
+      }
+
+      var accentColor=isVW2?vw2Colors[w]:isTron?tronColors[w]:(weekColors[w]||'#ccc');
+      var cb=document.createElement('input'); cb.type='checkbox'; cb.checked=task.c||false; cb.style.accentColor=accentColor;
       var inp=document.createElement('input'); inp.type='text'; inp.value=task.t||''; inp.placeholder='';
+      inp.style.color=isVW2?'#F0E8FF':isTron?'#E0E0E0':'';
       if(task.c) inp.classList.add('task-done');
 
-      // Pin button
       var pinBtn=document.createElement('span');
       pinBtn.textContent='📌';
       pinBtn.style.cssText='font-size:11px;cursor:pointer;flex-shrink:0;transition:opacity 0.15s;';
-      pinBtn.style.opacity = task.pinned?'1':'0.25';
-      pinBtn.style.filter = task.pinned?'drop-shadow(0 0 3px gold)':'none';
-      pinBtn.title = task.pinned?'Pinned — carries over every month (click to unpin)':'Click to pin this task every month';
+      pinBtn.style.opacity=task.pinned?'1':'0.25';
+      pinBtn.style.filter=task.pinned?'drop-shadow(0 0 3px gold)':'none';
+      pinBtn.title=task.pinned?'Pinned — carries over every month (click to unpin)':'Click to pin this task every month';
 
       (function(weekIdx,taskIdx,textEl,checkEl,pin){
         var saveTimer=null;
@@ -730,9 +759,8 @@ function renderWeeklyTasks() {
             if(!weeklyTaskData[weekIdx].tasks[taskIdx]) weeklyTaskData[weekIdx].tasks[taskIdx]={t:'',c:false,pinned:false,id:null};
             var t=weeklyTaskData[weekIdx].tasks[taskIdx];
             saveWeeklyTask(weekIdx,taskIdx,t.t||'',t.c||false,t.pinned||false);
-          },600); // autosave 600ms after last keystroke
+          },600);
         }
-
         cb.addEventListener('change',function(){
           textEl.classList.toggle('task-done',this.checked);
           if(!weeklyTaskData[weekIdx].tasks[taskIdx]) weeklyTaskData[weekIdx].tasks[taskIdx]={t:'',c:false,pinned:false,id:null};
@@ -740,14 +768,11 @@ function renderWeeklyTasks() {
           saveWeeklyTask(weekIdx,taskIdx,weeklyTaskData[weekIdx].tasks[taskIdx].t||'',this.checked,weeklyTaskData[weekIdx].tasks[taskIdx].pinned||false);
           renderPlannedActualChart();
         });
-
         textEl.addEventListener('input',function(){
           if(!weeklyTaskData[weekIdx].tasks[taskIdx]) weeklyTaskData[weekIdx].tasks[taskIdx]={t:'',c:false,pinned:false,id:null};
           weeklyTaskData[weekIdx].tasks[taskIdx].t=this.value;
-          debouncedSave();
-          renderPlannedActualChart();
+          debouncedSave(); renderPlannedActualChart();
         });
-
         pin.addEventListener('click',function(){ togglePin(weekIdx,taskIdx,pin); });
       })(w,i,inp,cb,pinBtn);
 
