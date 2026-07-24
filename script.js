@@ -623,12 +623,18 @@ function renderWeeklyTasks() {
   weeklyTaskData.slice(0,numWeeks).forEach(function(wd,w){
     var col=document.createElement('div'); col.className='week-col';
     var header=document.createElement('div'); header.className='week-col-header';
-    header.style.background=weekColors[w]||'#ccc'; header.style.color=weekTextColors[w]||'#fff';
+    var theme=document.body.getAttribute('data-theme')||'vaporwave';
+    if(theme!=='vaporwave2'&&theme!=='tron'){
+      header.style.background=weekColors[w]||'#ccc';
+      header.style.color=weekTextColors[w]||'#fff';
+    }
     header.textContent=wd.week; col.appendChild(header);
     for(var i=0;i<10;i++){
       var task=wd.tasks[i]||{t:'',c:false};
       var row=document.createElement('div'); row.className='task-row';
-      row.style.background=(i%2===1)?(weekFillColors[w]||'transparent'):'transparent';
+      var theme=document.body.getAttribute('data-theme')||'vaporwave';
+      var cssHandlesWeekBg=(theme==='vaporwave2'||theme==='tron');
+      row.style.background=cssHandlesWeekBg?'':(i%2===1)?(weekFillColors[w]||'transparent'):'transparent';
       var cb=document.createElement('input'); cb.type='checkbox'; cb.checked=task.c; cb.style.accentColor=weekColors[w]||'#ccc';
       var inp=document.createElement('input'); inp.type='text'; inp.value=task.t; inp.placeholder='';
       if(task.c)inp.classList.add('task-done');
