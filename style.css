@@ -533,7 +533,7 @@ body[data-theme="tron"] .week-col:nth-child(5n+2) .task-row:nth-child(even) { ba
 body[data-theme="tron"] .week-col:nth-child(5n+3) .task-row:nth-child(even) { background: rgba(255,255,0,0.06); }
 body[data-theme="tron"] .week-col:nth-child(5n+4) .task-row:nth-child(even) { background: rgba(0,255,136,0.06); }
 body[data-theme="tron"] .week-col:nth-child(5n+5) .task-row:nth-child(even) { background: rgba(255,102,0,0.06); }
-body[data-theme="tron"] .settings-toggle-btn { background: #000; border: 2px solid #00FFFF; box-shadow: 0 0 8px rgba(0,255,255,0.4); }
+body[data-theme="tron"] .settings-toggle-btn { background: #0a1a3a; border: 2px solid #00FFFF; box-shadow: 0 0 8px rgba(0,255,255,0.4); color: #00FFFF; }
 body[data-theme="tron"] .top-habit-row, body[data-theme="tron"] .top-habit-count { color: #E0E0E0; }
 body[data-theme="tron"] .cell-subtitle { color: #808080; }
 
