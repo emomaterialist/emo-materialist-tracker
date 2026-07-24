@@ -503,37 +503,7 @@ body[data-theme="tron"] .settings-btn, body[data-theme="tron"] .auth-btn, body[d
 body[data-theme="tron"] .settings-select, body[data-theme="tron"] .field-group input { background: #0A0A1A; color: #E0E0E0; border: 1px solid #FF00FF; box-shadow: 0 0 4px rgba(255,0,255,0.2); }
 body[data-theme="tron"] .progress-track { background: #0A0A1A; border: 1px solid #00FFFF; }
 body[data-theme="tron"] .week-col-header { background: #000; color: #00FFFF; text-shadow: 0 0 4px #00FFFF; border-bottom: 2px solid #00FFFF; }
-
-/* Vaporwave Alt — weekly tasks dark backgrounds */
-body[data-theme="vaporwave2"] .weekly-tasks-grid { background: #1A0F28; }
-body[data-theme="vaporwave2"] .task-row { border-bottom: 1px solid rgba(255,255,255,0.05); }
-body[data-theme="vaporwave2"] .task-row input[type="text"] { color: #F0E8FF; }
-body[data-theme="vaporwave2"] .week-col:nth-child(5n+1) .week-col-header { background: rgba(0,240,255,0.35); color: #00F0FF; }
-body[data-theme="vaporwave2"] .week-col:nth-child(5n+2) .week-col-header { background: rgba(255,255,0,0.30); color: #FFFF00; }
-body[data-theme="vaporwave2"] .week-col:nth-child(5n+3) .week-col-header { background: rgba(255,46,146,0.35); color: #FF2E92; }
-body[data-theme="vaporwave2"] .week-col:nth-child(5n+4) .week-col-header { background: rgba(153,51,255,0.35); color: #CC88FF; }
-body[data-theme="vaporwave2"] .week-col:nth-child(5n+5) .week-col-header { background: rgba(255,200,87,0.30); color: #FFC857; }
-body[data-theme="vaporwave2"] .week-col:nth-child(5n+1) .task-row:nth-child(even) { background: rgba(0,240,255,0.08); }
-body[data-theme="vaporwave2"] .week-col:nth-child(5n+2) .task-row:nth-child(even) { background: rgba(255,255,0,0.06); }
-body[data-theme="vaporwave2"] .week-col:nth-child(5n+3) .task-row:nth-child(even) { background: rgba(255,46,146,0.08); }
-body[data-theme="vaporwave2"] .week-col:nth-child(5n+4) .task-row:nth-child(even) { background: rgba(153,51,255,0.08); }
-body[data-theme="vaporwave2"] .week-col:nth-child(5n+5) .task-row:nth-child(even) { background: rgba(255,200,87,0.06); }
-
-/* Tron — weekly tasks dark backgrounds */
-body[data-theme="tron"] .weekly-tasks-grid { background: #050510; }
-body[data-theme="tron"] .task-row { border-bottom: 1px solid rgba(255,255,255,0.04); }
-body[data-theme="tron"] .task-row input[type="text"] { color: #E0E0E0; }
-body[data-theme="tron"] .week-col:nth-child(5n+1) .week-col-header { background: rgba(0,255,255,0.20); color: #00FFFF; text-shadow: 0 0 6px #00FFFF; border-bottom: 2px solid #00FFFF; }
-body[data-theme="tron"] .week-col:nth-child(5n+2) .week-col-header { background: rgba(255,0,255,0.20); color: #FF00FF; text-shadow: 0 0 6px #FF00FF; border-bottom: 2px solid #FF00FF; }
-body[data-theme="tron"] .week-col:nth-child(5n+3) .week-col-header { background: rgba(255,255,0,0.20); color: #FFFF00; text-shadow: 0 0 6px #FFFF00; border-bottom: 2px solid #FFFF00; }
-body[data-theme="tron"] .week-col:nth-child(5n+4) .week-col-header { background: rgba(0,255,136,0.20); color: #00FF88; text-shadow: 0 0 6px #00FF88; border-bottom: 2px solid #00FF88; }
-body[data-theme="tron"] .week-col:nth-child(5n+5) .week-col-header { background: rgba(255,102,0,0.20); color: #FF6600; text-shadow: 0 0 6px #FF6600; border-bottom: 2px solid #FF6600; }
-body[data-theme="tron"] .week-col:nth-child(5n+1) .task-row:nth-child(even) { background: rgba(0,255,255,0.06); }
-body[data-theme="tron"] .week-col:nth-child(5n+2) .task-row:nth-child(even) { background: rgba(255,0,255,0.06); }
-body[data-theme="tron"] .week-col:nth-child(5n+3) .task-row:nth-child(even) { background: rgba(255,255,0,0.06); }
-body[data-theme="tron"] .week-col:nth-child(5n+4) .task-row:nth-child(even) { background: rgba(0,255,136,0.06); }
-body[data-theme="tron"] .week-col:nth-child(5n+5) .task-row:nth-child(even) { background: rgba(255,102,0,0.06); }
-body[data-theme="tron"] .settings-toggle-btn { background: #0a1a3a; border: 2px solid #00FFFF; box-shadow: 0 0 8px rgba(0,255,255,0.4); color: #00FFFF; }
+body[data-theme="tron"] .settings-toggle-btn { background: #000; border: 2px solid #00FFFF; box-shadow: 0 0 8px rgba(0,255,255,0.4); }
 body[data-theme="tron"] .top-habit-row, body[data-theme="tron"] .top-habit-count { color: #E0E0E0; }
 body[data-theme="tron"] .cell-subtitle { color: #808080; }
 
@@ -867,6 +837,18 @@ body[data-theme="tron"] .day-box[data-required="true"] {
 .task-row input[type="text"]:focus {
   outline: 1px solid var(--c-pink);
 }
+.task-pin-btn {
+  font-size: 11px;
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0.25;
+  transition: opacity 0.15s, filter 0.15s;
+  line-height: 1;
+}
+.task-pin-btn.pinned {
+  opacity: 1;
+  filter: drop-shadow(0 0 3px gold);
+}
 
 @media (max-width: 700px) {
   .layout, .layout tr, .cell-outer {
@@ -923,25 +905,4 @@ body[data-theme="tron"] .day-box[data-required="true"] {
 }
 
 /* ---- Update Charts bar ---- */
-.update-bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 16px;
-}
-.update-btn {
-  padding: 6px 14px;
-  background: linear-gradient(90deg, var(--c-purple) 0%, var(--c-orange) 100%);
-  color: var(--c-dark);
-  border: 2px solid var(--c-dark);
-  border-radius: var(--radius-sm);
-  font-weight: 700;
-  font-size: 12px;
-  cursor: pointer;
-  box-shadow: 2px 2px 0 var(--c-dark);
-}
-.update-btn:hover { border-color: var(--c-pink); }
-.last-updated-label {
-  font-size: 11px;
-  color: var(--c-text-muted);
-}
+/* update-bar removed — autosave handles chart updates */

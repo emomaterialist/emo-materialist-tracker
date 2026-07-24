@@ -295,7 +295,7 @@ function buildScheduleLookup() {
   });
 }
 async function loadAndRender() {
-  await loadHabits(); await loadLogs(); await loadAllTimeLogs();
+  await loadHabits(); await loadLogs(); await loadAllTimeLogs(); await loadWeeklyTasks();
   DAYS_IN_MONTH = new Date(currentYear,currentMonth,0).getDate();
   firstDayMonBased = (new Date(currentYear,currentMonth-1,1).getDay()+6)%7;
   renderEverything();
@@ -616,44 +616,147 @@ function renderWeeklyDonut() {
   svg.innerHTML='<circle cx="32" cy="32" r="'+radius+'" fill="none" stroke="'+track+'" stroke-width="8"></circle><circle cx="32" cy="32" r="'+radius+'" fill="none" stroke="'+pink+'" stroke-width="8" stroke-dasharray="'+circ+' '+circ+'" stroke-dashoffset="'+offset+'" transform="rotate(-90 32 32)" stroke-linecap="round"></circle><text x="32" y="37" text-anchor="middle" font-size="13" font-weight="600" fill="'+text+'">'+pct+'%</text>';
 }
 
+// ============================================
+// WEEKLY TASKS — SUPABASE BACKED
+// ============================================
 var weeklyTaskData=[{week:'Week 1',tasks:[]},{week:'Week 2',tasks:[]},{week:'Week 3',tasks:[]},{week:'Week 4',tasks:[]},{week:'Week 5',tasks:[]}];
+
+async function loadWeeklyTasks() {
+  if(!currentUser) return;
+  // Load this month's tasks
+  var { data: thisMonth } = await sb.from('weekly_tasks')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .eq('month', currentMonth)
+    .eq('year', currentYear);
+
+  // Load last month's pinned tasks to carry over
+  var prevMonth = currentMonth===1?12:currentMonth-1;
+  var prevYear = currentMonth===1?currentYear-1:currentYear;
+  var { data: lastMonth } = await sb.from('weekly_tasks')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .eq('month', prevMonth)
+    .eq('year', prevYear)
+    .eq('is_pinned', true);
+
+  // Reset weeklyTaskData
+  weeklyTaskData=[{week:'Week 1',tasks:[]},{week:'Week 2',tasks:[]},{week:'Week 3',tasks:[]},{week:'Week 4',tasks:[]},{week:'Week 5',tasks:[]}];
+
+  // First apply pinned tasks from last month (as carry-over, unchecked)
+  (lastMonth||[]).forEach(function(row){
+    var w=row.week_number, i=row.task_index;
+    if(w<0||w>4||i<0||i>9) return;
+    if(!weeklyTaskData[w].tasks[i]) weeklyTaskData[w].tasks[i]={t:'',c:false,pinned:false,id:null};
+    weeklyTaskData[w].tasks[i]={t:row.task_text, c:false, pinned:true, id:null};
+  });
+
+  // Then apply this month's tasks (override carry-overs)
+  (thisMonth||[]).forEach(function(row){
+    var w=row.week_number, i=row.task_index;
+    if(w<0||w>4||i<0||i>9) return;
+    weeklyTaskData[w].tasks[i]={t:row.task_text, c:row.is_checked, pinned:row.is_pinned, id:row.id};
+  });
+}
+
+async function saveWeeklyTask(weekIdx, taskIdx, text, checked, pinned) {
+  if(!currentUser) return;
+  var existing = weeklyTaskData[weekIdx].tasks[taskIdx];
+  var payload = {
+    user_id: currentUser.id,
+    week_number: weekIdx,
+    task_index: taskIdx,
+    task_text: text,
+    is_checked: checked,
+    is_pinned: pinned,
+    month: currentMonth,
+    year: currentYear
+  };
+  var { data, error } = await sb.from('weekly_tasks')
+    .upsert(payload, { onConflict: 'user_id,week_number,task_index,month,year' })
+    .select();
+  if(!error && data && data[0]) {
+    if(!weeklyTaskData[weekIdx].tasks[taskIdx]) weeklyTaskData[weekIdx].tasks[taskIdx]={t:'',c:false,pinned:false,id:null};
+    weeklyTaskData[weekIdx].tasks[taskIdx].id = data[0].id;
+  }
+}
+
+async function togglePin(weekIdx, taskIdx, pinBtn) {
+  if(!weeklyTaskData[weekIdx].tasks[taskIdx]) weeklyTaskData[weekIdx].tasks[taskIdx]={t:'',c:false,pinned:false,id:null};
+  var task = weeklyTaskData[weekIdx].tasks[taskIdx];
+  var newPinned = !task.pinned;
+  task.pinned = newPinned;
+  pinBtn.style.opacity = newPinned ? '1' : '0.25';
+  pinBtn.title = newPinned ? 'Pinned — carries over every month (click to unpin)' : 'Click to pin this task every month';
+  if(newPinned) pinBtn.style.filter='drop-shadow(0 0 3px gold)';
+  else pinBtn.style.filter='none';
+  await saveWeeklyTask(weekIdx, taskIdx, task.t||'', task.c||false, newPinned);
+}
+
 function renderWeeklyTasks() {
   var el=document.getElementById('weekly-tasks'); el.innerHTML='';
   var numWeeks=getWeekCount();
+  var theme=document.body.getAttribute('data-theme')||'vaporwave';
+  var cssHandlesWeekBg=(theme==='vaporwave2'||theme==='tron');
+
   weeklyTaskData.slice(0,numWeeks).forEach(function(wd,w){
     var col=document.createElement('div'); col.className='week-col';
     var header=document.createElement('div'); header.className='week-col-header';
-    var theme=document.body.getAttribute('data-theme')||'vaporwave';
-    if(theme!=='vaporwave2'&&theme!=='tron'){
-      header.style.background=weekColors[w]||'#ccc';
-      header.style.color=weekTextColors[w]||'#fff';
-    }
+    if(!cssHandlesWeekBg){ header.style.background=weekColors[w]||'#ccc'; header.style.color=weekTextColors[w]||'#fff'; }
     header.textContent=wd.week; col.appendChild(header);
+
     for(var i=0;i<10;i++){
-      var task=wd.tasks[i]||{t:'',c:false};
+      var task=wd.tasks[i]||{t:'',c:false,pinned:false,id:null};
       var row=document.createElement('div'); row.className='task-row';
-      var theme=document.body.getAttribute('data-theme')||'vaporwave';
-      var cssHandlesWeekBg=(theme==='vaporwave2'||theme==='tron');
-      row.style.background=cssHandlesWeekBg?'':(i%2===1)?(weekFillColors[w]||'transparent'):'transparent';
-      var cb=document.createElement('input'); cb.type='checkbox'; cb.checked=task.c; cb.style.accentColor=weekColors[w]||'#ccc';
-      var inp=document.createElement('input'); inp.type='text'; inp.value=task.t; inp.placeholder='';
-      if(task.c)inp.classList.add('task-done');
-      (function(weekIdx,taskIdx,textEl){
+      if(!cssHandlesWeekBg) row.style.background=(i%2===1)?(weekFillColors[w]||'transparent'):'transparent';
+
+      var cb=document.createElement('input'); cb.type='checkbox'; cb.checked=task.c||false; cb.style.accentColor=weekColors[w]||'#ccc';
+      var inp=document.createElement('input'); inp.type='text'; inp.value=task.t||''; inp.placeholder='';
+      if(task.c) inp.classList.add('task-done');
+
+      // Pin button
+      var pinBtn=document.createElement('span');
+      pinBtn.textContent='📌';
+      pinBtn.style.cssText='font-size:11px;cursor:pointer;flex-shrink:0;transition:opacity 0.15s;';
+      pinBtn.style.opacity = task.pinned?'1':'0.25';
+      pinBtn.style.filter = task.pinned?'drop-shadow(0 0 3px gold)':'none';
+      pinBtn.title = task.pinned?'Pinned — carries over every month (click to unpin)':'Click to pin this task every month';
+
+      (function(weekIdx,taskIdx,textEl,checkEl,pin){
+        var saveTimer=null;
+        function debouncedSave(){
+          clearTimeout(saveTimer);
+          saveTimer=setTimeout(function(){
+            if(!weeklyTaskData[weekIdx].tasks[taskIdx]) weeklyTaskData[weekIdx].tasks[taskIdx]={t:'',c:false,pinned:false,id:null};
+            var t=weeklyTaskData[weekIdx].tasks[taskIdx];
+            saveWeeklyTask(weekIdx,taskIdx,t.t||'',t.c||false,t.pinned||false);
+          },600); // autosave 600ms after last keystroke
+        }
+
         cb.addEventListener('change',function(){
           textEl.classList.toggle('task-done',this.checked);
-          if(!weeklyTaskData[weekIdx].tasks[taskIdx])weeklyTaskData[weekIdx].tasks[taskIdx]={t:'',c:false};
-          weeklyTaskData[weekIdx].tasks[taskIdx].c=this.checked; renderPlannedActualChart();
+          if(!weeklyTaskData[weekIdx].tasks[taskIdx]) weeklyTaskData[weekIdx].tasks[taskIdx]={t:'',c:false,pinned:false,id:null};
+          weeklyTaskData[weekIdx].tasks[taskIdx].c=this.checked;
+          saveWeeklyTask(weekIdx,taskIdx,weeklyTaskData[weekIdx].tasks[taskIdx].t||'',this.checked,weeklyTaskData[weekIdx].tasks[taskIdx].pinned||false);
+          renderPlannedActualChart();
         });
+
         textEl.addEventListener('input',function(){
-          if(!weeklyTaskData[weekIdx].tasks[taskIdx])weeklyTaskData[weekIdx].tasks[taskIdx]={t:'',c:false};
-          weeklyTaskData[weekIdx].tasks[taskIdx].t=this.value; renderPlannedActualChart();
+          if(!weeklyTaskData[weekIdx].tasks[taskIdx]) weeklyTaskData[weekIdx].tasks[taskIdx]={t:'',c:false,pinned:false,id:null};
+          weeklyTaskData[weekIdx].tasks[taskIdx].t=this.value;
+          debouncedSave();
+          renderPlannedActualChart();
         });
-      })(w,i,inp);
-      row.appendChild(cb); row.appendChild(inp); col.appendChild(row);
+
+        pin.addEventListener('click',function(){ togglePin(weekIdx,taskIdx,pin); });
+      })(w,i,inp,cb,pinBtn);
+
+      row.appendChild(cb); row.appendChild(inp); row.appendChild(pinBtn); col.appendChild(row);
     }
     el.appendChild(col);
   });
 }
+
 function renderPlannedActualChart() {
   var numWeeks=getWeekCount();
   var weekLabels=weeklyTaskData.slice(0,numWeeks).map(function(w){return w.week;});
