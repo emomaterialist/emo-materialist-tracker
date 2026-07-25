@@ -502,8 +502,8 @@ body[data-theme="tron"] .settings-header, body[data-theme="tron"] .settings-valu
 body[data-theme="tron"] .settings-btn, body[data-theme="tron"] .auth-btn, body[data-theme="tron"] .update-btn { background: #000; color: #00FFFF; border: 2px solid #00FFFF; box-shadow: 0 0 6px rgba(0,255,255,0.4); }
 body[data-theme="tron"] .settings-select, body[data-theme="tron"] .field-group input { background: #0A0A1A; color: #E0E0E0; border: 1px solid #FF00FF; box-shadow: 0 0 4px rgba(255,0,255,0.2); }
 body[data-theme="tron"] .progress-track { background: #0A0A1A; border: 1px solid #00FFFF; }
-body[data-theme="tron"] .week-col-header { /* colors set per-column by JS */ }
-body[data-theme="tron"] .settings-toggle-btn { background: #000; border: 2px solid #00FFFF; box-shadow: 0 0 8px rgba(0,255,255,0.4); }
+body[data-theme="tron"] .week-col-header { background: #000; color: #00FFFF; text-shadow: 0 0 4px #00FFFF; border-bottom: 2px solid #00FFFF; }
+body[data-theme="tron"] .settings-toggle-btn { background: #0a1a3a; border: 2px solid #00FFFF; box-shadow: 0 0 8px rgba(0,255,255,0.5), inset 0 0 6px rgba(0,255,255,0.1); color: #00FFFF; text-shadow: 0 0 6px #00FFFF; }
 body[data-theme="tron"] .top-habit-row, body[data-theme="tron"] .top-habit-count { color: #E0E0E0; }
 body[data-theme="tron"] .cell-subtitle { color: #808080; }
 
@@ -837,18 +837,6 @@ body[data-theme="tron"] .day-box[data-required="true"] {
 .task-row input[type="text"]:focus {
   outline: 1px solid var(--c-pink);
 }
-.task-pin-btn {
-  font-size: 11px;
-  cursor: pointer;
-  flex-shrink: 0;
-  opacity: 0.25;
-  transition: opacity 0.15s, filter 0.15s;
-  line-height: 1;
-}
-.task-pin-btn.pinned {
-  opacity: 1;
-  filter: drop-shadow(0 0 3px gold);
-}
 
 @media (max-width: 700px) {
   .layout, .layout tr, .cell-outer {
@@ -905,4 +893,25 @@ body[data-theme="tron"] .day-box[data-required="true"] {
 }
 
 /* ---- Update Charts bar ---- */
-/* update-bar removed — autosave handles chart updates */
+.update-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+}
+.update-btn {
+  padding: 6px 14px;
+  background: linear-gradient(90deg, var(--c-purple) 0%, var(--c-orange) 100%);
+  color: var(--c-dark);
+  border: 2px solid var(--c-dark);
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 var(--c-dark);
+}
+.update-btn:hover { border-color: var(--c-pink); }
+.last-updated-label {
+  font-size: 11px;
+  color: var(--c-text-muted);
+}
