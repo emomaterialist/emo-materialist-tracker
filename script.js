@@ -616,81 +616,47 @@ function renderWeeklyDonut() {
   svg.innerHTML='<circle cx="32" cy="32" r="'+radius+'" fill="none" stroke="'+track+'" stroke-width="8"></circle><circle cx="32" cy="32" r="'+radius+'" fill="none" stroke="'+pink+'" stroke-width="8" stroke-dasharray="'+circ+' '+circ+'" stroke-dashoffset="'+offset+'" transform="rotate(-90 32 32)" stroke-linecap="round"></circle><text x="32" y="37" text-anchor="middle" font-size="13" font-weight="600" fill="'+text+'">'+pct+'%</text>';
 }
 
+var weeklyTaskData=[{week:'Week 1',tasks:[]},{week:'Week 2',tasks:[]},{week:'Week 3',tasks:[]},{week:'Week 4',tasks:[]},{week:'Week 5',tasks:[]}];
+
 // ============================================
 // WEEKLY TASKS — SUPABASE BACKED
 // ============================================
-var weeklyTaskData=[{week:'Week 1',tasks:[]},{week:'Week 2',tasks:[]},{week:'Week 3',tasks:[]},{week:'Week 4',tasks:[]},{week:'Week 5',tasks:[]}];
-
 async function loadWeeklyTasks() {
   if(!currentUser) return;
-  // Load this month's tasks
-  var { data: thisMonth } = await sb.from('weekly_tasks')
-    .select('*')
-    .eq('user_id', currentUser.id)
-    .eq('month', currentMonth)
-    .eq('year', currentYear);
-
-  // Load last month's pinned tasks to carry over
-  var prevMonth = currentMonth===1?12:currentMonth-1;
-  var prevYear = currentMonth===1?currentYear-1:currentYear;
-  var { data: lastMonth } = await sb.from('weekly_tasks')
-    .select('*')
-    .eq('user_id', currentUser.id)
-    .eq('month', prevMonth)
-    .eq('year', prevYear)
-    .eq('is_pinned', true);
-
-  // Reset weeklyTaskData
+  var { data: thisMonth } = await sb.from('weekly_tasks').select('*').eq('user_id',currentUser.id).eq('month',currentMonth).eq('year',currentYear);
+  var prevMonth=currentMonth===1?12:currentMonth-1, prevYear=currentMonth===1?currentYear-1:currentYear;
+  var { data: lastMonth } = await sb.from('weekly_tasks').select('*').eq('user_id',currentUser.id).eq('month',prevMonth).eq('year',prevYear).eq('is_pinned',true);
   weeklyTaskData=[{week:'Week 1',tasks:[]},{week:'Week 2',tasks:[]},{week:'Week 3',tasks:[]},{week:'Week 4',tasks:[]},{week:'Week 5',tasks:[]}];
-
-  // First apply pinned tasks from last month (as carry-over, unchecked)
   (lastMonth||[]).forEach(function(row){
-    var w=row.week_number, i=row.task_index;
-    if(w<0||w>4||i<0||i>9) return;
-    if(!weeklyTaskData[w].tasks[i]) weeklyTaskData[w].tasks[i]={t:'',c:false,pinned:false,id:null};
-    weeklyTaskData[w].tasks[i]={t:row.task_text, c:false, pinned:true, id:null};
+    var w=row.week_number,i=row.task_index;
+    if(w<0||w>4||i<0||i>9)return;
+    weeklyTaskData[w].tasks[i]={t:row.task_text,c:false,pinned:true,id:null};
   });
-
-  // Then apply this month's tasks (override carry-overs)
   (thisMonth||[]).forEach(function(row){
-    var w=row.week_number, i=row.task_index;
-    if(w<0||w>4||i<0||i>9) return;
-    weeklyTaskData[w].tasks[i]={t:row.task_text, c:row.is_checked, pinned:row.is_pinned, id:row.id};
+    var w=row.week_number,i=row.task_index;
+    if(w<0||w>4||i<0||i>9)return;
+    weeklyTaskData[w].tasks[i]={t:row.task_text,c:row.is_checked,pinned:row.is_pinned,id:row.id};
   });
 }
 
-async function saveWeeklyTask(weekIdx, taskIdx, text, checked, pinned) {
-  if(!currentUser) return;
-  var existing = weeklyTaskData[weekIdx].tasks[taskIdx];
-  var payload = {
-    user_id: currentUser.id,
-    week_number: weekIdx,
-    task_index: taskIdx,
-    task_text: text,
-    is_checked: checked,
-    is_pinned: pinned,
-    month: currentMonth,
-    year: currentYear
-  };
-  var { data, error } = await sb.from('weekly_tasks')
-    .upsert(payload, { onConflict: 'user_id,week_number,task_index,month,year' })
-    .select();
-  if(!error && data && data[0]) {
-    if(!weeklyTaskData[weekIdx].tasks[taskIdx]) weeklyTaskData[weekIdx].tasks[taskIdx]={t:'',c:false,pinned:false,id:null};
-    weeklyTaskData[weekIdx].tasks[taskIdx].id = data[0].id;
+async function saveWeeklyTask(weekIdx,taskIdx,text,checked,pinned) {
+  if(!currentUser)return;
+  var payload={user_id:currentUser.id,week_number:weekIdx,task_index:taskIdx,task_text:text,is_checked:checked,is_pinned:pinned,month:currentMonth,year:currentYear};
+  var {data,error}=await sb.from('weekly_tasks').upsert(payload,{onConflict:'user_id,week_number,task_index,month,year'}).select();
+  if(!error&&data&&data[0]){
+    if(!weeklyTaskData[weekIdx].tasks[taskIdx])weeklyTaskData[weekIdx].tasks[taskIdx]={t:'',c:false,pinned:false,id:null};
+    weeklyTaskData[weekIdx].tasks[taskIdx].id=data[0].id;
   }
 }
 
-async function togglePin(weekIdx, taskIdx, pinBtn) {
-  if(!weeklyTaskData[weekIdx].tasks[taskIdx]) weeklyTaskData[weekIdx].tasks[taskIdx]={t:'',c:false,pinned:false,id:null};
-  var task = weeklyTaskData[weekIdx].tasks[taskIdx];
-  var newPinned = !task.pinned;
-  task.pinned = newPinned;
-  pinBtn.style.opacity = newPinned ? '1' : '0.25';
-  pinBtn.title = newPinned ? 'Pinned — carries over every month (click to unpin)' : 'Click to pin this task every month';
-  if(newPinned) pinBtn.style.filter='drop-shadow(0 0 3px gold)';
-  else pinBtn.style.filter='none';
-  await saveWeeklyTask(weekIdx, taskIdx, task.t||'', task.c||false, newPinned);
+async function togglePin(weekIdx,taskIdx,pinBtn) {
+  if(!weeklyTaskData[weekIdx].tasks[taskIdx])weeklyTaskData[weekIdx].tasks[taskIdx]={t:'',c:false,pinned:false,id:null};
+  var task=weeklyTaskData[weekIdx].tasks[taskIdx];
+  task.pinned=!task.pinned;
+  pinBtn.style.opacity=task.pinned?'1':'0.25';
+  pinBtn.style.filter=task.pinned?'drop-shadow(0 0 3px gold)':'none';
+  pinBtn.title=task.pinned?'Pinned — carries over every month (click to unpin)':'Click to pin this task every month';
+  await saveWeeklyTask(weekIdx,taskIdx,task.t||'',task.c||false,task.pinned);
 }
 
 function renderWeeklyTasks() {
@@ -700,26 +666,22 @@ function renderWeeklyTasks() {
   var isVW2=(theme==='vaporwave2');
   var isTron=(theme==='tron');
 
-  var vw2Colors=['#00F0FF','#FFFF00','#FF2E92','#CC88FF','#FFC857'];
-  var vw2HeaderBgs=['rgba(0,240,255,0.35)','rgba(255,255,0,0.30)','rgba(255,46,146,0.35)','rgba(153,51,255,0.35)','rgba(255,200,87,0.30)'];
-  var vw2RowBgs=['rgba(0,240,255,0.08)','rgba(255,255,0,0.06)','rgba(255,46,146,0.08)','rgba(153,51,255,0.08)','rgba(255,200,87,0.06)'];
-  var tronColors=['#00FFFF','#FF00FF','#FFFF00','#00FF88','#FF6600'];
-  var tronHeaderBgs=['rgba(0,255,255,0.20)','rgba(255,0,255,0.20)','rgba(255,255,0,0.20)','rgba(0,255,136,0.20)','rgba(255,102,0,0.20)'];
-  var tronRowBgs=['rgba(0,255,255,0.06)','rgba(255,0,255,0.06)','rgba(255,255,0,0.06)','rgba(0,255,136,0.06)','rgba(255,102,0,0.06)'];
+  // Hardcoded colors matching debug file exactly
+  var vw2Colors      =['#00F0FF','#FFFF00','#FF2E92','#CC88FF','#FFC857'];
+  var vw2HeaderBgs   =['rgba(0,240,255,0.35)','rgba(255,255,0,0.30)','rgba(255,46,146,0.35)','rgba(153,51,255,0.35)','rgba(255,200,87,0.30)'];
+  var vw2RowBgs      =['rgba(0,240,255,0.08)','rgba(255,255,0,0.06)','rgba(255,46,146,0.08)','rgba(153,51,255,0.08)','rgba(255,200,87,0.06)'];
+  var tronColors     =['#00FFFF','#FF00FF','#FFFF00','#00FF88','#FF6600'];
+  var tronHeaderBgs  =['rgba(0,255,255,0.20)','rgba(255,0,255,0.20)','rgba(255,255,0,0.20)','rgba(0,255,136,0.20)','rgba(255,102,0,0.20)'];
+  var tronRowBgs     =['rgba(0,255,255,0.06)','rgba(255,0,255,0.06)','rgba(255,255,0,0.06)','rgba(0,255,136,0.06)','rgba(255,102,0,0.06)'];
 
   weeklyTaskData.slice(0,numWeeks).forEach(function(wd,w){
     var col=document.createElement('div'); col.className='week-col';
     var header=document.createElement('div'); header.className='week-col-header';
 
     if(isVW2){
-      header.style.background=vw2HeaderBgs[w];
-      header.style.color=vw2Colors[w];
-      header.style.borderBottom='2px solid '+vw2Colors[w];
+      header.style.cssText='background:'+vw2HeaderBgs[w]+';color:'+vw2Colors[w]+';border-bottom:2px solid '+vw2Colors[w]+';text-align:center;padding:4px;font-size:11px;font-weight:700;';
     } else if(isTron){
-      header.style.background=tronHeaderBgs[w];
-      header.style.color=tronColors[w];
-      header.style.textShadow='0 0 6px '+tronColors[w];
-      header.style.borderBottom='2px solid '+tronColors[w];
+      header.style.cssText='background:'+tronHeaderBgs[w]+';color:'+tronColors[w]+';border-bottom:2px solid '+tronColors[w]+';text-shadow:0 0 6px '+tronColors[w]+';text-align:center;padding:4px;font-size:11px;font-weight:700;';
     } else {
       header.style.background=weekColors[w]||'#ccc';
       header.style.color=weekTextColors[w]||'#fff';
@@ -739,49 +701,50 @@ function renderWeeklyTasks() {
       }
 
       var accentColor=isVW2?vw2Colors[w]:isTron?tronColors[w]:(weekColors[w]||'#ccc');
+      var textColor=isVW2?'#F0E8FF':isTron?'#E0E0E0':'';
+
       var cb=document.createElement('input'); cb.type='checkbox'; cb.checked=task.c||false; cb.style.accentColor=accentColor;
       var inp=document.createElement('input'); inp.type='text'; inp.value=task.t||''; inp.placeholder='';
-      inp.style.color=isVW2?'#F0E8FF':isTron?'#E0E0E0':'';
-      if(task.c) inp.classList.add('task-done');
+      inp.style.cssText='border:none;background:transparent;font-size:11px;width:100%;outline:none;color:'+textColor+';';
+      if(task.c)inp.classList.add('task-done');
 
       var pinBtn=document.createElement('span');
       pinBtn.textContent='📌';
       pinBtn.style.cssText='font-size:11px;cursor:pointer;flex-shrink:0;transition:opacity 0.15s;';
       pinBtn.style.opacity=task.pinned?'1':'0.25';
       pinBtn.style.filter=task.pinned?'drop-shadow(0 0 3px gold)':'none';
-      pinBtn.title=task.pinned?'Pinned — carries over every month (click to unpin)':'Click to pin this task every month';
+      pinBtn.title=task.pinned?'Pinned — carries over every month':'Click to pin';
 
-      (function(weekIdx,taskIdx,textEl,checkEl,pin){
+      (function(weekIdx,taskIdx,textEl,pin){
         var saveTimer=null;
         function debouncedSave(){
           clearTimeout(saveTimer);
           saveTimer=setTimeout(function(){
-            if(!weeklyTaskData[weekIdx].tasks[taskIdx]) weeklyTaskData[weekIdx].tasks[taskIdx]={t:'',c:false,pinned:false,id:null};
+            if(!weeklyTaskData[weekIdx].tasks[taskIdx])weeklyTaskData[weekIdx].tasks[taskIdx]={t:'',c:false,pinned:false,id:null};
             var t=weeklyTaskData[weekIdx].tasks[taskIdx];
             saveWeeklyTask(weekIdx,taskIdx,t.t||'',t.c||false,t.pinned||false);
           },600);
         }
         cb.addEventListener('change',function(){
           textEl.classList.toggle('task-done',this.checked);
-          if(!weeklyTaskData[weekIdx].tasks[taskIdx]) weeklyTaskData[weekIdx].tasks[taskIdx]={t:'',c:false,pinned:false,id:null};
+          if(!weeklyTaskData[weekIdx].tasks[taskIdx])weeklyTaskData[weekIdx].tasks[taskIdx]={t:'',c:false,pinned:false,id:null};
           weeklyTaskData[weekIdx].tasks[taskIdx].c=this.checked;
           saveWeeklyTask(weekIdx,taskIdx,weeklyTaskData[weekIdx].tasks[taskIdx].t||'',this.checked,weeklyTaskData[weekIdx].tasks[taskIdx].pinned||false);
           renderPlannedActualChart();
         });
         textEl.addEventListener('input',function(){
-          if(!weeklyTaskData[weekIdx].tasks[taskIdx]) weeklyTaskData[weekIdx].tasks[taskIdx]={t:'',c:false,pinned:false,id:null};
+          if(!weeklyTaskData[weekIdx].tasks[taskIdx])weeklyTaskData[weekIdx].tasks[taskIdx]={t:'',c:false,pinned:false,id:null};
           weeklyTaskData[weekIdx].tasks[taskIdx].t=this.value;
           debouncedSave(); renderPlannedActualChart();
         });
-        pin.addEventListener('click',function(){ togglePin(weekIdx,taskIdx,pin); });
-      })(w,i,inp,cb,pinBtn);
+        pin.addEventListener('click',function(){togglePin(weekIdx,taskIdx,pin);});
+      })(w,i,inp,pinBtn);
 
       row.appendChild(cb); row.appendChild(inp); row.appendChild(pinBtn); col.appendChild(row);
     }
     el.appendChild(col);
   });
 }
-
 function renderPlannedActualChart() {
   var numWeeks=getWeekCount();
   var weekLabels=weeklyTaskData.slice(0,numWeeks).map(function(w){return w.week;});
