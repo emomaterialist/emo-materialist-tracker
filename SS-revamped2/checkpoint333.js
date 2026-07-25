@@ -145,12 +145,88 @@ function initMonthYearPickers() {
 function renderHabitList() {
   var el = document.getElementById('habit-list'); el.innerHTML = '';
   if (RAW_HABITS.length===0) { el.innerHTML='<p style="font-size:11px;color:var(--c-text-muted);">No habits yet. Add one above!</p>'; return; }
+
+  // Build deduped case-insensitive category list from actual habits + defaults
+  var defaultCats=['General','Health','Fitness','Mindfulness','Learning','Productivity','Self-care','Finance','Social','Skincare'];
+  var catMap={};
+  defaultCats.forEach(function(c){ catMap[c.toLowerCase()]=c; });
+  RAW_HABITS.forEach(function(h){ if(h.category) catMap[h.category.toLowerCase()]=h.category; });
+  (customCategories||[]).forEach(function(c){ catMap[c.toLowerCase()]=c; });
+  var cats=Object.values(catMap).sort();
+
   RAW_HABITS.forEach(function(h) {
-    var row = document.createElement('div'); row.className='habit-list-row';
-    row.innerHTML = '<span>'+h.icon+' '+h.name+'</span>';
-    var btn = document.createElement('button'); btn.className='habit-del-btn'; btn.textContent='🗑';
-    btn.onclick = function() { archiveHabit(h.id); };
-    row.appendChild(btn); el.appendChild(row);
+    var wrapper=document.createElement('div');
+    wrapper.style.cssText='border-bottom:1px solid var(--c-body-bg-alt);margin-bottom:2px;';
+
+    var row=document.createElement('div'); row.className='habit-list-row';
+    var nameSpan=document.createElement('span');
+    nameSpan.style.cssText='flex:1;font-size:12px;color:var(--c-text);';
+    nameSpan.textContent=h.icon+' '+h.name;
+    if(h.category){
+      var catTag=document.createElement('span');
+      catTag.textContent=' '+h.category;
+      catTag.style.cssText='font-size:9px;color:var(--c-text-muted);opacity:0.7;';
+      nameSpan.appendChild(catTag);
+    }
+
+    var editBtn=document.createElement('button'); editBtn.className='habit-del-btn'; editBtn.textContent='✏️'; editBtn.title='Edit';
+    var delBtn=document.createElement('button'); delBtn.className='habit-del-btn'; delBtn.textContent='🗑'; delBtn.title='Delete';
+    delBtn.onclick=function(){ archiveHabit(h.id); };
+    row.appendChild(nameSpan); row.appendChild(editBtn); row.appendChild(delBtn);
+    wrapper.appendChild(row);
+
+    // Edit form
+    var form=document.createElement('div');
+    form.style.cssText='display:none;padding:8px 4px 10px;background:var(--c-body-bg-alt);border-radius:var(--radius-sm);margin-top:2px;';
+    var currentCatLower=(h.category||'').toLowerCase();
+    var catOptions=cats.map(function(c){ return '<option value="'+c+'"'+(c.toLowerCase()===currentCatLower?' selected':'')+'>'+c+'</option>'; }).join('');
+    catOptions+='<option value="__custom__">+ Add new category…</option>';
+    var inp=function(id,val,extra){ return '<input id="'+id+'" type="text" value="'+(val||'')+'" style="font-size:12px;background:var(--c-body-bg);border:1px solid var(--c-dark);color:var(--c-text);padding:4px;border-radius:var(--radius-sm);'+(extra||'')+'">'; };
+    form.innerHTML=[
+      '<div style="display:grid;grid-template-columns:40px 1fr;gap:6px;margin-bottom:6px;">',
+        inp('ei-'+h.id,h.icon,'font-size:14px;text-align:center;width:100%;box-sizing:border-box;'),
+        inp('en-'+h.id,h.name,'width:100%;box-sizing:border-box;'),
+      '</div>',
+      '<select id="ec-'+h.id+'" style="width:100%;font-size:11px;background:var(--c-body-bg);border:1px solid var(--c-dark);color:var(--c-text);padding:4px;margin-bottom:6px;border-radius:var(--radius-sm);">'+catOptions+'</select>',
+      '<input id="ecc-'+h.id+'" type="text" placeholder="New category name..." style="display:none;width:100%;font-size:11px;background:var(--c-body-bg);border:1px solid var(--c-dark);color:var(--c-text);padding:4px;margin-bottom:6px;border-radius:var(--radius-sm);box-sizing:border-box;">',
+      '<div style="display:flex;gap:6px;">',
+        '<button id="es-'+h.id+'" style="flex:1;padding:5px;font-size:11px;background:var(--c-pink);color:var(--c-dark);border:none;cursor:pointer;border-radius:var(--radius-sm);font-weight:700;">Save</button>',
+        '<button id="esc-'+h.id+'" style="padding:5px 10px;font-size:11px;background:transparent;color:var(--c-text-muted);border:1px solid var(--c-dark);cursor:pointer;border-radius:var(--radius-sm);">Cancel</button>',
+      '</div>',
+      '<div id="em-'+h.id+'" style="font-size:10px;margin-top:4px;"></div>'
+    ].join('');
+    wrapper.appendChild(form);
+    el.appendChild(wrapper);
+
+    editBtn.onclick=function(){ var o=form.style.display==='block'; form.style.display=o?'none':'block'; editBtn.textContent=o?'✏️':'✕'; };
+
+    form.querySelector('#ec-'+h.id).addEventListener('change',function(){
+      form.querySelector('#ecc-'+h.id).style.display=this.value==='__custom__'?'block':'none';
+    });
+
+    form.querySelector('#es-'+h.id).onclick=async function(){
+      var newIcon=form.querySelector('#ei-'+h.id).value.trim()||h.icon;
+      var newName=form.querySelector('#en-'+h.id).value.trim();
+      var selCat=form.querySelector('#ec-'+h.id).value;
+      var customVal=form.querySelector('#ecc-'+h.id).value.trim();
+      var rawCat=selCat==='__custom__'?customVal:selCat;
+      if(!rawCat)rawCat=h.category||'General';
+      // Normalize to title case
+      var newCat=rawCat.charAt(0).toUpperCase()+rawCat.slice(1);
+      var msgEl=form.querySelector('#em-'+h.id);
+      if(!newName){msgEl.style.color='red';msgEl.textContent='Name required';return;}
+      msgEl.style.color='var(--c-text-muted)';msgEl.textContent='Saving...';
+      var {error}=await sb.from('habits').update({name:newName,icon:newIcon,category:newCat}).eq('id',h.id);
+      if(error){msgEl.style.color='red';msgEl.textContent='Error: '+error.message;return;}
+      if(!customCategories)customCategories=[];
+      if(!customCategories.map(function(c){return c.toLowerCase();}).includes(newCat.toLowerCase())){
+        customCategories.push(newCat); buildCatPills();
+      }
+      msgEl.style.color='green';msgEl.textContent='✅ Saved!';
+      setTimeout(function(){form.style.display='none';editBtn.textContent='✏️';loadHabits().then(renderEverything);},600);
+    };
+
+    form.querySelector('#esc-'+h.id).onclick=function(){form.style.display='none';editBtn.textContent='✏️';};
   });
 }
 function refreshCharts() {
@@ -782,6 +858,7 @@ function renderAllTimeSection() {
 }
 
 function getWeekDateRange(weekNum, year) {
+  // Get the Monday of ISO week weekNum in given year
   var jan4 = new Date(year, 0, 4);
   var startOfWeek1 = new Date(jan4);
   startOfWeek1.setDate(jan4.getDate() - (jan4.getDay() || 7) + 1);
@@ -789,10 +866,8 @@ function getWeekDateRange(weekNum, year) {
   weekStart.setDate(startOfWeek1.getDate() + (weekNum - 1) * 7);
   var weekEnd = new Date(weekStart);
   weekEnd.setDate(weekStart.getDate() + 6);
-  var fmt = function(d) {
-    return (d.getMonth()+1)+'/'+d.getDate()+'/'+d.getFullYear();
-  };
-  return fmt(weekStart) + ' – ' + fmt(weekEnd);
+  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return months[weekStart.getMonth()] + ' ' + weekStart.getDate();
 }
 
 function getMonthFromISOWeek(weekNum) {
@@ -825,43 +900,26 @@ function render52WeekScatter() {
       weekMap[wn].habits[hid]=true;
     });
   });
-  var weekData=[], invisibleData=[], weekLabels={};
-  var yr=new Date().getFullYear();
-  for(var wk=1;wk<=52;wk++){
-    var range=getWeekDateRange(wk,yr);
-    var info=weekMap[wk];
-    if(info){
-      var pct=info.possible>0?Math.round((info.done/info.possible)*100):0;
-      var habitsTracked=Object.keys(info.habits).length;
-      weekLabels[wk]={pct:pct,habitsTracked:habitsTracked,dateLabel:getWeekDateRange(wk,info.year||yr),hasData:true};
-      weekData.push({x:wk,y:pct,r:Math.max(4,Math.min(14,habitsTracked*3))});
-    } else {
-      weekLabels[wk]={pct:0,habitsTracked:0,dateLabel:range,hasData:false};
-      invisibleData.push({x:wk,y:0,r:8});
-    }
-  }
+  var weekData=[], weekLabels={};
+  Object.keys(weekMap).forEach(function(wn){
+    wn=parseInt(wn); if(wn<1||wn>52)return;
+    var info=weekMap[wn];
+    var pct=info.possible>0?Math.round((info.done/info.possible)*100):0;
+    var habitsTracked=Object.keys(info.habits).length;
+    var dateLabel=getWeekDateRange(wn, info.year||new Date().getFullYear());
+    weekLabels[wn]={pct,habitsTracked,dateLabel};
+    weekData.push({x:wn,y:pct,r:Math.max(4,Math.min(14,habitsTracked*3))});
+  });
   var pink=getThemeColor('--c-pink');
   allTimeScatterInstance=new Chart(document.getElementById('allTimeScatterChart'),{
     type:'bubble',
-    data:{datasets:[
-      {label:'Active week',data:weekData,backgroundColor:hexToRgba(pink,0.55),borderColor:pink,borderWidth:1},
-      {label:'Empty week',data:invisibleData,backgroundColor:'rgba(0,0,0,0)',borderColor:'rgba(0,0,0,0)',borderWidth:0,
-       hoverBackgroundColor:hexToRgba(pink,0.15),hoverBorderColor:pink,hoverBorderWidth:1}
-    ]},
+    data:{datasets:[{label:'Completion rate',data:weekData,backgroundColor:hexToRgba(pink,0.55),borderColor:pink,borderWidth:1}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{
       legend:{display:false},
       tooltip:{callbacks:{
-        title:function(){return '';},
         label:function(ctx){
           var wn=ctx.raw.x, info=weekLabels[wn]||{};
-          var lines=['Week '+wn+' — '+info.dateLabel];
-          if(info.hasData){
-            lines.push('Completion: '+info.pct+'%');
-            lines.push('Habits tracked: '+info.habitsTracked);
-          } else {
-            lines.push('No activity logged');
-          }
-          return lines;
+          return['Week '+wn+' ('+( info.dateLabel||'')+')', 'Completion: '+(info.pct||0)+'%','Habits tracked: '+(info.habitsTracked||0)];
         }
       }}
     },
