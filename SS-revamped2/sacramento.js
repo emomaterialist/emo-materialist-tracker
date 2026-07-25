@@ -145,77 +145,12 @@ function initMonthYearPickers() {
 function renderHabitList() {
   var el = document.getElementById('habit-list'); el.innerHTML = '';
   if (RAW_HABITS.length===0) { el.innerHTML='<p style="font-size:11px;color:var(--c-text-muted);">No habits yet. Add one above!</p>'; return; }
-  var cats=['General','Health','Fitness','Mindfulness','Learning','Productivity','Self-care','Finance','Social'].concat(customCategories||[]);
   RAW_HABITS.forEach(function(h) {
-    var wrapper = document.createElement('div');
-    wrapper.style.cssText='border-bottom:1px solid var(--c-body-bg-alt);margin-bottom:2px;';
-
-    // Main row
     var row = document.createElement('div'); row.className='habit-list-row';
-    var nameSpan = document.createElement('span');
-    nameSpan.textContent=h.icon+' '+h.name;
-    nameSpan.style.cssText='flex:1;font-size:12px;color:var(--c-text);';
-    if(h.category){
-      var catTag=document.createElement('span');
-      catTag.textContent=h.category;
-      catTag.style.cssText='font-size:9px;color:var(--c-text-muted);margin-left:6px;opacity:0.7;';
-      nameSpan.appendChild(catTag);
-    }
-
-    var editBtn = document.createElement('button'); editBtn.className='habit-del-btn'; editBtn.textContent='✏️';
-    editBtn.title='Edit habit';
-    var delBtn = document.createElement('button'); delBtn.className='habit-del-btn'; delBtn.textContent='🗑';
-    delBtn.title='Delete habit';
-    delBtn.onclick = function() { archiveHabit(h.id); };
-
-    row.appendChild(nameSpan); row.appendChild(editBtn); row.appendChild(delBtn);
-    wrapper.appendChild(row);
-
-    // Edit form (hidden by default)
-    var form = document.createElement('div');
-    form.style.cssText='display:none;padding:8px 4px 10px;background:var(--c-body-bg-alt);border-radius:var(--radius-sm);margin-top:2px;';
-    form.innerHTML=[
-      '<div style="display:grid;grid-template-columns:40px 1fr;gap:6px;margin-bottom:6px;">',
-        '<input id="edit-icon-'+h.id+'" type="text" value="'+h.icon+'" style="font-size:14px;text-align:center;background:var(--c-body-bg);border:1px solid var(--c-dark);color:var(--c-text);padding:4px;border-radius:var(--radius-sm);">',
-        '<input id="edit-name-'+h.id+'" type="text" value="'+h.name+'" style="font-size:12px;background:var(--c-body-bg);border:1px solid var(--c-dark);color:var(--c-text);padding:4px;border-radius:var(--radius-sm);">',
-      '</div>',
-      '<select id="edit-cat-'+h.id+'" style="width:100%;font-size:11px;background:var(--c-body-bg);border:1px solid var(--c-dark);color:var(--c-text);padding:4px;margin-bottom:8px;border-radius:var(--radius-sm);">',
-        cats.map(function(c){ return '<option value="'+c+'"'+(c===h.category?' selected':'')+'>'+c+'</option>'; }).join(''),
-      '</select>',
-      '<div style="display:flex;gap:6px;">',
-        '<button id="edit-save-'+h.id+'" style="flex:1;padding:5px;font-size:11px;background:var(--c-pink);color:var(--c-dark);border:none;cursor:pointer;border-radius:var(--radius-sm);font-weight:700;">Save</button>',
-        '<button id="edit-cancel-'+h.id+'" style="padding:5px 10px;font-size:11px;background:transparent;color:var(--c-text-muted);border:1px solid var(--c-dark);cursor:pointer;border-radius:var(--radius-sm);">Cancel</button>',
-      '</div>',
-      '<div id="edit-msg-'+h.id+'" style="font-size:10px;margin-top:4px;"></div>'
-    ].join('');
-    wrapper.appendChild(form);
-    el.appendChild(wrapper);
-
-    // Toggle edit form
-    editBtn.onclick = function() {
-      var isOpen = form.style.display==='block';
-      form.style.display = isOpen?'none':'block';
-      editBtn.textContent = isOpen?'✏️':'✕';
-    };
-
-    // Save handler
-    form.querySelector('#edit-save-'+h.id).onclick = async function() {
-      var newIcon = form.querySelector('#edit-icon-'+h.id).value.trim()||h.icon;
-      var newName = form.querySelector('#edit-name-'+h.id).value.trim();
-      var newCat  = form.querySelector('#edit-cat-'+h.id).value;
-      var msgEl   = form.querySelector('#edit-msg-'+h.id);
-      if(!newName){ msgEl.style.color='red'; msgEl.textContent='Name required'; return; }
-      msgEl.style.color='var(--c-text-muted)'; msgEl.textContent='Saving...';
-      var {error} = await sb.from('habits').update({name:newName,icon:newIcon,category:newCat}).eq('id',h.id);
-      if(error){ msgEl.style.color='red'; msgEl.textContent='Error: '+error.message; return; }
-      msgEl.style.color='green'; msgEl.textContent='✅ Saved!';
-      setTimeout(function(){ form.style.display='none'; editBtn.textContent='✏️'; loadHabits().then(renderEverything); },600);
-    };
-
-    // Cancel handler
-    form.querySelector('#edit-cancel-'+h.id).onclick = function() {
-      form.style.display='none'; editBtn.textContent='✏️';
-    };
+    row.innerHTML = '<span>'+h.icon+' '+h.name+'</span>';
+    var btn = document.createElement('button'); btn.className='habit-del-btn'; btn.textContent='🗑';
+    btn.onclick = function() { archiveHabit(h.id); };
+    row.appendChild(btn); el.appendChild(row);
   });
 }
 function refreshCharts() {
@@ -418,17 +353,9 @@ function darkenColor(hex,a) { var r=hexToRgb(hex); if(!r)return hex; return 'rgb
 // ============================================
 var weekColors=[], weekFillColors=[], weekTextColors=[];
 function buildWeekColors() {
-  var theme=document.body.getAttribute('data-theme')||'vaporwave';
-  var base;
-  if(theme==='tron'){
-    base=['#00FFFF','#FF00FF','#FFFF00','#808080','#FF6600'].map(function(c){return c;});
-  } else if(theme==='superpink'){
-    base=['#FF2E92','#FF6E96','#E8407A','#C2446E','#FF85A1'].map(function(c){return c;});
-  } else {
-    base=['--c-pink','--c-orange','--c-purple','--c-text-muted','--c-dark'].map(getThemeColor);
-  }
+  var base=['--c-pink','--c-orange','--c-purple','--c-text-muted','--c-dark'].map(getThemeColor);
   weekColors=base;
-  weekFillColors=base.map(function(c){return lightenColor(c,0.6);});
+  weekFillColors=base.map(function(c){return lightenColor(c,0.75);});
   weekTextColors=base.map(function(hex){ var rgb=hexToRgb(hex); if(!rgb)return'#fff'; var b=(rgb.r*299+rgb.g*587+rgb.b*114)/1000; return b>128?darkenColor(hex,0.55):lightenColor(hex,0.85); });
 }
 var habits=[];
@@ -471,11 +398,6 @@ function renderDonuts() {
     });
     var pct=tp>0?Math.round((td/tp)*100):0, offset=circ-(pct/100)*circ;
     var color=weekColors[w]||'#ccc', fill=weekFillColors[w]||'#eee', txt=weekTextColors[w]||'#333';
-    // Force readable colors for light-bg themes
-    var theme=document.body.getAttribute('data-theme')||'vaporwave';
-    if(theme==='superpink'){ txt='#C2446E'; fill='#FFB3C6'; }
-    if(theme==='gothic'){ txt='#5C0000'; fill='#F5C0C0'; }
-    if(theme==='basic'||theme==='classic'){ txt='#1A1A1A'; }
     var item=document.createElement('div'); item.style.cssText='flex:1;min-width:60px;text-align:center;';
     item.innerHTML='<svg width="44" height="44" viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" fill="none" stroke="'+fill+'" stroke-width="8"></circle><circle cx="32" cy="32" r="26" fill="none" stroke="'+color+'" stroke-width="8" stroke-dasharray="'+circ+' '+circ+'" stroke-dashoffset="'+offset+'" transform="rotate(-90 32 32)" stroke-linecap="round"></circle><text x="32" y="37" text-anchor="middle" font-size="12" font-weight="600" fill="'+txt+'">'+pct+'%</text></svg><p style="font-size:10px;color:var(--c-text-muted);margin:2px 0 0;">Wk '+(w+1)+'</p>';
     el.appendChild(item);
@@ -860,7 +782,6 @@ function renderAllTimeSection() {
 }
 
 function getWeekDateRange(weekNum, year) {
-  // Get the Monday of ISO week weekNum in given year
   var jan4 = new Date(year, 0, 4);
   var startOfWeek1 = new Date(jan4);
   startOfWeek1.setDate(jan4.getDate() - (jan4.getDay() || 7) + 1);
@@ -868,8 +789,10 @@ function getWeekDateRange(weekNum, year) {
   weekStart.setDate(startOfWeek1.getDate() + (weekNum - 1) * 7);
   var weekEnd = new Date(weekStart);
   weekEnd.setDate(weekStart.getDate() + 6);
-  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return months[weekStart.getMonth()] + ' ' + weekStart.getDate();
+  var fmt = function(d) {
+    return (d.getMonth()+1)+'/'+d.getDate()+'/'+d.getFullYear();
+  };
+  return fmt(weekStart) + ' – ' + fmt(weekEnd);
 }
 
 function getMonthFromISOWeek(weekNum) {
@@ -902,26 +825,43 @@ function render52WeekScatter() {
       weekMap[wn].habits[hid]=true;
     });
   });
-  var weekData=[], weekLabels={};
-  Object.keys(weekMap).forEach(function(wn){
-    wn=parseInt(wn); if(wn<1||wn>52)return;
-    var info=weekMap[wn];
-    var pct=info.possible>0?Math.round((info.done/info.possible)*100):0;
-    var habitsTracked=Object.keys(info.habits).length;
-    var dateLabel=getWeekDateRange(wn, info.year||new Date().getFullYear());
-    weekLabels[wn]={pct,habitsTracked,dateLabel};
-    weekData.push({x:wn,y:pct,r:Math.max(4,Math.min(14,habitsTracked*3))});
-  });
+  var weekData=[], invisibleData=[], weekLabels={};
+  var yr=new Date().getFullYear();
+  for(var wk=1;wk<=52;wk++){
+    var range=getWeekDateRange(wk,yr);
+    var info=weekMap[wk];
+    if(info){
+      var pct=info.possible>0?Math.round((info.done/info.possible)*100):0;
+      var habitsTracked=Object.keys(info.habits).length;
+      weekLabels[wk]={pct:pct,habitsTracked:habitsTracked,dateLabel:getWeekDateRange(wk,info.year||yr),hasData:true};
+      weekData.push({x:wk,y:pct,r:Math.max(4,Math.min(14,habitsTracked*3))});
+    } else {
+      weekLabels[wk]={pct:0,habitsTracked:0,dateLabel:range,hasData:false};
+      invisibleData.push({x:wk,y:0,r:8});
+    }
+  }
   var pink=getThemeColor('--c-pink');
   allTimeScatterInstance=new Chart(document.getElementById('allTimeScatterChart'),{
     type:'bubble',
-    data:{datasets:[{label:'Completion rate',data:weekData,backgroundColor:hexToRgba(pink,0.55),borderColor:pink,borderWidth:1}]},
+    data:{datasets:[
+      {label:'Active week',data:weekData,backgroundColor:hexToRgba(pink,0.55),borderColor:pink,borderWidth:1},
+      {label:'Empty week',data:invisibleData,backgroundColor:'rgba(0,0,0,0)',borderColor:'rgba(0,0,0,0)',borderWidth:0,
+       hoverBackgroundColor:hexToRgba(pink,0.15),hoverBorderColor:pink,hoverBorderWidth:1}
+    ]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{
       legend:{display:false},
       tooltip:{callbacks:{
+        title:function(){return '';},
         label:function(ctx){
           var wn=ctx.raw.x, info=weekLabels[wn]||{};
-          return['Week '+wn+' ('+( info.dateLabel||'')+')', 'Completion: '+(info.pct||0)+'%','Habits tracked: '+(info.habitsTracked||0)];
+          var lines=['Week '+wn+' — '+info.dateLabel];
+          if(info.hasData){
+            lines.push('Completion: '+info.pct+'%');
+            lines.push('Habits tracked: '+info.habitsTracked);
+          } else {
+            lines.push('No activity logged');
+          }
+          return lines;
         }
       }}
     },

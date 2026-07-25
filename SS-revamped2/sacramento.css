@@ -124,7 +124,7 @@
   z-index: 999;
   overflow-y: auto;
   transition: left 0.25s ease;
-  padding: 16px 16px 16px 60px;
+  padding: 16px;
   box-sizing: border-box;
 }
 .settings-panel.open { left: 0; }
@@ -137,7 +137,6 @@
   font-size: 14px;
   margin-bottom: 20px;
   padding-bottom: 12px;
-  padding-left: 48px;
   border-bottom: 1px solid rgba(244,232,250,0.2);
 }
 .settings-close {
@@ -248,12 +247,6 @@
   font-size: 11px;
 }
 .habit-del-btn:hover { background: rgba(242,62,158,0.3); }
-body[data-theme="superpink"] .habit-del-btn { border-color: #C2446E; color: #C2446E; }
-body[data-theme="gothic"] .habit-del-btn { border-color: #8B0000; color: #8B0000; }
-body[data-theme="basic"] .habit-del-btn { border-color: #374151; color: #374151; }
-body[data-theme="classic"] .habit-del-btn { border-color: #7A2E3A; color: #7A2E3A; }
-/* Superpink day-box — make borders visible on pink background */
-body[data-theme="superpink"] .day-box { border-color: #C2446E !important; }
 
 /* Schedule rows in add-habit form */
 .schedule-row {
@@ -477,7 +470,7 @@ body[data-theme="retro95"] .week-col-header { background: linear-gradient(90deg,
 /* =============================================
    GOTHIC OVERRIDES
 ============================================= */
-body[data-theme="gothic"] .title-text { font-family: "Monsieur La Doulaise", cursive !important; font-size: 24px !important; letter-spacing: 1px !important; color: #FFFFFF !important; font-weight: 400 !important; text-transform: none !important; }
+body[data-theme="gothic"] .title-text { font-family: "Monsieur La Doulaise", cursive !important; font-size: 22px !important; letter-spacing: 1px; color: #FFFFFF; font-weight: 400; }
 body[data-theme="gothic"] .title-bar { background: linear-gradient(90deg, #8B0000, #3A0000); border-color: #3A0000; }
 body[data-theme="gothic"] .title-glyph { background: #DC143C; }
 body[data-theme="gothic"] .title-dots span { background: #DC143C; }
@@ -515,33 +508,74 @@ body[data-theme="tron"] .top-habit-row, body[data-theme="tron"] .top-habit-count
 body[data-theme="tron"] .cell-subtitle { color: #808080; }
 
 /* =============================================
-   SUPER PINK OVERRIDES
+   SUPER PINK — Retro95 style, all pink, Sacramento font
 ============================================= */
-body[data-theme="superpink"] .cell-border { border: none; background: linear-gradient(180deg,#FFE8F0 0%,#FFC8D8 100%); box-shadow: 0 6px 0 #D96080, 0 2px 12px rgba(255,100,150,0.3); }
-body[data-theme="superpink"] .title-bar { background: linear-gradient(180deg,#FF9EBA 0%,#FF6E96 100%); border: none; box-shadow: inset 0 1px 0 rgba(255,255,255,0.5); }
+body[data-theme="superpink"] .cell-border {
+  border: 2px solid; border-color: #FFB3C6 #C2446E #C2446E #FFB3C6;
+  background: #FFD6E5; padding: 2px; border-radius: 0;
+  box-shadow: inset 1px 1px 0 #FFF0F5, inset -1px -1px 0 #E8407A;
+}
+body[data-theme="superpink"] .title-bar {
+  background: linear-gradient(90deg, #FF6E96, #FF2E92);
+  border: none; border-bottom: 2px solid #C2446E; border-radius: 0;
+  box-shadow: inset 1px 1px 0 rgba(255,255,255,0.5);
+}
 body[data-theme="superpink"] .title-text {
   font-family: "Sacramento", cursive !important;
-  font-size: 24px !important;
-  font-weight: 400 !important;
-  text-transform: none !important;
-  letter-spacing: 1px !important;
-  color: #FFF !important;
-  text-shadow: 0 1px 2px rgba(180,40,80,0.4) !important;
+  font-size: 22px !important; color: #FFF; font-weight: 400;
+  letter-spacing: 1px; text-shadow: 0 1px 2px rgba(180,40,80,0.4);
 }
-body[data-theme="superpink"] .title-glyph { background: #FFFFFF; box-shadow: none; }
-body[data-theme="superpink"] .title-dots span { background: rgba(255,255,255,0.8); border-radius: 50%; }
-body[data-theme="superpink"] .cell-body { background: linear-gradient(180deg,#FFE8F0 0%,#FFC8D8 100%); border: none; }
-body[data-theme="superpink"] .correlation-card { background: linear-gradient(180deg,#FFF,#FFE8F0); border: 1px solid #FF9EBA; color: #C2446E; box-shadow: 0 2px 0 #F08098; }
-body[data-theme="superpink"] .settings-panel { background: linear-gradient(180deg,#FFB3C6,#FF85A1); }
-body[data-theme="superpink"] .settings-label, body[data-theme="superpink"] .settings-header, body[data-theme="superpink"] .settings-value, body[data-theme="superpink"] .settings-close, body[data-theme="superpink"] .habit-list-row { color: #FFF; }
-body[data-theme="superpink"] .settings-btn, body[data-theme="superpink"] .auth-btn, body[data-theme="superpink"] .update-btn { background: linear-gradient(180deg,#FF9EBA,#FF6E96); border: none; color: #FFF; box-shadow: 0 3px 0 #D95070, inset 0 1px 0 rgba(255,255,255,0.4); }
-body[data-theme="superpink"] .settings-select, body[data-theme="superpink"] .field-group input { background: linear-gradient(180deg,#FFF,#FFE8F0); border: 2px solid #FF9EBA; color: #C2446E; box-shadow: inset 0 1px 3px rgba(255,100,150,0.15); }
-body[data-theme="superpink"] .progress-track { background: #FFE0EB; border: 1px solid #FF9EBA; }
-body[data-theme="superpink"] .week-col-header { background: linear-gradient(180deg,#FF9EBA,#FF6E96); color: #FFF; box-shadow: inset 0 1px 0 rgba(255,255,255,0.4); }
-body[data-theme="superpink"] .settings-toggle-btn { background: linear-gradient(180deg,#FF9EBA,#FF6E96); border: none; box-shadow: 0 3px 0 #D95070; }
-body[data-theme="superpink"] .cell-subtitle { color: #C2446E; }
+body[data-theme="superpink"] .title-glyph { background: #FFB3C6; border-radius: 0; }
+body[data-theme="superpink"] .title-dots span { background: #FFB3C6; border-radius: 0; border: 1px solid #C2446E; }
+body[data-theme="superpink"] .cell-body { background: #FFD6E5; border: none; border-top: 2px solid #C2446E; border-radius: 0; }
+body[data-theme="superpink"] .correlation-card {
+  border: 2px solid; border-color: #FFB3C6 #C2446E #C2446E #FFB3C6;
+  background: #FFE8F0; box-shadow: inset 1px 1px 0 #FFF0F5; color: #C2446E;
+}
+body[data-theme="superpink"] .settings-panel {
+  background: #FFD6E5;
+  border-right: 2px solid; border-color: #FFB3C6 #C2446E #C2446E #FFB3C6;
+}
+body[data-theme="superpink"] .settings-label {
+  color: #C2446E; font-family: "Sacramento", cursive; font-size: 16px; letter-spacing: 0.5px;
+}
+body[data-theme="superpink"] .settings-header {
+  color: #C2446E; font-family: "Sacramento", cursive; font-size: 20px;
+}
+body[data-theme="superpink"] .settings-value,
+body[data-theme="superpink"] .settings-close,
+body[data-theme="superpink"] .habit-list-row { color: #C2446E; }
+body[data-theme="superpink"] .settings-btn,
+body[data-theme="superpink"] .auth-btn,
+body[data-theme="superpink"] .update-btn {
+  border: 2px solid; border-color: #FFB3C6 #C2446E #C2446E #FFB3C6;
+  box-shadow: inset 1px 1px 0 #FFF0F5; background: #FFD6E5; color: #C2446E;
+}
+body[data-theme="superpink"] .settings-select,
+body[data-theme="superpink"] .field-group input {
+  border: 2px solid; border-color: #C2446E #FFB3C6 #FFB3C6 #C2446E;
+  box-shadow: inset 1px 1px 0 #FFF0F5; background: #FFF0F5; color: #C2446E; border-radius: 0;
+}
+body[data-theme="superpink"] .progress-track {
+  border: 2px solid; border-color: #C2446E #FFB3C6 #FFB3C6 #C2446E;
+  box-shadow: inset 1px 1px 0 #C2446E; background: #FFE8F0;
+}
+body[data-theme="superpink"] .week-col-header {
+  background: linear-gradient(90deg, #FF6E96, #FF2E92); color: #FFF;
+  border-bottom: 2px solid #C2446E; box-shadow: inset 1px 1px 0 rgba(255,255,255,0.4);
+}
+body[data-theme="superpink"] .settings-toggle-btn {
+  border: 2px solid; border-color: #FFB3C6 #C2446E #C2446E #FFB3C6;
+  box-shadow: inset 1px 1px 0 #FFF0F5; background: #FFD6E5; color: #C2446E; border-radius: 0;
+}
+body[data-theme="superpink"] .auth-window {
+  border: 2px solid; border-color: #FFB3C6 #C2446E #C2446E #FFB3C6;
+  background: #FFD6E5; box-shadow: inset 1px 1px 0 #FFF0F5;
+}
+body[data-theme="superpink"] .cell-subtitle { color: #E8407A; }
 body[data-theme="superpink"] .top-habit-row, body[data-theme="superpink"] .top-habit-count { color: #C2446E; }
 body[data-theme="superpink"] .habit-label-cell, body[data-theme="superpink"] .task-row input[type="text"] { color: #C2446E; }
+body[data-theme="superpink"] .checkbox-grid th { color: #C2446E; font-size: 10px; }
 
 /* =============================================
    WHITE-ON-WHITE FIXES for light themes
