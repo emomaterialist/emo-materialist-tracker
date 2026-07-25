@@ -503,7 +503,7 @@ body[data-theme="tron"] .settings-btn, body[data-theme="tron"] .auth-btn, body[d
 body[data-theme="tron"] .settings-select, body[data-theme="tron"] .field-group input { background: #0A0A1A; color: #E0E0E0; border: 1px solid #FF00FF; box-shadow: 0 0 4px rgba(255,0,255,0.2); }
 body[data-theme="tron"] .progress-track { background: #0A0A1A; border: 1px solid #00FFFF; }
 body[data-theme="tron"] .week-col-header { background: #000; color: #00FFFF; text-shadow: 0 0 4px #00FFFF; border-bottom: 2px solid #00FFFF; }
-body[data-theme="tron"] .settings-toggle-btn { background: #0a1a3a; border: 2px solid #00FFFF; box-shadow: 0 0 8px rgba(0,255,255,0.5), inset 0 0 6px rgba(0,255,255,0.1); color: #00FFFF; text-shadow: 0 0 6px #00FFFF; }
+body[data-theme="tron"] .settings-toggle-btn { background: #0a1a3a !important; border: 2px solid #00FFFF !important; box-shadow: 0 0 8px rgba(0,255,255,0.5), inset 0 0 6px rgba(0,255,255,0.1) !important; color: #00FFFF !important; text-shadow: 0 0 6px #00FFFF !important; }
 body[data-theme="tron"] .top-habit-row, body[data-theme="tron"] .top-habit-count { color: #E0E0E0; }
 body[data-theme="tron"] .cell-subtitle { color: #808080; }
 

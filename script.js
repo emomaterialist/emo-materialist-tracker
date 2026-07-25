@@ -79,6 +79,14 @@ function onLoggedIn() {
   document.body.setAttribute('data-theme', savedTheme);
   var sel = document.getElementById('theme-select');
   if (sel) sel.value = savedTheme;
+  // Apply tron button colors if needed
+  if(savedTheme==='tron'){
+    document.querySelectorAll('.settings-toggle-btn').forEach(function(btn){
+      btn.style.background='#0a1a3a';
+      btn.style.color='#00FFFF';
+      btn.style.textShadow='0 0 6px #00FFFF';
+    });
+  }
   buildCatPills();
   buildScheduleRows();
   initMonthYearPickers();
@@ -99,6 +107,18 @@ async function changeTheme(theme) {
   document.body.setAttribute('data-theme', theme);
   try { localStorage.setItem('habitTrackerTheme', theme); } catch(e) {}
   if (currentUser) await sb.auth.updateUser({ data: { preferred_theme: theme } });
+  // Force button colors for tron theme
+  document.querySelectorAll('.settings-toggle-btn').forEach(function(btn) {
+    if(theme==='tron'){
+      btn.style.background='#0a1a3a';
+      btn.style.color='#00FFFF';
+      btn.style.textShadow='0 0 6px #00FFFF';
+    } else {
+      btn.style.background='';
+      btn.style.color='';
+      btn.style.textShadow='';
+    }
+  });
   renderEverything();
 }
 function changeMonth() {
