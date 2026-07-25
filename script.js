@@ -353,7 +353,15 @@ function darkenColor(hex,a) { var r=hexToRgb(hex); if(!r)return hex; return 'rgb
 // ============================================
 var weekColors=[], weekFillColors=[], weekTextColors=[];
 function buildWeekColors() {
-  var base=['--c-pink','--c-orange','--c-purple','--c-text-muted','--c-dark'].map(getThemeColor);
+  var theme=document.body.getAttribute('data-theme')||'vaporwave';
+  var base;
+  if(theme==='tron'){
+    // Override --c-dark (black) with orange so week 5 is visible
+    base=['--c-pink','--c-orange','--c-purple','--c-text-muted','--c-orange'].map(getThemeColor);
+    base[4]='#FF6600'; // force orange for week 5
+  } else {
+    base=['--c-pink','--c-orange','--c-purple','--c-text-muted','--c-dark'].map(getThemeColor);
+  }
   weekColors=base;
   weekFillColors=base.map(function(c){return lightenColor(c,0.75);});
   weekTextColors=base.map(function(hex){ var rgb=hexToRgb(hex); if(!rgb)return'#fff'; var b=(rgb.r*299+rgb.g*587+rgb.b*114)/1000; return b>128?darkenColor(hex,0.55):lightenColor(hex,0.85); });
