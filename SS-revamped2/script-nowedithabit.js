@@ -145,88 +145,77 @@ function initMonthYearPickers() {
 function renderHabitList() {
   var el = document.getElementById('habit-list'); el.innerHTML = '';
   if (RAW_HABITS.length===0) { el.innerHTML='<p style="font-size:11px;color:var(--c-text-muted);">No habits yet. Add one above!</p>'; return; }
-
-  // Build deduped case-insensitive category list from actual habits + defaults
-  var defaultCats=['General','Health','Fitness','Mindfulness','Learning','Productivity','Self-care','Finance','Social','Skincare'];
-  var catMap={};
-  defaultCats.forEach(function(c){ catMap[c.toLowerCase()]=c; });
-  RAW_HABITS.forEach(function(h){ if(h.category) catMap[h.category.toLowerCase()]=h.category; });
-  (customCategories||[]).forEach(function(c){ catMap[c.toLowerCase()]=c; });
-  var cats=Object.values(catMap).sort();
-
+  var cats=['General','Health','Fitness','Mindfulness','Learning','Productivity','Self-care','Finance','Social'].concat(customCategories||[]);
   RAW_HABITS.forEach(function(h) {
-    var wrapper=document.createElement('div');
+    var wrapper = document.createElement('div');
     wrapper.style.cssText='border-bottom:1px solid var(--c-body-bg-alt);margin-bottom:2px;';
 
-    var row=document.createElement('div'); row.className='habit-list-row';
-    var nameSpan=document.createElement('span');
-    nameSpan.style.cssText='flex:1;font-size:12px;color:var(--c-text);';
+    // Main row
+    var row = document.createElement('div'); row.className='habit-list-row';
+    var nameSpan = document.createElement('span');
     nameSpan.textContent=h.icon+' '+h.name;
+    nameSpan.style.cssText='flex:1;font-size:12px;color:var(--c-text);';
     if(h.category){
       var catTag=document.createElement('span');
-      catTag.textContent=' '+h.category;
-      catTag.style.cssText='font-size:9px;color:var(--c-text-muted);opacity:0.7;';
+      catTag.textContent=h.category;
+      catTag.style.cssText='font-size:9px;color:var(--c-text-muted);margin-left:6px;opacity:0.7;';
       nameSpan.appendChild(catTag);
     }
 
-    var editBtn=document.createElement('button'); editBtn.className='habit-del-btn'; editBtn.textContent='✏️'; editBtn.title='Edit';
-    var delBtn=document.createElement('button'); delBtn.className='habit-del-btn'; delBtn.textContent='🗑'; delBtn.title='Delete';
-    delBtn.onclick=function(){ archiveHabit(h.id); };
+    var editBtn = document.createElement('button'); editBtn.className='habit-del-btn'; editBtn.textContent='✏️';
+    editBtn.title='Edit habit';
+    var delBtn = document.createElement('button'); delBtn.className='habit-del-btn'; delBtn.textContent='🗑';
+    delBtn.title='Delete habit';
+    delBtn.onclick = function() { archiveHabit(h.id); };
+
     row.appendChild(nameSpan); row.appendChild(editBtn); row.appendChild(delBtn);
     wrapper.appendChild(row);
 
-    // Edit form
-    var form=document.createElement('div');
+    // Edit form (hidden by default)
+    var form = document.createElement('div');
     form.style.cssText='display:none;padding:8px 4px 10px;background:var(--c-body-bg-alt);border-radius:var(--radius-sm);margin-top:2px;';
-    var currentCatLower=(h.category||'').toLowerCase();
-    var catOptions=cats.map(function(c){ return '<option value="'+c+'"'+(c.toLowerCase()===currentCatLower?' selected':'')+'>'+c+'</option>'; }).join('');
-    catOptions+='<option value="__custom__">+ Add new category…</option>';
-    var inp=function(id,val,extra){ return '<input id="'+id+'" type="text" value="'+(val||'')+'" style="font-size:12px;background:var(--c-body-bg);border:1px solid var(--c-dark);color:var(--c-text);padding:4px;border-radius:var(--radius-sm);'+(extra||'')+'">'; };
     form.innerHTML=[
       '<div style="display:grid;grid-template-columns:40px 1fr;gap:6px;margin-bottom:6px;">',
-        inp('ei-'+h.id,h.icon,'font-size:14px;text-align:center;width:100%;box-sizing:border-box;'),
-        inp('en-'+h.id,h.name,'width:100%;box-sizing:border-box;'),
+        '<input id="edit-icon-'+h.id+'" type="text" value="'+h.icon+'" style="font-size:14px;text-align:center;background:var(--c-body-bg);border:1px solid var(--c-dark);color:var(--c-text);padding:4px;border-radius:var(--radius-sm);">',
+        '<input id="edit-name-'+h.id+'" type="text" value="'+h.name+'" style="font-size:12px;background:var(--c-body-bg);border:1px solid var(--c-dark);color:var(--c-text);padding:4px;border-radius:var(--radius-sm);">',
       '</div>',
-      '<select id="ec-'+h.id+'" style="width:100%;font-size:11px;background:var(--c-body-bg);border:1px solid var(--c-dark);color:var(--c-text);padding:4px;margin-bottom:6px;border-radius:var(--radius-sm);">'+catOptions+'</select>',
-      '<input id="ecc-'+h.id+'" type="text" placeholder="New category name..." style="display:none;width:100%;font-size:11px;background:var(--c-body-bg);border:1px solid var(--c-dark);color:var(--c-text);padding:4px;margin-bottom:6px;border-radius:var(--radius-sm);box-sizing:border-box;">',
+      '<select id="edit-cat-'+h.id+'" style="width:100%;font-size:11px;background:var(--c-body-bg);border:1px solid var(--c-dark);color:var(--c-text);padding:4px;margin-bottom:8px;border-radius:var(--radius-sm);">',
+        cats.map(function(c){ return '<option value="'+c+'"'+(c===h.category?' selected':'')+'>'+c+'</option>'; }).join(''),
+      '</select>',
       '<div style="display:flex;gap:6px;">',
-        '<button id="es-'+h.id+'" style="flex:1;padding:5px;font-size:11px;background:var(--c-pink);color:var(--c-dark);border:none;cursor:pointer;border-radius:var(--radius-sm);font-weight:700;">Save</button>',
-        '<button id="esc-'+h.id+'" style="padding:5px 10px;font-size:11px;background:transparent;color:var(--c-text-muted);border:1px solid var(--c-dark);cursor:pointer;border-radius:var(--radius-sm);">Cancel</button>',
+        '<button id="edit-save-'+h.id+'" style="flex:1;padding:5px;font-size:11px;background:var(--c-pink);color:var(--c-dark);border:none;cursor:pointer;border-radius:var(--radius-sm);font-weight:700;">Save</button>',
+        '<button id="edit-cancel-'+h.id+'" style="padding:5px 10px;font-size:11px;background:transparent;color:var(--c-text-muted);border:1px solid var(--c-dark);cursor:pointer;border-radius:var(--radius-sm);">Cancel</button>',
       '</div>',
-      '<div id="em-'+h.id+'" style="font-size:10px;margin-top:4px;"></div>'
+      '<div id="edit-msg-'+h.id+'" style="font-size:10px;margin-top:4px;"></div>'
     ].join('');
     wrapper.appendChild(form);
     el.appendChild(wrapper);
 
-    editBtn.onclick=function(){ var o=form.style.display==='block'; form.style.display=o?'none':'block'; editBtn.textContent=o?'✏️':'✕'; };
-
-    form.querySelector('#ec-'+h.id).addEventListener('change',function(){
-      form.querySelector('#ecc-'+h.id).style.display=this.value==='__custom__'?'block':'none';
-    });
-
-    form.querySelector('#es-'+h.id).onclick=async function(){
-      var newIcon=form.querySelector('#ei-'+h.id).value.trim()||h.icon;
-      var newName=form.querySelector('#en-'+h.id).value.trim();
-      var selCat=form.querySelector('#ec-'+h.id).value;
-      var customVal=form.querySelector('#ecc-'+h.id).value.trim();
-      var rawCat=selCat==='__custom__'?customVal:selCat;
-      if(!rawCat)rawCat=h.category||'General';
-      // Normalize to title case
-      var newCat=rawCat.charAt(0).toUpperCase()+rawCat.slice(1);
-      var msgEl=form.querySelector('#em-'+h.id);
-      if(!newName){msgEl.style.color='red';msgEl.textContent='Name required';return;}
-      msgEl.style.color='var(--c-text-muted)';msgEl.textContent='Saving...';
-      var {error}=await sb.from('habits').update({name:newName,icon:newIcon,category:newCat}).eq('id',h.id);
-      if(error){msgEl.style.color='red';msgEl.textContent='Error: '+error.message;return;}
-      if(!customCategories)customCategories=[];
-      if(!customCategories.map(function(c){return c.toLowerCase();}).includes(newCat.toLowerCase())){
-        customCategories.push(newCat); buildCatPills();
-      }
-      msgEl.style.color='green';msgEl.textContent='✅ Saved!';
-      setTimeout(function(){form.style.display='none';editBtn.textContent='✏️';loadHabits().then(renderEverything);},600);
+    // Toggle edit form
+    editBtn.onclick = function() {
+      var isOpen = form.style.display==='block';
+      form.style.display = isOpen?'none':'block';
+      editBtn.textContent = isOpen?'✏️':'✕';
     };
 
-    form.querySelector('#esc-'+h.id).onclick=function(){form.style.display='none';editBtn.textContent='✏️';};
+    // Save handler
+    form.querySelector('#edit-save-'+h.id).onclick = async function() {
+      var newIcon = form.querySelector('#edit-icon-'+h.id).value.trim()||h.icon;
+      var newName = form.querySelector('#edit-name-'+h.id).value.trim();
+      var newCat  = form.querySelector('#edit-cat-'+h.id).value;
+      var msgEl   = form.querySelector('#edit-msg-'+h.id);
+      if(!newName){ msgEl.style.color='red'; msgEl.textContent='Name required'; return; }
+      msgEl.style.color='var(--c-text-muted)'; msgEl.textContent='Saving...';
+      var {error} = await sb.from('habits').update({name:newName,icon:newIcon,category:newCat}).eq('id',h.id);
+      if(error){ msgEl.style.color='red'; msgEl.textContent='Error: '+error.message; return; }
+      msgEl.style.color='green'; msgEl.textContent='✅ Saved!';
+      setTimeout(function(){ form.style.display='none'; editBtn.textContent='✏️'; loadHabits().then(renderEverything); },600);
+    };
+
+    // Cancel handler
+    form.querySelector('#edit-cancel-'+h.id).onclick = function() {
+      form.style.display='none'; editBtn.textContent='✏️';
+    };
   });
 }
 function refreshCharts() {
