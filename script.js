@@ -398,6 +398,11 @@ function renderDonuts() {
     });
     var pct=tp>0?Math.round((td/tp)*100):0, offset=circ-(pct/100)*circ;
     var color=weekColors[w]||'#ccc', fill=weekFillColors[w]||'#eee', txt=weekTextColors[w]||'#333';
+    // For light-background themes, force dark text on donuts
+    var theme=document.body.getAttribute('data-theme')||'vaporwave';
+    if(theme==='superpink') txt='#C2446E';
+    if(theme==='gothic') txt='#5C0000';
+    if(theme==='basic'||theme==='classic') txt='#1A1A1A';
     var item=document.createElement('div'); item.style.cssText='flex:1;min-width:60px;text-align:center;';
     item.innerHTML='<svg width="44" height="44" viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" fill="none" stroke="'+fill+'" stroke-width="8"></circle><circle cx="32" cy="32" r="26" fill="none" stroke="'+color+'" stroke-width="8" stroke-dasharray="'+circ+' '+circ+'" stroke-dashoffset="'+offset+'" transform="rotate(-90 32 32)" stroke-linecap="round"></circle><text x="32" y="37" text-anchor="middle" font-size="12" font-weight="600" fill="'+txt+'">'+pct+'%</text></svg><p style="font-size:10px;color:var(--c-text-muted);margin:2px 0 0;">Wk '+(w+1)+'</p>';
     el.appendChild(item);

@@ -470,7 +470,7 @@ body[data-theme="retro95"] .week-col-header { background: linear-gradient(90deg,
 /* =============================================
    GOTHIC OVERRIDES
 ============================================= */
-body[data-theme="gothic"] .title-text { font-family: "Monsieur La Doulaise", cursive !important; font-size: 22px !important; letter-spacing: 1px; color: #FFFFFF; font-weight: 400; }
+body[data-theme="gothic"] .title-text { font-family: "Monsieur La Doulaise", cursive !important; font-size: 24px !important; letter-spacing: 1px !important; color: #FFFFFF !important; font-weight: 400 !important; text-transform: none !important; }
 body[data-theme="gothic"] .title-bar { background: linear-gradient(90deg, #8B0000, #3A0000); border-color: #3A0000; }
 body[data-theme="gothic"] .title-glyph { background: #DC143C; }
 body[data-theme="gothic"] .title-dots span { background: #DC143C; }
@@ -522,8 +522,12 @@ body[data-theme="superpink"] .title-bar {
 }
 body[data-theme="superpink"] .title-text {
   font-family: "Sacramento", cursive !important;
-  font-size: 22px !important; color: #FFF; font-weight: 400;
-  letter-spacing: 1px; text-shadow: 0 1px 2px rgba(180,40,80,0.4);
+  font-size: 24px !important;
+  font-weight: 400 !important;
+  text-transform: none !important;
+  letter-spacing: 1px !important;
+  color: #FFF !important;
+  text-shadow: 0 1px 2px rgba(180,40,80,0.4) !important;
 }
 body[data-theme="superpink"] .title-glyph { background: #FFB3C6; border-radius: 0; }
 body[data-theme="superpink"] .title-dots span { background: #FFB3C6; border-radius: 0; border: 1px solid #C2446E; }
