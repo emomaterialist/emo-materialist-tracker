@@ -921,8 +921,14 @@ function render52WeekScatter() {
     },
     scales:{
       x:{min:1,max:52,ticks:{stepSize:4,font:{size:9},callback:function(v){
-        var months=['','Jan','','','Feb','','','Mar','','','Apr','','','May','','','Jun','','','Jul','','','Aug','','','Sep','','','Oct','','','Nov','','','Dec','','','',''];
-        return months[v]?'Wk '+v+' '+months[v]:'Wk '+v;
+        // Calculate actual month for this week number
+        var jan4=new Date(new Date().getFullYear(),0,4);
+        var start=new Date(jan4);
+        start.setDate(jan4.getDate()-(jan4.getDay()||7)+1+(v-1)*7);
+        var mNames=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        // Only show month label at start of each month (week 1,5,9,13,17,21,25,29,33,37,41,45,49)
+        var prevStart=new Date(start); prevStart.setDate(prevStart.getDate()-4);
+        return start.getMonth()!==prevStart.getMonth()?'Wk '+v+' '+mNames[start.getMonth()]:'Wk '+v;
       }},title:{display:true,text:'Week of year',font:{size:10}}},
       y:{min:0,max:100,ticks:{callback:function(v){return v+'%';},font:{size:9}},title:{display:true,text:'Completion rate',font:{size:10}}}
     }}
