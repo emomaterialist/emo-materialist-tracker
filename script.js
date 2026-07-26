@@ -497,8 +497,37 @@ function renderGrid() {
       // Theme-aware checkbox style
       applyCheckboxThemeStyle(box, isFlexible);
 
-      if(timesRequired===0){box.style.opacity='0.2';box.style.cursor='default';}
-      else {
+      if(timesRequired===0){
+        // Unscheduled day — dim, clickable for bonus credit
+        applyBoxVisual(box,timesLogged,1,b.week,true);
+        box.style.opacity=timesLogged>0?'1':'0.3';
+        box.style.cursor='pointer';
+        box.addEventListener('click',(function(habitId,date,weekNum,habitIdx,dayNum){
+          return function(){
+            if(habitId===-1)return;
+            var current=completionState[String(habitId)][dayNum]||0;
+            var next=current>=1?0:1;
+            completionState[String(habitId)][dayNum]=next;
+            logsLookup[String(habitId)]=logsLookup[String(habitId)]||{};
+            logsLookup[String(habitId)][date]=next;
+            // Show checkmark when clicked, blank when unclicked
+            if(next>0){
+              box.style.background=weekColors[weekNum]||'#8C5FD9';
+              box.style.color=weekTextColors[weekNum]||'#fff';
+              box.textContent='\u2713';
+              box.style.fontSize='11px';
+              box.style.fontWeight='700';
+              box.style.border='1.5px dashed '+(weekColors[weekNum]||'#8C5FD9');
+              box.style.opacity='1';
+            } else {
+              applyBoxVisual(box,0,1,weekNum,true);
+              box.style.opacity='0.3';
+            }
+            updateProgressCell(String(habitId),habitIdx);
+            saveLog(habitId,date,next);
+          };
+        })(h.id,isoDate,b.week,hi,b.day));
+      } else {
         applyBoxVisual(box,timesLogged,timesRequired,b.week,isFlexible);
         box.addEventListener('click',(function(habitId,date,reqTimes,weekNum,habitIdx,dayNum,flex){
           return function(){
