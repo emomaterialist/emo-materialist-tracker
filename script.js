@@ -90,6 +90,7 @@ function onLoggedIn() {
   buildCatPills();
   buildScheduleRows();
   initMonthYearPickers();
+  updateMonthLabel();
   loadAndRender();
 }
 
@@ -121,16 +122,21 @@ async function changeTheme(theme) {
   });
   renderEverything();
 }
+function updateMonthLabel() {
+  var el=document.getElementById('current-month-label'); if(!el)return;
+  var mNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  el.textContent=mNames[currentMonth-1]+' '+currentYear;
+}
 function changeMonth() {
   currentMonth = parseInt(document.getElementById('month-select').value);
   currentYear = parseInt(document.getElementById('year-select').value);
-  loadAndRender();
+  updateMonthLabel(); loadAndRender();
 }
 function jumpToCurrentMonth() {
   var now = new Date(); currentMonth = now.getMonth()+1; currentYear = now.getFullYear();
   document.getElementById('month-select').value = currentMonth;
   document.getElementById('year-select').value = currentYear;
-  loadAndRender();
+  updateMonthLabel(); loadAndRender();
 }
 function toggleExtraCredit(val) { extraCreditEnabled = val; renderEverything(); }
 function initMonthYearPickers() {
