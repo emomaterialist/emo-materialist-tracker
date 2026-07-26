@@ -918,6 +918,8 @@ function renderRadar() {
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{r:{ticks:{display:false},pointLabels:{font:{size:10}},min:0,max:100}}}
   });
 }
+
+function getWeekDateRange(weekNum, year) {
   // Get the Monday of ISO week weekNum in given year
   var jan4 = new Date(year, 0, 4);
   var startOfWeek1 = new Date(jan4);
