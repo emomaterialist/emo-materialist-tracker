@@ -90,7 +90,6 @@ function onLoggedIn() {
   buildCatPills();
   buildScheduleRows();
   initMonthYearPickers();
-  updateMonthLabel();
   loadAndRender();
 }
 
@@ -122,21 +121,16 @@ async function changeTheme(theme) {
   });
   renderEverything();
 }
-function updateMonthLabel() {
-  var el=document.getElementById('current-month-label'); if(!el)return;
-  var mNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
-  el.textContent=mNames[currentMonth-1]+' '+currentYear;
-}
 function changeMonth() {
   currentMonth = parseInt(document.getElementById('month-select').value);
   currentYear = parseInt(document.getElementById('year-select').value);
-  updateMonthLabel(); loadAndRender();
+  loadAndRender();
 }
 function jumpToCurrentMonth() {
-  var now=new Date(); currentMonth=now.getMonth()+1; currentYear=now.getFullYear();
-  document.getElementById('month-select').value=currentMonth;
-  document.getElementById('year-select').value=currentYear;
-  updateMonthLabel(); loadAndRender();
+  var now = new Date(); currentMonth = now.getMonth()+1; currentYear = now.getFullYear();
+  document.getElementById('month-select').value = currentMonth;
+  document.getElementById('year-select').value = currentYear;
+  loadAndRender();
 }
 function toggleExtraCredit(val) { extraCreditEnabled = val; renderEverything(); }
 function initMonthYearPickers() {
@@ -787,138 +781,6 @@ function renderAllTimeSection() {
   renderFullHeatmap(); renderActualVsIntended(); renderRadar(); renderStreaks(); renderBestMonth(); renderHabitAge();
 }
 
-var actualVsIntendedInstance=null;
-
-function renderFullHeatmap() {
-  var monthRow=document.getElementById('heatmap-month-row');
-  var grid=document.getElementById('heatmap-grid');
-  var tooltip=document.getElementById('heatmap-tooltip');
-  if(!monthRow||!grid)return;
-  monthRow.innerHTML=''; grid.innerHTML='';
-  var dateMap={};
-  RAW_HABITS.forEach(function(h){ var hid=String(h.id); Object.keys(allTimeLogs[hid]||{}).forEach(function(d){ dateMap[d]=(dateMap[d]||0)+(allTimeLogs[hid][d]||0); }); });
-  var maxVal=Math.max(1,Math.max.apply(null,Object.values(dateMap).concat([0])));
-  var year=currentYear;
-  var jan1=new Date(year,0,1);
-  var startDow=(jan1.getDay()+6)%7;
-  var totalCols=53;
-  var dayLabels=['M','','W','','F','',''];
-  var mNames=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var pink=getThemeColor('--c-pink');
-  var colTemplate='28px repeat('+totalCols+',1fr)';
-  monthRow.style.cssText='display:grid;grid-template-columns:'+colTemplate+';gap:2px;margin-bottom:3px;';
-  grid.style.cssText='display:grid;grid-template-columns:'+colTemplate+';gap:2px;';
-  var spacer=document.createElement('div'); monthRow.appendChild(spacer);
-  var lastMonth=-1;
-  for(var w=0;w<totalCols;w++){
-    var dn=(w*7)-startDow;
-    var d=new Date(year,0,1+dn);
-    var cell=document.createElement('div');
-    cell.style.cssText='font-size:10px;color:var(--c-text-muted);white-space:nowrap;overflow:hidden;';
-    if(d.getFullYear()===year){ var m=d.getMonth(); if(m!==lastMonth){cell.textContent=mNames[m];lastMonth=m;} }
-    monthRow.appendChild(cell);
-  }
-  for(var dow=0;dow<7;dow++){
-    var lbl=document.createElement('div');
-    lbl.style.cssText='font-size:10px;color:var(--c-text-muted);text-align:right;padding-right:4px;line-height:1;display:flex;align-items:center;justify-content:flex-end;';
-    lbl.textContent=dayLabels[dow]; grid.appendChild(lbl);
-    for(var wk=0;wk<totalCols;wk++){
-      var dn2=(wk*7+dow)-startDow;
-      var dt=new Date(year,0,1+dn2);
-      var cell2=document.createElement('div');
-      cell2.style.cssText='width:100%;aspect-ratio:1;border-radius:2px;';
-      if(dt.getFullYear()!==year){ cell2.style.background='transparent'; }
-      else {
-        var iso=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
-        var val=dateMap[iso]||0;
-        var opacity=val===0?0.08:0.15+(val/maxVal)*0.85;
-        cell2.style.background=pink; cell2.style.opacity=opacity.toFixed(2); cell2.style.cursor='default';
-        var dateStr=dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
-        (function(ds,v,tip){
-          cell2.addEventListener('mouseenter',function(){ tip.innerHTML='<strong>'+ds+'</strong><br>'+(v>0?v+' habit'+(v!==1?'s':'')+' completed':'No activity logged'); tip.style.display='block'; });
-          cell2.addEventListener('mousemove',function(e){ tip.style.left=(e.clientX+12)+'px'; tip.style.top=(e.clientY-40)+'px'; });
-          cell2.addEventListener('mouseleave',function(){ tip.style.display='none'; });
-        })(dateStr,val,tooltip);
-      }
-      grid.appendChild(cell2);
-    }
-  }
-}
-
-function renderActualVsIntended() {
-  if(actualVsIntendedInstance)actualVsIntendedInstance.destroy();
-  var el=document.getElementById('actualVsIntendedChart'); if(!el)return;
-  var labels=[], actual=[], intended=[];
-  var mShort=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  for(var d=1;d<=DAYS_IN_MONTH;d++){
-    labels.push(d);
-    var iso=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-    var dow=(firstDayMonBased+d-1)%7;
-    var dayDone=0, dayRequired=0;
-    RAW_HABITS.forEach(function(h){
-      if(h.id===-1)return;
-      var hid=String(h.id);
-      var sched=scheduleLookup[hid]&&scheduleLookup[hid][dow];
-      dayRequired+=(sched?sched.required:0);
-      dayDone+=(logsLookup[hid]&&logsLookup[hid][iso])||0;
-    });
-    actual.push(dayDone); intended.push(dayRequired);
-  }
-  var pink=getThemeColor('--c-pink'), purple=getThemeColor('--c-purple');
-  actualVsIntendedInstance=new Chart(el,{
-    type:'line',
-    data:{labels:labels,datasets:[
-      {label:'Intended',data:intended,borderColor:hexToRgba(purple,0.4),backgroundColor:hexToRgba(purple,0.1),borderWidth:1.5,borderDash:[4,3],fill:true,tension:0,pointRadius:0,order:2},
-      {label:'Actual',data:actual,borderColor:pink,backgroundColor:hexToRgba(pink,0.08),borderWidth:2,fill:false,tension:0.3,pointRadius:2,pointBackgroundColor:pink,order:1}
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{
-      title:function(ctx){return mShort[currentMonth-1]+' '+ctx[0].label+', '+currentYear;},
-      label:function(ctx){return ctx.dataset.label+': '+ctx.raw+' habits';}
-    }}},
-    scales:{
-      x:{ticks:{color:'#898781',font:{size:9},autoSkip:true,maxTicksLimit:16},grid:{color:'rgba(128,128,128,0.15)'},title:{display:true,text:'Day of month',color:'#898781',font:{size:10}}},
-      y:{beginAtZero:true,ticks:{color:'#898781',font:{size:9},stepSize:1},grid:{color:'rgba(128,128,128,0.15)'},title:{display:true,text:'Habits',color:'#898781',font:{size:10}}}
-    }}
-  });
-}
-
-function renderRadar() {
-  if(radarChartInstance)radarChartInstance.destroy();
-  var catDone={}, catRequired={}, catAllDone={}, catAllRequired={};
-  RAW_HABITS.forEach(function(h){
-    var hid=String(h.id), cat=h.category||'General';
-    if(!catDone[cat]){catDone[cat]=0;catRequired[cat]=0;catAllDone[cat]=0;catAllRequired[cat]=0;}
-    // This month
-    for(var d=1;d<=DAYS_IN_MONTH;d++){
-      var iso=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-      var dow=(firstDayMonBased+d-1)%7;
-      var sched=scheduleLookup[hid]&&scheduleLookup[hid][dow];
-      var req=sched?sched.required:0;
-      catRequired[cat]+=req;
-      catDone[cat]+=Math.min((logsLookup[hid]&&logsLookup[hid][iso])||0, req);
-    }
-    // All time
-    Object.keys(allTimeLogs[hid]||{}).forEach(function(iso){
-      var val=allTimeLogs[hid][iso]||0; if(val<=0)return;
-      var dd=new Date(iso), dow2=(dd.getDay()+6)%7;
-      var sched2=scheduleLookup[hid]&&scheduleLookup[hid][dow2];
-      var req2=sched2?sched2.required:1;
-      catAllRequired[cat]+=req2;
-      catAllDone[cat]+=Math.min(val,req2);
-    });
-  });
-  var cats=Object.keys(catDone); if(cats.length===0)return;
-  var pink=getThemeColor('--c-pink'), purple=getThemeColor('--c-purple');
-  radarChartInstance=new Chart(document.getElementById('radarChart'),{
-    type:'radar',
-    data:{labels:cats,datasets:[
-      {label:'This month',data:cats.map(function(c){return catRequired[c]>0?Math.min(100,Math.round((catDone[c]/catRequired[c])*100)):0;}),backgroundColor:hexToRgba(pink,0.15),borderColor:pink,borderWidth:2,pointBackgroundColor:pink,pointRadius:3},
-      {label:'All-time avg',data:cats.map(function(c){return catAllRequired[c]>0?Math.min(100,Math.round((catAllDone[c]/catAllRequired[c])*100)):0;}),backgroundColor:hexToRgba(purple,0.08),borderColor:purple,borderWidth:1.5,borderDash:[4,4],pointBackgroundColor:purple,pointRadius:2}
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{r:{ticks:{display:false},pointLabels:{font:{size:10}},min:0,max:100}}}
-  });
-}
-
 function getWeekDateRange(weekNum, year) {
   // Get the Monday of ISO week weekNum in given year
   var jan4 = new Date(year, 0, 4);
@@ -946,72 +808,128 @@ function getISOWeek(date) {
   return Math.ceil((((d-yearStart)/86400000)+1)/7);
 }
 
-function render52WeekScatter() {
-  if(allTimeScatterInstance)allTimeScatterInstance.destroy();
-  // Aggregate all logs by ISO week number
-  var weekMap={}; // weekNum -> {done, possible, habitsTracked set}
-  RAW_HABITS.forEach(function(h){
-    var hid=String(h.id);
-    Object.keys(allTimeLogs[hid]||{}).forEach(function(iso){
-      var val=allTimeLogs[hid][iso]; if(!val||val<=0)return;
-      var wn=getISOWeek(new Date(iso));
-      var yr=new Date(iso).getFullYear();
-      if(!weekMap[wn])weekMap[wn]={done:0,possible:0,habits:{},year:yr};
-      weekMap[wn].done+=val;
-      weekMap[wn].possible++;
-      weekMap[wn].habits[hid]=true;
-    });
-  });
-  var weekData=[], weekLabels={};
-  Object.keys(weekMap).forEach(function(wn){
-    wn=parseInt(wn); if(wn<1||wn>52)return;
-    var info=weekMap[wn];
-    var pct=info.possible>0?Math.round((info.done/info.possible)*100):0;
-    var habitsTracked=Object.keys(info.habits).length;
-    var dateLabel=getWeekDateRange(wn, info.year||new Date().getFullYear());
-    weekLabels[wn]={pct,habitsTracked,dateLabel};
-    weekData.push({x:wn,y:pct,r:Math.max(4,Math.min(14,habitsTracked*3))});
-  });
-  var pink=getThemeColor('--c-pink');
-  allTimeScatterInstance=new Chart(document.getElementById('allTimeScatterChart'),{
-    type:'bubble',
-    data:{datasets:[{label:'Completion rate',data:weekData,backgroundColor:hexToRgba(pink,0.55),borderColor:pink,borderWidth:1}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{
-      legend:{display:false},
-      tooltip:{callbacks:{
-        label:function(ctx){
-          var wn=ctx.raw.x, info=weekLabels[wn]||{};
-          return['Week '+wn+' ('+( info.dateLabel||'')+')', 'Completion: '+(info.pct||0)+'%','Habits tracked: '+(info.habitsTracked||0)];
-        }
-      }}
-    },
-    scales:{
-      x:{min:1,max:52,
-        ticks:{stepSize:4,font:{size:9},callback:function(v){
-          var months=['','Jan','','','Feb','','','Mar','','','Apr','','','May','','','Jun','','','Jul','','','Aug','','','Sep','','','Oct','','','Nov','','','Dec','','','',''];
-          return months[v]?'Wk '+v+' '+months[v]:'Wk '+v;
-        }},
-        title:{display:true,text:'Week of year',font:{size:10}}},
-      y:{min:0,max:110,ticks:{callback:function(v){return v+'%';},font:{size:9}},title:{display:true,text:'Completion rate',font:{size:10}}}
-    }}
-  });
-}
+var actualVsIntendedInstance=null;
 
-function renderHeatmap() {
-  var el=document.getElementById('heatmap-container'); if(!el)return; el.innerHTML='';
+function renderFullHeatmap() {
+  var monthRow=document.getElementById('heatmap-month-row');
+  var grid=document.getElementById('heatmap-grid');
+  var tooltip=document.getElementById('heatmap-tooltip');
+  if(!monthRow||!grid)return;
+  monthRow.innerHTML=''; grid.innerHTML='';
+
+  // Build dateMap from allTimeLogs
   var dateMap={};
   RAW_HABITS.forEach(function(h){ var hid=String(h.id); Object.keys(allTimeLogs[hid]||{}).forEach(function(d){ dateMap[d]=(dateMap[d]||0)+(allTimeLogs[hid][d]||0); }); });
   var maxVal=Math.max(1,Math.max.apply(null,Object.values(dateMap).concat([0])));
-  for(var i=364;i>=0;i--){
-    var d=new Date(); d.setDate(d.getDate()-i);
-    var iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-    var val=dateMap[iso]||0, opacity=val===0?0.08:0.15+(val/maxVal)*0.85;
+
+  var year=currentYear;
+  var jan1=new Date(year,0,1);
+  var startDow=(jan1.getDay()+6)%7; // Mon=0
+  var totalCols=53;
+  var dayLabels=['M','','W','','F','',''];
+  var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var pink=getThemeColor('--c-pink');
+
+  // Set grid template
+  var colTemplate='28px repeat('+totalCols+',1fr)';
+  monthRow.style.cssText='display:grid;grid-template-columns:'+colTemplate+';gap:2px;margin-bottom:3px;';
+  grid.style.cssText='display:grid;grid-template-columns:'+colTemplate+';gap:2px;';
+
+  // Build month label row
+  var spacer=document.createElement('div'); monthRow.appendChild(spacer);
+  var lastMonth=-1;
+  for(var w=0;w<totalCols;w++){
+    var dayIdx=w*7;
+    var dayNum=dayIdx-startDow;
+    var d=new Date(year,0,1+dayNum);
     var cell=document.createElement('div');
-    var pink=getThemeColor('--c-pink');
-    cell.style.cssText='width:12px;height:12px;background:'+pink+';opacity:'+opacity.toFixed(2)+';cursor:default;border-radius:1px;';
-    cell.title=iso+': '+val+' completed'; el.appendChild(cell);
+    cell.style.cssText='font-size:10px;color:var(--c-text-muted);white-space:nowrap;overflow:hidden;';
+    if(d.getFullYear()===year){
+      var m=d.getMonth();
+      if(m!==lastMonth){cell.textContent=months[m];lastMonth=m;}
+    }
+    monthRow.appendChild(cell);
+  }
+
+  // Day label column + week columns
+  // Row by row (7 rows)
+  for(var dow=0;dow<7;dow++){
+    // Day label
+    var lbl=document.createElement('div');
+    lbl.style.cssText='font-size:10px;color:var(--c-text-muted);text-align:right;padding-right:4px;line-height:1;display:flex;align-items:center;justify-content:flex-end;';
+    lbl.textContent=dayLabels[dow];
+    grid.appendChild(lbl);
+    // Cells for each week
+    for(var wk=0;wk<totalCols;wk++){
+      var dn=(wk*7+dow)-startDow;
+      var dt=new Date(year,0,1+dn);
+      var cell=document.createElement('div');
+      cell.style.cssText='width:100%;aspect-ratio:1;border-radius:2px;';
+      if(dt.getFullYear()!==year){
+        cell.style.background='transparent';
+      } else {
+        var iso=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+        var val=dateMap[iso]||0;
+        var opacity=val===0?0.08:0.15+(val/maxVal)*0.85;
+        cell.style.background=pink;
+        cell.style.opacity=opacity.toFixed(2);
+        cell.style.cursor='default';
+        var dateStr=dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+        (function(ds,v,tip){
+          cell.addEventListener('mouseenter',function(){
+            tip.innerHTML='<strong>'+ds+'</strong><br>'+(v>0?v+' habit'+(v!==1?'s':'')+' completed':'No activity logged');
+            tip.style.display='block';
+          });
+          cell.addEventListener('mousemove',function(e){ tip.style.left=(e.clientX+12)+'px'; tip.style.top=(e.clientY-40)+'px'; });
+          cell.addEventListener('mouseleave',function(){ tip.style.display='none'; });
+        })(dateStr,val,tooltip);
+      }
+      grid.appendChild(cell);
+    }
   }
 }
+
+function renderActualVsIntended() {
+  if(actualVsIntendedInstance)actualVsIntendedInstance.destroy();
+  var el=document.getElementById('actualVsIntendedChart'); if(!el)return;
+
+  var labels=[], actual=[], intended=[];
+  for(var d=1;d<=DAYS_IN_MONTH;d++){
+    labels.push(d);
+    var iso=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    var dow=(firstDayMonBased+d-1)%7;
+    var dayDone=0, dayRequired=0;
+    RAW_HABITS.forEach(function(h){
+      if(h.id===-1)return;
+      var hid=String(h.id);
+      var sched=scheduleLookup[hid]&&scheduleLookup[hid][dow];
+      var req=sched?sched.required:0;
+      dayRequired+=req;
+      dayDone+=(logsLookup[hid]&&logsLookup[hid][iso])||0;
+    });
+    actual.push(dayDone);
+    intended.push(dayRequired);
+  }
+
+  var pink=getThemeColor('--c-pink');
+  var purple=getThemeColor('--c-purple');
+  actualVsIntendedInstance=new Chart(el,{
+    type:'line',
+    data:{labels:labels,datasets:[
+      {label:'Intended',data:intended,borderColor:hexToRgba(purple,0.4),backgroundColor:hexToRgba(purple,0.1),borderWidth:1.5,borderDash:[4,3],fill:true,tension:0,pointRadius:0,order:2},
+      {label:'Actual',data:actual,borderColor:pink,backgroundColor:hexToRgba(pink,0.08),borderWidth:2,fill:false,tension:0.3,pointRadius:2,pointBackgroundColor:pink,order:1}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{
+      title:function(ctx){return months_short[currentMonth-1]+' '+ctx[0].label+', '+currentYear;},
+      label:function(ctx){return ctx.dataset.label+': '+ctx.raw+' habits';}
+    }}},
+    scales:{
+      x:{ticks:{color:'#898781',font:{size:9},autoSkip:true,maxTicksLimit:16},grid:{color:'rgba(128,128,128,0.15)'},title:{display:true,text:'Day of month',color:'#898781',font:{size:10}}},
+      y:{beginAtZero:true,ticks:{color:'#898781',font:{size:9},stepSize:1},grid:{color:'rgba(128,128,128,0.15)'},title:{display:true,text:'Habits',color:'#898781',font:{size:10}}}
+    }}
+  });
+}
+var months_short=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 function renderRadar() {
   if(radarChartInstance)radarChartInstance.destroy();
