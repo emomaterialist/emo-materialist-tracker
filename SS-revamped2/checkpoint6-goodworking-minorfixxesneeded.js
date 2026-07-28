@@ -90,6 +90,7 @@ function onLoggedIn() {
   buildCatPills();
   buildScheduleRows();
   initMonthYearPickers();
+  updateMonthLabel();
   loadAndRender();
 }
 
@@ -121,16 +122,21 @@ async function changeTheme(theme) {
   });
   renderEverything();
 }
+function updateMonthLabel() {
+  var el=document.getElementById('current-month-label'); if(!el)return;
+  var mNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  el.textContent=mNames[currentMonth-1]+' '+currentYear;
+}
 function changeMonth() {
   currentMonth = parseInt(document.getElementById('month-select').value);
   currentYear = parseInt(document.getElementById('year-select').value);
-  loadAndRender();
+  updateMonthLabel(); loadAndRender();
 }
 function jumpToCurrentMonth() {
   var now = new Date(); currentMonth = now.getMonth()+1; currentYear = now.getFullYear();
   document.getElementById('month-select').value = currentMonth;
   document.getElementById('year-select').value = currentYear;
-  loadAndRender();
+  updateMonthLabel(); loadAndRender();
 }
 function toggleExtraCredit(val) { extraCreditEnabled = val; renderEverything(); }
 function initMonthYearPickers() {
@@ -158,7 +164,7 @@ function refreshCharts() {
   if (barChartInstance) barChartInstance.destroy();
   if (plannedActualChartInstance) plannedActualChartInstance.destroy();
   buildWeekColors(); buildHabits();
-  renderTopHabits(); renderDonuts(); renderCharts(); renderMonthProgress();
+  renderTopHabits(); renderDonuts(); renderCharts(); renderWeeklyDonut();
   var label = document.getElementById('last-updated');
   if (label) { var now=new Date(); label.textContent='Updated '+now.getHours()+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0'); }
 }
@@ -353,19 +359,9 @@ function darkenColor(hex,a) { var r=hexToRgb(hex); if(!r)return hex; return 'rgb
 // ============================================
 var weekColors=[], weekFillColors=[], weekTextColors=[];
 function buildWeekColors() {
-  var theme=document.body.getAttribute('data-theme')||'vaporwave';
-  var base;
-  if(theme==='tron'){
-    base=['#00FFFF','#FF00FF','#FFFF00','#00FF88','#FF6600'];
-  } else if(theme==='vaporwave2'){
-    base=['#00F0FF','#FFFF00','#FF2E92','#CC88FF','#FFA040'];
-  } else if(theme==='superpink'){
-    base=['#FF2E92','#CC0044','#8833CC','#FF44AA','#FF6644'];
-  } else {
-    base=['--c-pink','--c-orange','--c-purple','--c-text-muted','--c-dark'].map(getThemeColor);
-  }
+  var base=['--c-pink','--c-orange','--c-purple','--c-text-muted','--c-dark'].map(getThemeColor);
   weekColors=base;
-  weekFillColors=base.map(function(c){return lightenColor(c,0.6);});
+  weekFillColors=base.map(function(c){return lightenColor(c,0.75);});
   weekTextColors=base.map(function(hex){ var rgb=hexToRgb(hex); if(!rgb)return'#fff'; var b=(rgb.r*299+rgb.g*587+rgb.b*114)/1000; return b>128?darkenColor(hex,0.55):lightenColor(hex,0.85); });
 }
 var habits=[];
@@ -637,37 +633,13 @@ function updateProgressCell(hid, hi) {
 // ============================================
 // WEEKLY TASKS + PLANNED VS ACTUAL (FIXED)
 // ============================================
-function renderMonthProgress() {
-  var el=document.getElementById('month-progress-panel'); if(!el)return;
-  var today=new Date();
-  var isCurrentMonth=(today.getMonth()+1===currentMonth&&today.getFullYear()===currentYear);
-  var dayOfMonth=isCurrentMonth?today.getDate():DAYS_IN_MONTH;
-  var timePct=Math.round((dayOfMonth/DAYS_IN_MONTH)*100);
-  var totalDone=0, totalRequired=0;
-  RAW_HABITS.forEach(function(h){
-    if(h.id===-1)return;
-    var hid=String(h.id);
-    for(var d=1;d<=DAYS_IN_MONTH;d++){
-      var dow=(firstDayMonBased+d-1)%7;
-      var sched=scheduleLookup[hid]&&scheduleLookup[hid][dow];
-      if(sched&&sched.required>0){
-        totalRequired+=sched.required;
-        var iso=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-        totalDone+=Math.min((logsLookup[hid]&&logsLookup[hid][iso])||0,sched.required);
-      }
-    }
-  });
-  var habitPct=totalRequired>0?Math.min(100,Math.round((totalDone/totalRequired)*100)):0;
-  var pink=getThemeColor('--c-pink'), purple=getThemeColor('--c-purple');
-  el.innerHTML=[
-    '<div><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--c-text-muted);margin-bottom:4px;"><span>Time elapsed</span><span>'+dayOfMonth+' / '+DAYS_IN_MONTH+' days</span></div>',
-    '<div style="background:var(--c-body-bg-alt);border:1px solid var(--c-dark);height:10px;border-radius:3px;overflow:hidden;"><div style="background:'+purple+';width:'+timePct+'%;height:100%;border-radius:3px;"></div></div></div>',
-    '<div><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--c-text-muted);margin-bottom:4px;"><span>Habits done</span><span>'+habitPct+'%</span></div>',
-    '<div style="background:var(--c-body-bg-alt);border:1px solid var(--c-dark);height:10px;border-radius:3px;overflow:hidden;"><div style="background:'+pink+';width:'+habitPct+'%;height:100%;border-radius:3px;"></div></div></div>',
-    '<div style="font-size:10px;text-align:center;margin-top:4px;">',
-    habitPct>=timePct?'<span style="color:'+pink+';">✓ Ahead of pace</span>':'<span style="color:var(--c-text-muted);">'+( timePct-habitPct)+'% behind pace</span>',
-    '</div>'
-  ].join('');
+function renderWeeklyDonut() {
+  var td=0,tp=0;
+  habits.forEach(function(h){ if(h.id===-1)return; var hid=String(h.id); for(var d=1;d<=DAYS_IN_MONTH;d++){var dow=(firstDayMonBased+d-1)%7,sched=scheduleLookup[hid]&&scheduleLookup[hid][dow]; if(sched&&sched.required>0){tp+=sched.required;var iso=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(d).padStart(2,'0');td+=(logsLookup[hid]&&logsLookup[hid][iso])||0;}} });
+  var pct=tp>0?Math.round((td/tp)*100):0,radius=26,circ=2*Math.PI*radius,offset=circ-(pct/100)*circ;
+  var pink=getThemeColor('--c-pink'),track=lightenColor(pink,0.75),text=darkenColor(pink,0.35);
+  var svg=document.getElementById('weekly-donut');
+  svg.innerHTML='<circle cx="32" cy="32" r="'+radius+'" fill="none" stroke="'+track+'" stroke-width="8"></circle><circle cx="32" cy="32" r="'+radius+'" fill="none" stroke="'+pink+'" stroke-width="8" stroke-dasharray="'+circ+' '+circ+'" stroke-dashoffset="'+offset+'" transform="rotate(-90 32 32)" stroke-linecap="round"></circle><text x="32" y="37" text-anchor="middle" font-size="13" font-weight="600" fill="'+text+'">'+pct+'%</text>';
 }
 
 var weeklyTaskData=[{week:'Week 1',tasks:[]},{week:'Week 2',tasks:[]},{week:'Week 3',tasks:[]},{week:'Week 4',tasks:[]},{week:'Week 5',tasks:[]}];
@@ -720,20 +692,22 @@ function renderWeeklyTasks() {
   var isVW2=(theme==='vaporwave2');
   var isTron=(theme==='tron');
 
-  // Use weekColors (set by buildWeekColors) as single source of truth
-  // Generate header/row bg from weekColors with opacity
-  function hexToRgbaLocal(hex,a){ var r=hexToRgb(hex); return r?'rgba('+r.r+','+r.g+','+r.b+','+a+')':hex; }
-  var headerBgs = weekColors.map(function(c){ return hexToRgbaLocal(c, isVW2?0.35:isTron?0.20:0.25); });
-  var rowBgs    = weekColors.map(function(c){ return hexToRgbaLocal(c, isVW2?0.08:isTron?0.06:0.10); });
+  // Hardcoded colors matching debug file exactly
+  var vw2Colors      =['#00F0FF','#FFFF00','#FF2E92','#CC88FF','#FFC857'];
+  var vw2HeaderBgs   =['rgba(0,240,255,0.35)','rgba(255,255,0,0.30)','rgba(255,46,146,0.35)','rgba(153,51,255,0.35)','rgba(255,200,87,0.30)'];
+  var vw2RowBgs      =['rgba(0,240,255,0.08)','rgba(255,255,0,0.06)','rgba(255,46,146,0.08)','rgba(153,51,255,0.08)','rgba(255,200,87,0.06)'];
+  var tronColors     =['#00FFFF','#FF00FF','#FFFF00','#00FF88','#FF6600'];
+  var tronHeaderBgs  =['rgba(0,255,255,0.20)','rgba(255,0,255,0.20)','rgba(255,255,0,0.20)','rgba(0,255,136,0.20)','rgba(255,102,0,0.20)'];
+  var tronRowBgs     =['rgba(0,255,255,0.06)','rgba(255,0,255,0.06)','rgba(255,255,0,0.06)','rgba(0,255,136,0.06)','rgba(255,102,0,0.06)'];
 
   weeklyTaskData.slice(0,numWeeks).forEach(function(wd,w){
     var col=document.createElement('div'); col.className='week-col';
     var header=document.createElement('div'); header.className='week-col-header';
 
     if(isVW2){
-      header.style.cssText='background:'+headerBgs[w]+';color:'+weekColors[w]+';border-bottom:2px solid '+weekColors[w]+';text-align:center;padding:4px;font-size:11px;font-weight:700;';
+      header.style.cssText='background:'+vw2HeaderBgs[w]+';color:'+vw2Colors[w]+';border-bottom:2px solid '+vw2Colors[w]+';text-align:center;padding:4px;font-size:11px;font-weight:700;';
     } else if(isTron){
-      header.style.cssText='background:'+headerBgs[w]+';color:'+weekColors[w]+';border-bottom:2px solid '+weekColors[w]+';text-shadow:0 0 6px '+weekColors[w]+';text-align:center;padding:4px;font-size:11px;font-weight:700;';
+      header.style.cssText='background:'+tronHeaderBgs[w]+';color:'+tronColors[w]+';border-bottom:2px solid '+tronColors[w]+';text-shadow:0 0 6px '+tronColors[w]+';text-align:center;padding:4px;font-size:11px;font-weight:700;';
     } else {
       header.style.background=weekColors[w]||'#ccc';
       header.style.color=weekTextColors[w]||'#fff';
@@ -745,14 +719,14 @@ function renderWeeklyTasks() {
       var row=document.createElement('div'); row.className='task-row';
 
       if(isVW2){
-        row.style.background=i%2===1?rowBgs[w]:'transparent';
+        row.style.background=i%2===1?vw2RowBgs[w]:'transparent';
       } else if(isTron){
-        row.style.background=i%2===1?rowBgs[w]:'#050510';
+        row.style.background=i%2===1?tronRowBgs[w]:'#050510';
       } else {
         row.style.background=i%2===1?(weekFillColors[w]||'transparent'):'transparent';
       }
 
-      var accentColor=weekColors[w]||'#ccc';
+      var accentColor=isVW2?vw2Colors[w]:isTron?tronColors[w]:(weekColors[w]||'#ccc');
       var textColor=isVW2?'#F0E8FF':isTron?'#E0E0E0':'';
 
       var cb=document.createElement('input'); cb.type='checkbox'; cb.checked=task.c||false; cb.style.accentColor=accentColor;
@@ -1124,7 +1098,7 @@ function renderEverything() {
   if(radarChartInstance)radarChartInstance.destroy();
   if(actualVsIntendedInstance)actualVsIntendedInstance.destroy();
   renderTopHabits(); renderDonuts(); renderCharts(); renderCorrelations(); renderGrid();
-  renderMonthProgress(); renderWeeklyTasks(); renderPlannedActualChart(); renderAllTimeSection();
+  renderWeeklyDonut(); renderWeeklyTasks(); renderPlannedActualChart(); renderAllTimeSection();
 }
 
 // ============================================

@@ -537,7 +537,7 @@ body[data-theme="superpink"] .settings-label, body[data-theme="superpink"] .sett
 body[data-theme="superpink"] .settings-btn, body[data-theme="superpink"] .auth-btn, body[data-theme="superpink"] .update-btn { background: linear-gradient(180deg,#FF9EBA,#FF6E96); border: none; color: #FFF; box-shadow: 0 3px 0 #D95070, inset 0 1px 0 rgba(255,255,255,0.4); }
 body[data-theme="superpink"] .settings-select, body[data-theme="superpink"] .field-group input { background: linear-gradient(180deg,#FFF,#FFE8F0); border: 2px solid #FF9EBA; color: #C2446E; box-shadow: inset 0 1px 3px rgba(255,100,150,0.15); }
 body[data-theme="superpink"] .progress-track { background: #FFE0EB; border: 1px solid #FF9EBA; }
-/* superpink week-col-header colors handled by JS via buildWeekColors */
+body[data-theme="superpink"] .week-col-header { background: linear-gradient(180deg,#FF9EBA,#FF6E96); color: #FFF; box-shadow: inset 0 1px 0 rgba(255,255,255,0.4); }
 body[data-theme="superpink"] .settings-toggle-btn { background: linear-gradient(180deg,#FF9EBA,#FF6E96); border: none; box-shadow: 0 3px 0 #D95070; }
 body[data-theme="superpink"] .cell-subtitle { color: #C2446E; }
 body[data-theme="superpink"] .top-habit-row, body[data-theme="superpink"] .top-habit-count { color: #C2446E; }

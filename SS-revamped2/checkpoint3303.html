@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <title>Emo Materialist Habit Tracker</title>
 <link rel="stylesheet" href="style.css">
-<link href="https://fonts.googleapis.com/css2?family=Monsieur+La+Doulaise&family=Roboto+Mono:wght@400;600;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Monsieur+La+Doulaise&family=Sacramento&family=Roboto+Mono:wght@400;600;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="script.js" defer></script>
@@ -186,8 +186,8 @@
       <tr>
         <td class="cell-outer">
           <div class="cell-border">
-            <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Month progress</span><span class="title-dots"><span></span><span></span><span></span></span></div>
-            <div class="cell-body" id="month-progress-panel" style="display:flex;flex-direction:column;gap:10px;justify-content:center;padding:10px;"></div>
+            <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Weekly completion</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+            <div class="cell-body"><svg id="weekly-donut" width="80" height="80" viewBox="0 0 64 64" style="display:block;margin:0 auto;"></svg></div>
           </div>
         </td>
         <td class="cell-outer weekly-tasks-cell">
@@ -211,40 +211,33 @@
       <tr>
         <td class="cell-outer" colspan="3">
           <div class="cell-border">
-            <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Year heatmap</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+            <div class="title-bar"><span class="title-glyph"></span><span class="title-text">52-week completion rate</span><span class="title-dots"><span></span><span></span><span></span></span></div>
             <div class="cell-body">
-              <div id="heatmap-month-row" style="display:grid;gap:2px;margin-bottom:3px;"></div>
-              <div id="heatmap-grid" style="display:grid;gap:2px;"></div>
-              <div style="display:flex;align-items:center;gap:6px;margin-top:8px;">
-                <span class="cell-subtitle" style="margin:0;">less</span>
-                <div style="width:12px;height:12px;background:var(--c-pink);opacity:0.1;border-radius:2px;"></div>
-                <div style="width:12px;height:12px;background:var(--c-pink);opacity:0.35;border-radius:2px;"></div>
-                <div style="width:12px;height:12px;background:var(--c-pink);opacity:0.6;border-radius:2px;"></div>
-                <div style="width:12px;height:12px;background:var(--c-pink);opacity:0.85;border-radius:2px;"></div>
-                <div style="width:12px;height:12px;background:var(--c-pink);opacity:1;border-radius:2px;"></div>
-                <span class="cell-subtitle" style="margin:0;">more</span>
-              </div>
-              <div id="heatmap-tooltip" style="position:fixed;background:var(--c-body-bg);border:2px solid var(--c-dark);padding:6px 10px;font-size:11px;color:var(--c-text);pointer-events:none;display:none;z-index:9999;border-radius:var(--radius-sm);box-shadow:2px 2px 0 var(--c-dark);"></div>
-            </div>
-          </div>
-        </td>
-      </tr>
-      <tr>
-        <td class="cell-outer" colspan="3">
-          <div class="cell-border">
-            <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Actual vs intended completions</span><span class="title-dots"><span></span><span></span><span></span></span></div>
-            <div class="cell-body">
-              <div style="display:flex;gap:16px;margin-bottom:8px;font-size:11px;color:var(--c-text-muted);">
-                <span><span style="display:inline-block;width:12px;height:2px;background:var(--c-pink);vertical-align:middle;margin-right:4px;"></span>Actual completed</span>
-                <span><span style="display:inline-block;width:12px;height:12px;background:var(--c-purple);opacity:0.2;vertical-align:middle;margin-right:4px;border-radius:1px;border:1px dashed var(--c-purple);"></span>Intended (required)</span>
-              </div>
-              <div class="chart-wrap" style="height:200px;"><canvas id="actualVsIntendedChart"></canvas></div>
+              <p class="cell-subtitle">Week number vs completion rate — bubble size = habits tracked that week</p>
+              <div class="chart-wrap" style="height:220px;"><canvas id="allTimeScatterChart"></canvas></div>
             </div>
           </div>
         </td>
       </tr>
       <tr>
         <td class="cell-outer" colspan="2">
+          <div class="cell-border">
+            <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Year heatmap</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+            <div class="cell-body">
+              <div id="heatmap-container" style="display:flex;flex-wrap:wrap;gap:3px;"></div>
+              <div style="display:flex;align-items:center;gap:6px;margin-top:8px;">
+                <span class="cell-subtitle" style="margin:0;">less</span>
+                <div style="width:12px;height:12px;background:var(--c-pink);opacity:0.1;"></div>
+                <div style="width:12px;height:12px;background:var(--c-pink);opacity:0.35;"></div>
+                <div style="width:12px;height:12px;background:var(--c-pink);opacity:0.6;"></div>
+                <div style="width:12px;height:12px;background:var(--c-pink);opacity:0.85;"></div>
+                <div style="width:12px;height:12px;background:var(--c-pink);opacity:1;"></div>
+                <span class="cell-subtitle" style="margin:0;">more</span>
+              </div>
+            </div>
+          </div>
+        </td>
+        <td class="cell-outer">
           <div class="cell-border">
             <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Life balance radar</span><span class="title-dots"><span></span><span></span><span></span></span></div>
             <div class="cell-body">
@@ -256,14 +249,14 @@
             </div>
           </div>
         </td>
+      </tr>
+      <tr>
         <td class="cell-outer">
           <div class="cell-border">
             <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Best streaks 🔥</span><span class="title-dots"><span></span><span></span><span></span></span></div>
             <div class="cell-body"><div id="streaks-container" class="stack-sm"></div></div>
           </div>
         </td>
-      </tr>
-      <tr>
         <td class="cell-outer">
           <div class="cell-border">
             <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Best month 🏆</span><span class="title-dots"><span></span><span></span><span></span></span></div>
@@ -274,12 +267,6 @@
           <div class="cell-border">
             <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Habit age 🌱</span><span class="title-dots"><span></span><span></span><span></span></span></div>
             <div class="cell-body"><div id="habit-age-container" class="stack-sm"></div></div>
-          </div>
-        </td>
-        <td class="cell-outer">
-          <div class="cell-border">
-            <div class="title-bar"><span class="title-glyph"></span><span class="title-text">All-time heatmap (old)</span><span class="title-dots"><span></span><span></span><span></span></span></div>
-            <div class="cell-body"><div id="heatmap-container" style="display:none;"></div></div>
           </div>
         </td>
       </tr>

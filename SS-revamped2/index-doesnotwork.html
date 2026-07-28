@@ -147,6 +147,9 @@
 </div>
 
 <div id="tracker-screen" style="display:none;">
+  <div style="text-align:center;padding:10px 0 2px;">
+    <span id="current-month-label" style="font-size:13px;font-weight:700;color:var(--c-text-muted);letter-spacing:2px;text-transform:uppercase;"></span>
+  </div>
   <div class="tracker">
     <table class="layout">
       <tr>
@@ -186,8 +189,8 @@
       <tr>
         <td class="cell-outer">
           <div class="cell-border">
-            <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Month progress</span><span class="title-dots"><span></span><span></span><span></span></span></div>
-            <div class="cell-body" id="month-progress-panel" style="display:flex;flex-direction:column;gap:10px;justify-content:center;padding:10px;"></div>
+            <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Weekly completion</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+            <div class="cell-body"><svg id="weekly-donut" width="80" height="80" viewBox="0 0 64 64" style="display:block;margin:0 auto;"></svg></div>
           </div>
         </td>
         <td class="cell-outer weekly-tasks-cell">
@@ -270,16 +273,10 @@
             <div class="cell-body"><div id="best-month-container"></div></div>
           </div>
         </td>
-        <td class="cell-outer">
+        <td class="cell-outer" colspan="2">
           <div class="cell-border">
             <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Habit age 🌱</span><span class="title-dots"><span></span><span></span><span></span></span></div>
             <div class="cell-body"><div id="habit-age-container" class="stack-sm"></div></div>
-          </div>
-        </td>
-        <td class="cell-outer">
-          <div class="cell-border">
-            <div class="title-bar"><span class="title-glyph"></span><span class="title-text">All-time heatmap (old)</span><span class="title-dots"><span></span><span></span><span></span></span></div>
-            <div class="cell-body"><div id="heatmap-container" style="display:none;"></div></div>
           </div>
         </td>
       </tr>

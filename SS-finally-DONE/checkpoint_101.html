@@ -147,6 +147,13 @@
 </div>
 
 <div id="tracker-screen" style="display:none;">
+  <div class="cell-border" style="margin:10px 14px 0;border-radius:var(--radius-outer);">
+    <div class="title-bar" style="justify-content:center;">
+      <span class="title-glyph"></span>
+      <span id="current-month-label" class="title-text" style="font-size:15px;letter-spacing:3px;"></span>
+      <span class="title-dots"><span></span><span></span><span></span></span>
+    </div>
+  </div>
   <div class="tracker">
     <table class="layout">
       <tr>
@@ -186,8 +193,8 @@
       <tr>
         <td class="cell-outer">
           <div class="cell-border">
-            <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Month progress</span><span class="title-dots"><span></span><span></span><span></span></span></div>
-            <div class="cell-body" id="month-progress-panel" style="display:flex;flex-direction:column;gap:10px;justify-content:center;padding:10px;"></div>
+            <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Weekly completion</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+            <div class="cell-body"><svg id="weekly-donut" width="80" height="80" viewBox="0 0 64 64" style="display:block;margin:0 auto;"></svg></div>
           </div>
         </td>
         <td class="cell-outer weekly-tasks-cell">
@@ -244,26 +251,12 @@
         </td>
       </tr>
       <tr>
-        <td class="cell-outer" colspan="2">
-          <div class="cell-border">
-            <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Life balance radar</span><span class="title-dots"><span></span><span></span><span></span></span></div>
-            <div class="cell-body">
-              <p class="cell-subtitle">Completion % by category</p>
-              <div class="chart-wrap" style="height:200px;"><canvas id="radarChart"></canvas></div>
-              <div style="display:flex;gap:12px;margin-top:4px;font-size:10px;color:var(--c-text-muted);">
-                <span>— This month</span><span style="opacity:0.6;">- - All-time avg</span>
-              </div>
-            </div>
-          </div>
-        </td>
         <td class="cell-outer">
           <div class="cell-border">
             <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Best streaks 🔥</span><span class="title-dots"><span></span><span></span><span></span></span></div>
             <div class="cell-body"><div id="streaks-container" class="stack-sm"></div></div>
           </div>
         </td>
-      </tr>
-      <tr>
         <td class="cell-outer">
           <div class="cell-border">
             <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Best month 🏆</span><span class="title-dots"><span></span><span></span><span></span></span></div>
@@ -274,12 +267,6 @@
           <div class="cell-border">
             <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Habit age 🌱</span><span class="title-dots"><span></span><span></span><span></span></span></div>
             <div class="cell-body"><div id="habit-age-container" class="stack-sm"></div></div>
-          </div>
-        </td>
-        <td class="cell-outer">
-          <div class="cell-border">
-            <div class="title-bar"><span class="title-glyph"></span><span class="title-text">All-time heatmap (old)</span><span class="title-dots"><span></span><span></span><span></span></span></div>
-            <div class="cell-body"><div id="heatmap-container" style="display:none;"></div></div>
           </div>
         </td>
       </tr>

@@ -158,7 +158,7 @@ function refreshCharts() {
   if (barChartInstance) barChartInstance.destroy();
   if (plannedActualChartInstance) plannedActualChartInstance.destroy();
   buildWeekColors(); buildHabits();
-  renderTopHabits(); renderDonuts(); renderCharts(); renderMonthProgress();
+  renderTopHabits(); renderDonuts(); renderCharts(); renderWeeklyDonut();
   var label = document.getElementById('last-updated');
   if (label) { var now=new Date(); label.textContent='Updated '+now.getHours()+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0'); }
 }
@@ -353,19 +353,9 @@ function darkenColor(hex,a) { var r=hexToRgb(hex); if(!r)return hex; return 'rgb
 // ============================================
 var weekColors=[], weekFillColors=[], weekTextColors=[];
 function buildWeekColors() {
-  var theme=document.body.getAttribute('data-theme')||'vaporwave';
-  var base;
-  if(theme==='tron'){
-    base=['#00FFFF','#FF00FF','#FFFF00','#00FF88','#FF6600'];
-  } else if(theme==='vaporwave2'){
-    base=['#00F0FF','#FFFF00','#FF2E92','#CC88FF','#FFA040'];
-  } else if(theme==='superpink'){
-    base=['#FF2E92','#CC0044','#8833CC','#FF44AA','#FF6644'];
-  } else {
-    base=['--c-pink','--c-orange','--c-purple','--c-text-muted','--c-dark'].map(getThemeColor);
-  }
+  var base=['--c-pink','--c-orange','--c-purple','--c-text-muted','--c-dark'].map(getThemeColor);
   weekColors=base;
-  weekFillColors=base.map(function(c){return lightenColor(c,0.6);});
+  weekFillColors=base.map(function(c){return lightenColor(c,0.75);});
   weekTextColors=base.map(function(hex){ var rgb=hexToRgb(hex); if(!rgb)return'#fff'; var b=(rgb.r*299+rgb.g*587+rgb.b*114)/1000; return b>128?darkenColor(hex,0.55):lightenColor(hex,0.85); });
 }
 var habits=[];
@@ -501,8 +491,24 @@ function renderGrid() {
       // Theme-aware checkbox style
       applyCheckboxThemeStyle(box, isFlexible);
 
-      if(timesRequired===0){box.style.opacity='0.2';box.style.cursor='default';}
-      else {
+      if(timesRequired===0){
+        // Unscheduled day — show dim blank but still clickable as bonus
+        box.style.opacity='0.35';
+        applyBoxVisual(box,timesLogged,1,b.week,true); // treat as flexible, 1 required
+        box.addEventListener('click',(function(habitId,date,weekNum,habitIdx,dayNum){
+          return function(){
+            if(habitId===-1)return;
+            var current=completionState[String(habitId)][dayNum]||0;
+            var next=current>=1?0:1; // toggle on/off
+            completionState[String(habitId)][dayNum]=next;
+            logsLookup[String(habitId)]=logsLookup[String(habitId)]||{};
+            logsLookup[String(habitId)][date]=next;
+            applyBoxVisual(box,next,1,weekNum,true);
+            updateProgressCell(String(habitId),habitIdx);
+            saveLog(habitId,date,next);
+          };
+        })(h.id,isoDate,b.week,hi,b.day));
+      } else {
         applyBoxVisual(box,timesLogged,timesRequired,b.week,isFlexible);
         box.addEventListener('click',(function(habitId,date,reqTimes,weekNum,habitIdx,dayNum,flex){
           return function(){
@@ -637,37 +643,13 @@ function updateProgressCell(hid, hi) {
 // ============================================
 // WEEKLY TASKS + PLANNED VS ACTUAL (FIXED)
 // ============================================
-function renderMonthProgress() {
-  var el=document.getElementById('month-progress-panel'); if(!el)return;
-  var today=new Date();
-  var isCurrentMonth=(today.getMonth()+1===currentMonth&&today.getFullYear()===currentYear);
-  var dayOfMonth=isCurrentMonth?today.getDate():DAYS_IN_MONTH;
-  var timePct=Math.round((dayOfMonth/DAYS_IN_MONTH)*100);
-  var totalDone=0, totalRequired=0;
-  RAW_HABITS.forEach(function(h){
-    if(h.id===-1)return;
-    var hid=String(h.id);
-    for(var d=1;d<=DAYS_IN_MONTH;d++){
-      var dow=(firstDayMonBased+d-1)%7;
-      var sched=scheduleLookup[hid]&&scheduleLookup[hid][dow];
-      if(sched&&sched.required>0){
-        totalRequired+=sched.required;
-        var iso=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-        totalDone+=Math.min((logsLookup[hid]&&logsLookup[hid][iso])||0,sched.required);
-      }
-    }
-  });
-  var habitPct=totalRequired>0?Math.min(100,Math.round((totalDone/totalRequired)*100)):0;
-  var pink=getThemeColor('--c-pink'), purple=getThemeColor('--c-purple');
-  el.innerHTML=[
-    '<div><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--c-text-muted);margin-bottom:4px;"><span>Time elapsed</span><span>'+dayOfMonth+' / '+DAYS_IN_MONTH+' days</span></div>',
-    '<div style="background:var(--c-body-bg-alt);border:1px solid var(--c-dark);height:10px;border-radius:3px;overflow:hidden;"><div style="background:'+purple+';width:'+timePct+'%;height:100%;border-radius:3px;"></div></div></div>',
-    '<div><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--c-text-muted);margin-bottom:4px;"><span>Habits done</span><span>'+habitPct+'%</span></div>',
-    '<div style="background:var(--c-body-bg-alt);border:1px solid var(--c-dark);height:10px;border-radius:3px;overflow:hidden;"><div style="background:'+pink+';width:'+habitPct+'%;height:100%;border-radius:3px;"></div></div></div>',
-    '<div style="font-size:10px;text-align:center;margin-top:4px;">',
-    habitPct>=timePct?'<span style="color:'+pink+';">✓ Ahead of pace</span>':'<span style="color:var(--c-text-muted);">'+( timePct-habitPct)+'% behind pace</span>',
-    '</div>'
-  ].join('');
+function renderWeeklyDonut() {
+  var td=0,tp=0;
+  habits.forEach(function(h){ if(h.id===-1)return; var hid=String(h.id); for(var d=1;d<=DAYS_IN_MONTH;d++){var dow=(firstDayMonBased+d-1)%7,sched=scheduleLookup[hid]&&scheduleLookup[hid][dow]; if(sched&&sched.required>0){tp+=sched.required;var iso=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(d).padStart(2,'0');td+=(logsLookup[hid]&&logsLookup[hid][iso])||0;}} });
+  var pct=tp>0?Math.round((td/tp)*100):0,radius=26,circ=2*Math.PI*radius,offset=circ-(pct/100)*circ;
+  var pink=getThemeColor('--c-pink'),track=lightenColor(pink,0.75),text=darkenColor(pink,0.35);
+  var svg=document.getElementById('weekly-donut');
+  svg.innerHTML='<circle cx="32" cy="32" r="'+radius+'" fill="none" stroke="'+track+'" stroke-width="8"></circle><circle cx="32" cy="32" r="'+radius+'" fill="none" stroke="'+pink+'" stroke-width="8" stroke-dasharray="'+circ+' '+circ+'" stroke-dashoffset="'+offset+'" transform="rotate(-90 32 32)" stroke-linecap="round"></circle><text x="32" y="37" text-anchor="middle" font-size="13" font-weight="600" fill="'+text+'">'+pct+'%</text>';
 }
 
 var weeklyTaskData=[{week:'Week 1',tasks:[]},{week:'Week 2',tasks:[]},{week:'Week 3',tasks:[]},{week:'Week 4',tasks:[]},{week:'Week 5',tasks:[]}];
@@ -720,20 +702,22 @@ function renderWeeklyTasks() {
   var isVW2=(theme==='vaporwave2');
   var isTron=(theme==='tron');
 
-  // Use weekColors (set by buildWeekColors) as single source of truth
-  // Generate header/row bg from weekColors with opacity
-  function hexToRgbaLocal(hex,a){ var r=hexToRgb(hex); return r?'rgba('+r.r+','+r.g+','+r.b+','+a+')':hex; }
-  var headerBgs = weekColors.map(function(c){ return hexToRgbaLocal(c, isVW2?0.35:isTron?0.20:0.25); });
-  var rowBgs    = weekColors.map(function(c){ return hexToRgbaLocal(c, isVW2?0.08:isTron?0.06:0.10); });
+  // Hardcoded colors matching debug file exactly
+  var vw2Colors      =['#00F0FF','#FFFF00','#FF2E92','#CC88FF','#FFC857'];
+  var vw2HeaderBgs   =['rgba(0,240,255,0.35)','rgba(255,255,0,0.30)','rgba(255,46,146,0.35)','rgba(153,51,255,0.35)','rgba(255,200,87,0.30)'];
+  var vw2RowBgs      =['rgba(0,240,255,0.08)','rgba(255,255,0,0.06)','rgba(255,46,146,0.08)','rgba(153,51,255,0.08)','rgba(255,200,87,0.06)'];
+  var tronColors     =['#00FFFF','#FF00FF','#FFFF00','#00FF88','#FF6600'];
+  var tronHeaderBgs  =['rgba(0,255,255,0.20)','rgba(255,0,255,0.20)','rgba(255,255,0,0.20)','rgba(0,255,136,0.20)','rgba(255,102,0,0.20)'];
+  var tronRowBgs     =['rgba(0,255,255,0.06)','rgba(255,0,255,0.06)','rgba(255,255,0,0.06)','rgba(0,255,136,0.06)','rgba(255,102,0,0.06)'];
 
   weeklyTaskData.slice(0,numWeeks).forEach(function(wd,w){
     var col=document.createElement('div'); col.className='week-col';
     var header=document.createElement('div'); header.className='week-col-header';
 
     if(isVW2){
-      header.style.cssText='background:'+headerBgs[w]+';color:'+weekColors[w]+';border-bottom:2px solid '+weekColors[w]+';text-align:center;padding:4px;font-size:11px;font-weight:700;';
+      header.style.cssText='background:'+vw2HeaderBgs[w]+';color:'+vw2Colors[w]+';border-bottom:2px solid '+vw2Colors[w]+';text-align:center;padding:4px;font-size:11px;font-weight:700;';
     } else if(isTron){
-      header.style.cssText='background:'+headerBgs[w]+';color:'+weekColors[w]+';border-bottom:2px solid '+weekColors[w]+';text-shadow:0 0 6px '+weekColors[w]+';text-align:center;padding:4px;font-size:11px;font-weight:700;';
+      header.style.cssText='background:'+tronHeaderBgs[w]+';color:'+tronColors[w]+';border-bottom:2px solid '+tronColors[w]+';text-shadow:0 0 6px '+tronColors[w]+';text-align:center;padding:4px;font-size:11px;font-weight:700;';
     } else {
       header.style.background=weekColors[w]||'#ccc';
       header.style.color=weekTextColors[w]||'#fff';
@@ -745,14 +729,14 @@ function renderWeeklyTasks() {
       var row=document.createElement('div'); row.className='task-row';
 
       if(isVW2){
-        row.style.background=i%2===1?rowBgs[w]:'transparent';
+        row.style.background=i%2===1?vw2RowBgs[w]:'transparent';
       } else if(isTron){
-        row.style.background=i%2===1?rowBgs[w]:'#050510';
+        row.style.background=i%2===1?tronRowBgs[w]:'#050510';
       } else {
         row.style.background=i%2===1?(weekFillColors[w]||'transparent'):'transparent';
       }
 
-      var accentColor=weekColors[w]||'#ccc';
+      var accentColor=isVW2?vw2Colors[w]:isTron?tronColors[w]:(weekColors[w]||'#ccc');
       var textColor=isVW2?'#F0E8FF':isTron?'#E0E0E0':'';
 
       var cb=document.createElement('input'); cb.type='checkbox'; cb.checked=task.c||false; cb.style.accentColor=accentColor;
@@ -810,7 +794,7 @@ function renderPlannedActualChart() {
 // ALL-TIME CHARTS
 // ============================================
 function renderAllTimeSection() {
-  renderFullHeatmap(); renderActualVsIntended(); renderRadar(); renderStreaks(); renderBestMonth(); renderHabitAge();
+  render52WeekScatter(); renderHeatmap(); renderRadar(); renderStreaks(); renderBestMonth(); renderHabitAge();
 }
 
 function getWeekDateRange(weekNum, year) {
@@ -840,128 +824,72 @@ function getISOWeek(date) {
   return Math.ceil((((d-yearStart)/86400000)+1)/7);
 }
 
-var actualVsIntendedInstance=null;
-
-function renderFullHeatmap() {
-  var monthRow=document.getElementById('heatmap-month-row');
-  var grid=document.getElementById('heatmap-grid');
-  var tooltip=document.getElementById('heatmap-tooltip');
-  if(!monthRow||!grid)return;
-  monthRow.innerHTML=''; grid.innerHTML='';
-
-  // Build dateMap from allTimeLogs
-  var dateMap={};
-  RAW_HABITS.forEach(function(h){ var hid=String(h.id); Object.keys(allTimeLogs[hid]||{}).forEach(function(d){ dateMap[d]=(dateMap[d]||0)+(allTimeLogs[hid][d]||0); }); });
-  var maxVal=Math.max(1,Math.max.apply(null,Object.values(dateMap).concat([0])));
-
-  var year=currentYear;
-  var jan1=new Date(year,0,1);
-  var startDow=(jan1.getDay()+6)%7; // Mon=0
-  var totalCols=53;
-  var dayLabels=['M','','W','','F','',''];
-  var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var pink=getThemeColor('--c-pink');
-
-  // Set grid template
-  var colTemplate='28px repeat('+totalCols+',1fr)';
-  monthRow.style.cssText='display:grid;grid-template-columns:'+colTemplate+';gap:2px;margin-bottom:3px;';
-  grid.style.cssText='display:grid;grid-template-columns:'+colTemplate+';gap:2px;';
-
-  // Build month label row
-  var spacer=document.createElement('div'); monthRow.appendChild(spacer);
-  var lastMonth=-1;
-  for(var w=0;w<totalCols;w++){
-    var dayIdx=w*7;
-    var dayNum=dayIdx-startDow;
-    var d=new Date(year,0,1+dayNum);
-    var cell=document.createElement('div');
-    cell.style.cssText='font-size:10px;color:var(--c-text-muted);white-space:nowrap;overflow:hidden;';
-    if(d.getFullYear()===year){
-      var m=d.getMonth();
-      if(m!==lastMonth){cell.textContent=months[m];lastMonth=m;}
-    }
-    monthRow.appendChild(cell);
-  }
-
-  // Day label column + week columns
-  // Row by row (7 rows)
-  for(var dow=0;dow<7;dow++){
-    // Day label
-    var lbl=document.createElement('div');
-    lbl.style.cssText='font-size:10px;color:var(--c-text-muted);text-align:right;padding-right:4px;line-height:1;display:flex;align-items:center;justify-content:flex-end;';
-    lbl.textContent=dayLabels[dow];
-    grid.appendChild(lbl);
-    // Cells for each week
-    for(var wk=0;wk<totalCols;wk++){
-      var dn=(wk*7+dow)-startDow;
-      var dt=new Date(year,0,1+dn);
-      var cell=document.createElement('div');
-      cell.style.cssText='width:100%;aspect-ratio:1;border-radius:2px;';
-      if(dt.getFullYear()!==year){
-        cell.style.background='transparent';
-      } else {
-        var iso=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
-        var val=dateMap[iso]||0;
-        var opacity=val===0?0.08:0.15+(val/maxVal)*0.85;
-        cell.style.background=pink;
-        cell.style.opacity=opacity.toFixed(2);
-        cell.style.cursor='default';
-        var dateStr=dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
-        (function(ds,v,tip){
-          cell.addEventListener('mouseenter',function(){
-            tip.innerHTML='<strong>'+ds+'</strong><br>'+(v>0?v+' habit'+(v!==1?'s':'')+' completed':'No activity logged');
-            tip.style.display='block';
-          });
-          cell.addEventListener('mousemove',function(e){ tip.style.left=(e.clientX+12)+'px'; tip.style.top=(e.clientY-40)+'px'; });
-          cell.addEventListener('mouseleave',function(){ tip.style.display='none'; });
-        })(dateStr,val,tooltip);
-      }
-      grid.appendChild(cell);
-    }
-  }
-}
-
-function renderActualVsIntended() {
-  if(actualVsIntendedInstance)actualVsIntendedInstance.destroy();
-  var el=document.getElementById('actualVsIntendedChart'); if(!el)return;
-
-  var labels=[], actual=[], intended=[];
-  for(var d=1;d<=DAYS_IN_MONTH;d++){
-    labels.push(d);
-    var iso=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-    var dow=(firstDayMonBased+d-1)%7;
-    var dayDone=0, dayRequired=0;
-    RAW_HABITS.forEach(function(h){
-      if(h.id===-1)return;
-      var hid=String(h.id);
-      var sched=scheduleLookup[hid]&&scheduleLookup[hid][dow];
-      var req=sched?sched.required:0;
-      dayRequired+=req;
-      dayDone+=(logsLookup[hid]&&logsLookup[hid][iso])||0;
+function render52WeekScatter() {
+  if(allTimeScatterInstance)allTimeScatterInstance.destroy();
+  // Aggregate all logs by ISO week number
+  var weekMap={}; // weekNum -> {done, possible, habitsTracked set}
+  RAW_HABITS.forEach(function(h){
+    var hid=String(h.id);
+    Object.keys(allTimeLogs[hid]||{}).forEach(function(iso){
+      var val=allTimeLogs[hid][iso]; if(!val||val<=0)return;
+      var wn=getISOWeek(new Date(iso));
+      var yr=new Date(iso).getFullYear();
+      if(!weekMap[wn])weekMap[wn]={done:0,possible:0,habits:{},year:yr};
+      weekMap[wn].done+=val;
+      weekMap[wn].possible++;
+      weekMap[wn].habits[hid]=true;
     });
-    actual.push(dayDone);
-    intended.push(dayRequired);
-  }
-
+  });
+  var weekData=[], weekLabels={};
+  Object.keys(weekMap).forEach(function(wn){
+    wn=parseInt(wn); if(wn<1||wn>52)return;
+    var info=weekMap[wn];
+    var pct=info.possible>0?Math.round((info.done/info.possible)*100):0;
+    var habitsTracked=Object.keys(info.habits).length;
+    var dateLabel=getWeekDateRange(wn, info.year||new Date().getFullYear());
+    weekLabels[wn]={pct,habitsTracked,dateLabel};
+    weekData.push({x:wn,y:pct,r:Math.max(4,Math.min(14,habitsTracked*3))});
+  });
   var pink=getThemeColor('--c-pink');
-  var purple=getThemeColor('--c-purple');
-  actualVsIntendedInstance=new Chart(el,{
-    type:'line',
-    data:{labels:labels,datasets:[
-      {label:'Intended',data:intended,borderColor:hexToRgba(purple,0.4),backgroundColor:hexToRgba(purple,0.1),borderWidth:1.5,borderDash:[4,3],fill:true,tension:0,pointRadius:0,order:2},
-      {label:'Actual',data:actual,borderColor:pink,backgroundColor:hexToRgba(pink,0.08),borderWidth:2,fill:false,tension:0.3,pointRadius:2,pointBackgroundColor:pink,order:1}
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{
-      title:function(ctx){return months_short[currentMonth-1]+' '+ctx[0].label+', '+currentYear;},
-      label:function(ctx){return ctx.dataset.label+': '+ctx.raw+' habits';}
-    }}},
+  allTimeScatterInstance=new Chart(document.getElementById('allTimeScatterChart'),{
+    type:'bubble',
+    data:{datasets:[{label:'Completion rate',data:weekData,backgroundColor:hexToRgba(pink,0.55),borderColor:pink,borderWidth:1}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{
+      legend:{display:false},
+      tooltip:{callbacks:{
+        label:function(ctx){
+          var wn=ctx.raw.x, info=weekLabels[wn]||{};
+          return['Week '+wn+' ('+( info.dateLabel||'')+')', 'Completion: '+(info.pct||0)+'%','Habits tracked: '+(info.habitsTracked||0)];
+        }
+      }}
+    },
     scales:{
-      x:{ticks:{color:'#898781',font:{size:9},autoSkip:true,maxTicksLimit:16},grid:{color:'rgba(128,128,128,0.15)'},title:{display:true,text:'Day of month',color:'#898781',font:{size:10}}},
-      y:{beginAtZero:true,ticks:{color:'#898781',font:{size:9},stepSize:1},grid:{color:'rgba(128,128,128,0.15)'},title:{display:true,text:'Habits',color:'#898781',font:{size:10}}}
+      x:{min:1,max:52,
+        ticks:{stepSize:4,font:{size:9},callback:function(v){
+          var months=['','Jan','','','Feb','','','Mar','','','Apr','','','May','','','Jun','','','Jul','','','Aug','','','Sep','','','Oct','','','Nov','','','Dec','','','',''];
+          return months[v]?'Wk '+v+' '+months[v]:'Wk '+v;
+        }},
+        title:{display:true,text:'Week of year',font:{size:10}}},
+      y:{min:0,max:110,ticks:{callback:function(v){return v+'%';},font:{size:9}},title:{display:true,text:'Completion rate',font:{size:10}}}
     }}
   });
 }
-var months_short=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function renderHeatmap() {
+  var el=document.getElementById('heatmap-container'); if(!el)return; el.innerHTML='';
+  var dateMap={};
+  RAW_HABITS.forEach(function(h){ var hid=String(h.id); Object.keys(allTimeLogs[hid]||{}).forEach(function(d){ dateMap[d]=(dateMap[d]||0)+(allTimeLogs[hid][d]||0); }); });
+  var maxVal=Math.max(1,Math.max.apply(null,Object.values(dateMap).concat([0])));
+  for(var i=364;i>=0;i--){
+    var d=new Date(); d.setDate(d.getDate()-i);
+    var iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    var val=dateMap[iso]||0, opacity=val===0?0.08:0.15+(val/maxVal)*0.85;
+    var cell=document.createElement('div');
+    var pink=getThemeColor('--c-pink');
+    cell.style.cssText='width:12px;height:12px;background:'+pink+';opacity:'+opacity.toFixed(2)+';cursor:default;border-radius:1px;';
+    cell.title=iso+': '+val+' completed'; el.appendChild(cell);
+  }
+}
 
 function renderRadar() {
   if(radarChartInstance)radarChartInstance.destroy();
@@ -1122,9 +1050,8 @@ function renderEverything() {
   if(plannedActualChartInstance)plannedActualChartInstance.destroy();
   if(allTimeScatterInstance)allTimeScatterInstance.destroy();
   if(radarChartInstance)radarChartInstance.destroy();
-  if(actualVsIntendedInstance)actualVsIntendedInstance.destroy();
   renderTopHabits(); renderDonuts(); renderCharts(); renderCorrelations(); renderGrid();
-  renderMonthProgress(); renderWeeklyTasks(); renderPlannedActualChart(); renderAllTimeSection();
+  renderWeeklyDonut(); renderWeeklyTasks(); renderPlannedActualChart(); renderAllTimeSection();
 }
 
 // ============================================
