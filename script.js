@@ -353,17 +353,9 @@ function darkenColor(hex,a) { var r=hexToRgb(hex); if(!r)return hex; return 'rgb
 // ============================================
 var weekColors=[], weekFillColors=[], weekTextColors=[];
 function buildWeekColors() {
-  var theme=document.body.getAttribute('data-theme')||'vaporwave';
-  var base;
-  if(theme==='tron'){
-    base=['#00FFFF','#FF00FF','#FFFF00','#00FF88','#FF6600'];
-  } else if(theme==='vaporwave2'){
-    base=['#00F0FF','#FFFF00','#FF2E92','#CC88FF','#FFC857'];
-  } else {
-    base=['--c-pink','--c-orange','--c-purple','--c-text-muted','--c-dark'].map(getThemeColor);
-  }
+  var base=['--c-pink','--c-orange','--c-purple','--c-text-muted','--c-dark'].map(getThemeColor);
   weekColors=base;
-  weekFillColors=base.map(function(c){return lightenColor(c,0.6);});
+  weekFillColors=base.map(function(c){return lightenColor(c,0.75);});
   weekTextColors=base.map(function(hex){ var rgb=hexToRgb(hex); if(!rgb)return'#fff'; var b=(rgb.r*299+rgb.g*587+rgb.b*114)/1000; return b>128?darkenColor(hex,0.55):lightenColor(hex,0.85); });
 }
 var habits=[];
@@ -636,12 +628,23 @@ function updateProgressCell(hid, hi) {
 // WEEKLY TASKS + PLANNED VS ACTUAL (FIXED)
 // ============================================
 function renderWeeklyDonut() {
-  var td=0,tp=0;
-  habits.forEach(function(h){ if(h.id===-1)return; var hid=String(h.id); for(var d=1;d<=DAYS_IN_MONTH;d++){var dow=(firstDayMonBased+d-1)%7,sched=scheduleLookup[hid]&&scheduleLookup[hid][dow]; if(sched&&sched.required>0){tp+=sched.required;var iso=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(d).padStart(2,'0');td+=(logsLookup[hid]&&logsLookup[hid][iso])||0;}} });
-  var pct=tp>0?Math.round((td/tp)*100):0,radius=26,circ=2*Math.PI*radius,offset=circ-(pct/100)*circ;
+  var planned=0, done=0;
+  weeklyTaskData.forEach(function(wd){
+    wd.tasks.forEach(function(t){
+      if(t&&t.t&&t.t.trim()!==''){planned++; if(t.c)done++;}
+    });
+  });
+  var pct=planned>0?Math.round((done/planned)*100):0;
+  var radius=26,circ=2*Math.PI*radius,offset=circ-(pct/100)*circ;
   var pink=getThemeColor('--c-pink'),track=lightenColor(pink,0.75),text=darkenColor(pink,0.35);
   var svg=document.getElementById('weekly-donut');
-  svg.innerHTML='<circle cx="32" cy="32" r="'+radius+'" fill="none" stroke="'+track+'" stroke-width="8"></circle><circle cx="32" cy="32" r="'+radius+'" fill="none" stroke="'+pink+'" stroke-width="8" stroke-dasharray="'+circ+' '+circ+'" stroke-dashoffset="'+offset+'" transform="rotate(-90 32 32)" stroke-linecap="round"></circle><text x="32" y="37" text-anchor="middle" font-size="13" font-weight="600" fill="'+text+'">'+pct+'%</text>';
+  svg.innerHTML='<circle cx="32" cy="32" r="'+radius+'" fill="none" stroke="'+track+'" stroke-width="8"></circle>'
+    +'<circle cx="32" cy="32" r="'+radius+'" fill="none" stroke="'+pink+'" stroke-width="8" stroke-dasharray="'+circ+' '+circ+'" stroke-dashoffset="'+offset+'" transform="rotate(-90 32 32)" stroke-linecap="round"></circle>'
+    +'<text x="32" y="33" text-anchor="middle" font-size="11" font-weight="600" fill="'+text+'">'+pct+'%</text>'
+    +'<text x="32" y="44" text-anchor="middle" font-size="7" fill="'+text+'">'+done+'/'+planned+' tasks</text>';
+  // Tooltip on hover
+  svg.style.cursor='default';
+  svg.title=done+' of '+planned+' planned tasks completed this month ('+pct+'%)';
 }
 
 var weeklyTaskData=[{week:'Week 1',tasks:[]},{week:'Week 2',tasks:[]},{week:'Week 3',tasks:[]},{week:'Week 4',tasks:[]},{week:'Week 5',tasks:[]}];
@@ -695,12 +698,12 @@ function renderWeeklyTasks() {
   var isTron=(theme==='tron');
 
   // Hardcoded colors matching debug file exactly
+  var vw2Colors      =['#00F0FF','#FFFF00','#FF2E92','#CC88FF','#FFC857'];
   var vw2HeaderBgs   =['rgba(0,240,255,0.35)','rgba(255,255,0,0.30)','rgba(255,46,146,0.35)','rgba(153,51,255,0.35)','rgba(255,200,87,0.30)'];
-  var tronHeaderBgs  =['rgba(0,255,255,0.20)','rgba(255,0,255,0.20)','rgba(255,255,0,0.20)','rgba(0,255,136,0.20)','rgba(255,102,0,0.20)'];
   var vw2RowBgs      =['rgba(0,240,255,0.08)','rgba(255,255,0,0.06)','rgba(255,46,146,0.08)','rgba(153,51,255,0.08)','rgba(255,200,87,0.06)'];
+  var tronColors     =['#00FFFF','#FF00FF','#FFFF00','#00FF88','#FF6600'];
+  var tronHeaderBgs  =['rgba(0,255,255,0.20)','rgba(255,0,255,0.20)','rgba(255,255,0,0.20)','rgba(0,255,136,0.20)','rgba(255,102,0,0.20)'];
   var tronRowBgs     =['rgba(0,255,255,0.06)','rgba(255,0,255,0.06)','rgba(255,255,0,0.06)','rgba(0,255,136,0.06)','rgba(255,102,0,0.06)'];
-  // Use weekColors (already set by buildWeekColors) as the single source of truth
-  var vw2Colors=weekColors, tronColors=weekColors;
 
   weeklyTaskData.slice(0,numWeeks).forEach(function(wd,w){
     var col=document.createElement('div'); col.className='week-col';
@@ -758,7 +761,7 @@ function renderWeeklyTasks() {
           if(!weeklyTaskData[weekIdx].tasks[taskIdx])weeklyTaskData[weekIdx].tasks[taskIdx]={t:'',c:false,pinned:false,id:null};
           weeklyTaskData[weekIdx].tasks[taskIdx].c=this.checked;
           saveWeeklyTask(weekIdx,taskIdx,weeklyTaskData[weekIdx].tasks[taskIdx].t||'',this.checked,weeklyTaskData[weekIdx].tasks[taskIdx].pinned||false);
-          renderPlannedActualChart();
+          renderPlannedActualChart(); renderWeeklyDonut();
         });
         textEl.addEventListener('input',function(){
           if(!weeklyTaskData[weekIdx].tasks[taskIdx])weeklyTaskData[weekIdx].tasks[taskIdx]={t:'',c:false,pinned:false,id:null};
