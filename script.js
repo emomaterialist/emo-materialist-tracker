@@ -663,12 +663,17 @@ function updateProgressCell(hid, hi) {
 // WEEKLY TASKS + PLANNED VS ACTUAL (FIXED)
 // ============================================
 function renderWeeklyDonut() {
-  var td=0,tp=0;
-  habits.forEach(function(h){ if(h.id===-1)return; var hid=String(h.id); for(var d=1;d<=DAYS_IN_MONTH;d++){var dow=(firstDayMonBased+d-1)%7,sched=scheduleLookup[hid]&&scheduleLookup[hid][dow]; if(sched&&sched.required>0){tp+=sched.required;var iso=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(d).padStart(2,'0');td+=(logsLookup[hid]&&logsLookup[hid][iso])||0;}} });
-  var pct=tp>0?Math.round((td/tp)*100):0,radius=26,circ=2*Math.PI*radius,offset=circ-(pct/100)*circ;
+  var planned=0, done=0;
+  weeklyTaskData.forEach(function(wd){
+    wd.tasks.forEach(function(t){
+      if(t&&t.t&&t.t.trim()!==''){planned++; if(t.c)done++;}
+    });
+  });
+  var pct=planned>0?Math.round((done/planned)*100):0;
+  var radius=26,circ=2*Math.PI*radius,offset=circ-(pct/100)*circ;
   var pink=getThemeColor('--c-pink'),track=lightenColor(pink,0.75),text=darkenColor(pink,0.35);
   var svg=document.getElementById('weekly-donut');
-  svg.innerHTML='<circle cx="32" cy="32" r="'+radius+'" fill="none" stroke="'+track+'" stroke-width="8"></circle><circle cx="32" cy="32" r="'+radius+'" fill="none" stroke="'+pink+'" stroke-width="8" stroke-dasharray="'+circ+' '+circ+'" stroke-dashoffset="'+offset+'" transform="rotate(-90 32 32)" stroke-linecap="round"></circle><text x="32" y="37" text-anchor="middle" font-size="13" font-weight="600" fill="'+text+'">'+pct+'%</text>';
+  svg.innerHTML='<circle cx="32" cy="32" r="'+radius+'" fill="none" stroke="'+track+'" stroke-width="8"></circle><circle cx="32" cy="32" r="'+radius+'" fill="none" stroke="'+pink+'" stroke-width="8" stroke-dasharray="'+circ+' '+circ+'" stroke-dashoffset="'+offset+'" transform="rotate(-90 32 32)" stroke-linecap="round"></circle><text x="32" y="33" text-anchor="middle" font-size="11" font-weight="600" fill="'+text+'">'+pct+'%</text><text x="32" y="44" text-anchor="middle" font-size="7" fill="'+text+'">'+done+'/'+planned+' tasks</text>';
 }
 
 var weeklyTaskData=[{week:'Week 1',tasks:[]},{week:'Week 2',tasks:[]},{week:'Week 3',tasks:[]},{week:'Week 4',tasks:[]},{week:'Week 5',tasks:[]}];
@@ -785,7 +790,7 @@ function renderWeeklyTasks() {
           if(!weeklyTaskData[weekIdx].tasks[taskIdx])weeklyTaskData[weekIdx].tasks[taskIdx]={t:'',c:false,pinned:false,id:null};
           weeklyTaskData[weekIdx].tasks[taskIdx].c=this.checked;
           saveWeeklyTask(weekIdx,taskIdx,weeklyTaskData[weekIdx].tasks[taskIdx].t||'',this.checked,weeklyTaskData[weekIdx].tasks[taskIdx].pinned||false);
-          renderPlannedActualChart();
+          renderPlannedActualChart(); renderWeeklyDonut();
         });
         textEl.addEventListener('input',function(){
           if(!weeklyTaskData[weekIdx].tasks[taskIdx])weeklyTaskData[weekIdx].tasks[taskIdx]={t:'',c:false,pinned:false,id:null};
