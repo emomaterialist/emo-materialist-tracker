@@ -766,7 +766,7 @@ function renderWeeklyTasks() {
         textEl.addEventListener('input',function(){
           if(!weeklyTaskData[weekIdx].tasks[taskIdx])weeklyTaskData[weekIdx].tasks[taskIdx]={t:'',c:false,pinned:false,id:null};
           weeklyTaskData[weekIdx].tasks[taskIdx].t=this.value;
-          debouncedSave(); renderPlannedActualChart();
+          debouncedSave(); renderPlannedActualChart(); renderWeeklyDonut();
         });
         pin.addEventListener('click',function(){togglePin(weekIdx,taskIdx,pin);});
       })(w,i,inp,pinBtn);
