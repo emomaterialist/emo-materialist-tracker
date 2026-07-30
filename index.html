@@ -110,11 +110,29 @@
       <div id="cat-pills-row" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;"></div>
     </div>
     <div class="field-group"><label>Times per day</label><input type="number" id="habit-times-per-day" value="1" min="1" max="20" style="width:70px;"></div>
-    <p class="settings-label" style="margin-top:12px;">Fixed days <span style="font-size:10px;font-weight:400;opacity:0.7;">— must do on these days</span></p>
-    <div id="fixed-days-row" class="day-toggle-row"></div>
-    <p class="settings-label" style="margin-top:12px;">Flexible pool <span style="font-size:10px;font-weight:400;opacity:0.7;">— pick from these days</span></p>
-    <div id="flex-days-row" class="day-toggle-row"></div>
-    <div class="field-group" style="margin-top:6px;"><label>Flexible days needed per week?</label><input type="number" id="habit-flex-needed" value="0" min="0" max="7" style="width:60px;"></div>
+    <div class="field-group" style="margin-top:10px;">
+      <label>Frequency type</label>
+      <select id="habit-freq-type" class="settings-select" onchange="handleFreqType(this.value)">
+        <option value="days">Specific days of the week</option>
+        <option value="monthly">X times per month (any day)</option>
+        <option value="interval">Every X days</option>
+      </select>
+    </div>
+    <div id="freq-days-section">
+      <p class="settings-label" style="margin-top:12px;">Fixed days <span style="font-size:10px;font-weight:400;opacity:0.7;">— must do on these days</span></p>
+      <div id="fixed-days-row" class="day-toggle-row"></div>
+      <p class="settings-label" style="margin-top:12px;">Flexible pool <span style="font-size:10px;font-weight:400;opacity:0.7;">— pick from these days</span></p>
+      <div id="flex-days-row" class="day-toggle-row"></div>
+      <div class="field-group" style="margin-top:6px;"><label>Flexible days needed per week?</label><input type="number" id="habit-flex-needed" value="0" min="0" max="7" style="width:60px;"></div>
+    </div>
+    <div id="freq-monthly-section" style="display:none;">
+      <div class="field-group" style="margin-top:10px;"><label>Times per month</label><input type="number" id="habit-times-month" value="4" min="1" max="31" style="width:70px;"></div>
+      <p class="cell-subtitle" style="margin-top:4px;">The app will show all days as optional — track on any day you choose.</p>
+    </div>
+    <div id="freq-interval-section" style="display:none;">
+      <div class="field-group" style="margin-top:10px;"><label>Every <input type="number" id="habit-interval-days" value="2" min="1" max="30" style="width:50px;margin:0 4px;"> days</label></div>
+      <p class="cell-subtitle" style="margin-top:4px;">e.g. Every 3 days = roughly 10 times/month.</p>
+    </div>
     <button class="settings-btn" onclick="submitAddHabit()">+ Add Habit</button>
     <div id="add-habit-msg" class="auth-msg"></div>
   </div>
@@ -147,6 +165,13 @@
 </div>
 
 <div id="tracker-screen" style="display:none;">
+  <div class="cell-border" style="margin:10px 14px 0;border-radius:var(--radius-outer);">
+    <div class="title-bar" style="justify-content:center;">
+      <span class="title-glyph"></span>
+      <span id="current-month-label" class="title-text" style="font-size:15px;letter-spacing:3px;"></span>
+      <span class="title-dots"><span></span><span></span><span></span></span>
+    </div>
+  </div>
   <div class="tracker">
     <table class="layout">
       <tr>
@@ -244,26 +269,12 @@
         </td>
       </tr>
       <tr>
-        <td class="cell-outer" colspan="2">
-          <div class="cell-border">
-            <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Life balance radar</span><span class="title-dots"><span></span><span></span><span></span></span></div>
-            <div class="cell-body">
-              <p class="cell-subtitle">Completion % by category</p>
-              <div class="chart-wrap" style="height:200px;"><canvas id="radarChart"></canvas></div>
-              <div style="display:flex;gap:12px;margin-top:4px;font-size:10px;color:var(--c-text-muted);">
-                <span>— This month</span><span style="opacity:0.6;">- - All-time avg</span>
-              </div>
-            </div>
-          </div>
-        </td>
         <td class="cell-outer">
           <div class="cell-border">
             <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Best streaks 🔥</span><span class="title-dots"><span></span><span></span><span></span></span></div>
             <div class="cell-body"><div id="streaks-container" class="stack-sm"></div></div>
           </div>
         </td>
-      </tr>
-      <tr>
         <td class="cell-outer">
           <div class="cell-border">
             <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Best month 🏆</span><span class="title-dots"><span></span><span></span><span></span></span></div>
@@ -274,12 +285,6 @@
           <div class="cell-border">
             <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Habit age 🌱</span><span class="title-dots"><span></span><span></span><span></span></span></div>
             <div class="cell-body"><div id="habit-age-container" class="stack-sm"></div></div>
-          </div>
-        </td>
-        <td class="cell-outer">
-          <div class="cell-border">
-            <div class="title-bar"><span class="title-glyph"></span><span class="title-text">All-time heatmap (old)</span><span class="title-dots"><span></span><span></span><span></span></span></div>
-            <div class="cell-body"><div id="heatmap-container" style="display:none;"></div></div>
           </div>
         </td>
       </tr>

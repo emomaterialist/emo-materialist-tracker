@@ -17,7 +17,6 @@ var logsLookup = {};
 var scheduleLookup = {};
 var allTimeLogs = {};
 var allTimeScatterInstance = null;
-var radarChartInstance = null;
 var DAYS_IN_MONTH = 30;
 var firstDayMonBased = 0;
 var lineChartInstance = null, barChartInstance = null, plannedActualChartInstance = null;
@@ -90,6 +89,7 @@ function onLoggedIn() {
   buildCatPills();
   buildScheduleRows();
   initMonthYearPickers();
+  updateMonthLabel();
   loadAndRender();
 }
 
@@ -121,16 +121,21 @@ async function changeTheme(theme) {
   });
   renderEverything();
 }
+function updateMonthLabel() {
+  var el=document.getElementById('current-month-label'); if(!el)return;
+  var mNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  el.textContent=mNames[currentMonth-1]+' '+currentYear;
+}
 function changeMonth() {
   currentMonth = parseInt(document.getElementById('month-select').value);
   currentYear = parseInt(document.getElementById('year-select').value);
-  loadAndRender();
+  updateMonthLabel(); loadAndRender();
 }
 function jumpToCurrentMonth() {
   var now = new Date(); currentMonth = now.getMonth()+1; currentYear = now.getFullYear();
   document.getElementById('month-select').value = currentMonth;
   document.getElementById('year-select').value = currentYear;
-  loadAndRender();
+  updateMonthLabel(); loadAndRender();
 }
 function toggleExtraCredit(val) { extraCreditEnabled = val; renderEverything(); }
 function initMonthYearPickers() {
@@ -143,14 +148,70 @@ function initMonthYearPickers() {
   yearSel.value = currentYear;
 }
 function renderHabitList() {
-  var el = document.getElementById('habit-list'); el.innerHTML = '';
-  if (RAW_HABITS.length===0) { el.innerHTML='<p style="font-size:11px;color:var(--c-text-muted);">No habits yet. Add one above!</p>'; return; }
-  RAW_HABITS.forEach(function(h) {
-    var row = document.createElement('div'); row.className='habit-list-row';
-    row.innerHTML = '<span>'+h.icon+' '+h.name+'</span>';
-    var btn = document.createElement('button'); btn.className='habit-del-btn'; btn.textContent='🗑';
-    btn.onclick = function() { archiveHabit(h.id); };
-    row.appendChild(btn); el.appendChild(row);
+  var el=document.getElementById('habit-list'); el.innerHTML='';
+  if(RAW_HABITS.length===0){el.innerHTML='<p style="font-size:11px;color:var(--c-text-muted);">No habits yet. Add one above!</p>';return;}
+  var defaultCats=['General','Health','Fitness','Mindfulness','Learning','Productivity','Self-care','Finance','Social','Skincare'];
+  var catMap={};
+  defaultCats.forEach(function(c){catMap[c.toLowerCase()]=c;});
+  RAW_HABITS.forEach(function(h){if(h.category)catMap[h.category.toLowerCase()]=h.category;});
+  (customCategories||[]).forEach(function(c){catMap[c.toLowerCase()]=c;});
+  var cats=Object.values(catMap).sort();
+
+  RAW_HABITS.forEach(function(h){
+    var wrapper=document.createElement('div');
+    wrapper.style.cssText='border-bottom:1px solid var(--c-body-bg-alt);margin-bottom:2px;';
+    var row=document.createElement('div'); row.className='habit-list-row';
+    var nameSpan=document.createElement('span');
+    nameSpan.style.cssText='flex:1;font-size:12px;color:var(--c-text);';
+    nameSpan.textContent=h.icon+' '+h.name;
+    if(h.category){var catTag=document.createElement('span');catTag.textContent=' '+h.category;catTag.style.cssText='font-size:9px;color:var(--c-text-muted);opacity:0.7;';nameSpan.appendChild(catTag);}
+    var editBtn=document.createElement('button'); editBtn.className='habit-del-btn'; editBtn.textContent='✏️'; editBtn.title='Edit';
+    var delBtn=document.createElement('button'); delBtn.className='habit-del-btn'; delBtn.textContent='🗑'; delBtn.title='Delete';
+    delBtn.onclick=function(){archiveHabit(h.id);};
+    row.appendChild(nameSpan); row.appendChild(editBtn); row.appendChild(delBtn);
+    wrapper.appendChild(row);
+    var form=document.createElement('div');
+    form.style.cssText='display:none;padding:8px 4px 10px;background:var(--c-body-bg-alt);border-radius:var(--radius-sm);margin-top:2px;';
+    var currentCatLower=(h.category||'').toLowerCase();
+    var catOptions=cats.map(function(c){return '<option value="'+c+'"'+(c.toLowerCase()===currentCatLower?' selected':'')+'>'+c+'</option>';}).join('');
+    catOptions+='<option value="__custom__">+ Add new category…</option>';
+    form.innerHTML=[
+      '<div style="display:grid;grid-template-columns:40px 1fr;gap:6px;margin-bottom:6px;">',
+        '<input id="ei-'+h.id+'" type="text" value="'+h.icon+'" style="font-size:14px;text-align:center;background:var(--c-body-bg);border:1px solid var(--c-dark);color:var(--c-text);padding:4px;width:100%;box-sizing:border-box;">',
+        '<input id="en-'+h.id+'" type="text" value="'+h.name+'" style="font-size:12px;background:var(--c-body-bg);border:1px solid var(--c-dark);color:var(--c-text);padding:4px;width:100%;box-sizing:border-box;">',
+      '</div>',
+      '<select id="ec-'+h.id+'" style="width:100%;font-size:11px;background:var(--c-body-bg);border:1px solid var(--c-dark);color:var(--c-text);padding:4px;margin-bottom:6px;">'+catOptions+'</select>',
+      '<input id="ecc-'+h.id+'" type="text" placeholder="New category name..." style="display:none;width:100%;font-size:11px;background:var(--c-body-bg);border:1px solid var(--c-dark);color:var(--c-text);padding:4px;margin-bottom:6px;box-sizing:border-box;">',
+      '<div style="display:flex;gap:6px;">',
+        '<button id="es-'+h.id+'" style="flex:1;padding:5px;font-size:11px;background:var(--c-pink);color:var(--c-dark);border:none;cursor:pointer;font-weight:700;">Save</button>',
+        '<button id="esc-'+h.id+'" style="padding:5px 10px;font-size:11px;background:transparent;color:var(--c-text-muted);border:1px solid var(--c-dark);cursor:pointer;">Cancel</button>',
+      '</div>',
+      '<div id="em-'+h.id+'" style="font-size:10px;margin-top:4px;"></div>'
+    ].join('');
+    wrapper.appendChild(form); el.appendChild(wrapper);
+    editBtn.onclick=function(){var o=form.style.display==='block';form.style.display=o?'none':'block';editBtn.textContent=o?'✏️':'✕';};
+    form.querySelector('#ec-'+h.id).addEventListener('change',function(){
+      form.querySelector('#ecc-'+h.id).style.display=this.value==='__custom__'?'block':'none';
+    });
+    form.querySelector('#es-'+h.id).onclick=async function(){
+      var newIcon=form.querySelector('#ei-'+h.id).value.trim()||h.icon;
+      var newName=form.querySelector('#en-'+h.id).value.trim();
+      var selCat=form.querySelector('#ec-'+h.id).value;
+      var customVal=form.querySelector('#ecc-'+h.id).value.trim();
+      var rawCat=selCat==='__custom__'?customVal:selCat;
+      if(!rawCat)rawCat=h.category||'General';
+      var newCat=rawCat.charAt(0).toUpperCase()+rawCat.slice(1);
+      var msgEl=form.querySelector('#em-'+h.id);
+      if(!newName){msgEl.style.color='red';msgEl.textContent='Name required';return;}
+      msgEl.style.color='var(--c-text-muted)';msgEl.textContent='Saving...';
+      var {error}=await sb.from('habits').update({name:newName,icon:newIcon,category:newCat}).eq('id',h.id);
+      if(error){msgEl.style.color='red';msgEl.textContent='Error: '+error.message;return;}
+      if(!customCategories)customCategories=[];
+      if(!customCategories.map(function(c){return c.toLowerCase();}).includes(newCat.toLowerCase())){customCategories.push(newCat);buildCatPills();}
+      msgEl.style.color='green';msgEl.textContent='✅ Saved!';
+      setTimeout(function(){form.style.display='none';editBtn.textContent='✏️';loadHabits().then(renderEverything);},600);
+    };
+    form.querySelector('#esc-'+h.id).onclick=function(){form.style.display='none';editBtn.textContent='✏️';};
   });
 }
 function refreshCharts() {
@@ -221,49 +282,68 @@ function buildDayToggles(containerId) {
 }
 function buildScheduleRows() { buildDayToggles('fixed-days-row'); buildDayToggles('flex-days-row'); }
 
+function handleFreqType(val) {
+  document.getElementById('freq-days-section').style.display=val==='days'?'block':'none';
+  document.getElementById('freq-monthly-section').style.display=val==='monthly'?'block':'none';
+  document.getElementById('freq-interval-section').style.display=val==='interval'?'block':'none';
+}
+
 async function submitAddHabit() {
   var name = document.getElementById('habit-name').value.trim();
   var icon = document.getElementById('habit-icon').value.trim() || '✅';
   var category = document.getElementById('habit-category-select').value || 'General';
   if (category==='__custom__') category='General';
   var timesPerDay = parseInt(document.getElementById('habit-times-per-day').value)||1;
-  var flexNeeded = parseInt(document.getElementById('habit-flex-needed').value)||0;
+  var freqType = document.getElementById('habit-freq-type').value;
   if (!name) return showMsg('add-habit-msg','Please enter a habit name.','error');
-
-  var fixedDays=[], flexDays=[];
-  document.querySelectorAll('#fixed-days-row .day-toggle.selected').forEach(function(btn){fixedDays.push(parseInt(btn.dataset.index));});
-  document.querySelectorAll('#flex-days-row .day-toggle.selected').forEach(function(btn){flexDays.push(parseInt(btn.dataset.index));});
-
-  // Debug: show what days were picked
-  showMsg('add-habit-msg','Fixed days: ['+fixedDays+'] Flex days: ['+flexDays+'] flex needed: '+flexNeeded,'info');
-
-  if (fixedDays.length===0 && flexDays.length===0) return showMsg('add-habit-msg','Select at least one day.','error');
-  if (flexDays.length>0 && flexNeeded===0) return showMsg('add-habit-msg','If you picked flexible days, set how many per week are needed.','error');
 
   showMsg('add-habit-msg','Saving habit...','info');
   var { data, error } = await sb.from('habits').insert({ user_id:currentUser.id, name, icon, category, color:'auto' }).select();
   if (error) return showMsg('add-habit-msg','❌ habits insert error: '+error.message,'error');
-
   var habitId = data[0].id;
   var schedRows = [];
-  fixedDays.forEach(function(dow){ schedRows.push({habit_id:habitId,day_of_week:dow,times_required:timesPerDay,is_flexible:false}); });
-  flexDays.forEach(function(dow){ schedRows.push({habit_id:habitId,day_of_week:dow,times_required:timesPerDay,is_flexible:true}); });
-  if (flexNeeded>0&&flexDays.length>0) schedRows.push({habit_id:habitId,day_of_week:7,times_required:flexNeeded,is_flexible:true});
+
+  if(freqType==='days'){
+    var fixedDays=[], flexDays=[];
+    var flexNeeded = parseInt(document.getElementById('habit-flex-needed').value)||0;
+    document.querySelectorAll('#fixed-days-row .day-toggle.selected').forEach(function(btn){fixedDays.push(parseInt(btn.dataset.index));});
+    document.querySelectorAll('#flex-days-row .day-toggle.selected').forEach(function(btn){flexDays.push(parseInt(btn.dataset.index));});
+    showMsg('add-habit-msg','Fixed days: ['+fixedDays+'] Flex days: ['+flexDays+']','info');
+    if(fixedDays.length===0&&flexDays.length===0) return showMsg('add-habit-msg','Select at least one day.','error');
+    if(flexDays.length>0&&flexNeeded===0) return showMsg('add-habit-msg','Set how many flexible days are needed per week.','error');
+    fixedDays.forEach(function(dow){ schedRows.push({habit_id:habitId,day_of_week:dow,times_required:timesPerDay,is_flexible:false}); });
+    flexDays.forEach(function(dow){ schedRows.push({habit_id:habitId,day_of_week:dow,times_required:timesPerDay,is_flexible:true}); });
+    if(flexNeeded>0&&flexDays.length>0) schedRows.push({habit_id:habitId,day_of_week:7,times_required:flexNeeded,is_flexible:true});
+
+  } else if(freqType==='monthly'){
+    // X times per month — store as all 7 days flexible
+    var timesMonth = parseInt(document.getElementById('habit-times-month').value)||4;
+    for(var dow=0;dow<7;dow++){ schedRows.push({habit_id:habitId,day_of_week:dow,times_required:timesPerDay,is_flexible:true}); }
+    // Store monthly target in day_of_week=8 as a sentinel
+    schedRows.push({habit_id:habitId,day_of_week:8,times_required:timesMonth,is_flexible:true});
+
+  } else if(freqType==='interval'){
+    // Every X days — treat all days as flexible
+    var intervalDays = parseInt(document.getElementById('habit-interval-days').value)||2;
+    for(var dow=0;dow<7;dow++){ schedRows.push({habit_id:habitId,day_of_week:dow,times_required:timesPerDay,is_flexible:true}); }
+    // Store interval in day_of_week=9 as a sentinel
+    schedRows.push({habit_id:habitId,day_of_week:9,times_required:intervalDays,is_flexible:true});
+  }
 
   if (schedRows.length>0) {
     var { error: sErr } = await sb.from('habit_schedule').insert(schedRows);
     if (sErr) return showMsg('add-habit-msg','❌ schedule insert error: '+sErr.message,'error');
-    showMsg('add-habit-msg','✅ Saved '+schedRows.length+' schedule rows for habit '+habitId,'success');
-  } else {
-    showMsg('add-habit-msg','⚠️ No schedule rows to save — habit created with no schedule','info');
   }
 
   document.getElementById('habit-name').value='';
   document.getElementById('habit-times-per-day').value='1';
   document.getElementById('habit-flex-needed').value='0';
+  document.getElementById('habit-times-month').value='4';
+  document.getElementById('habit-interval-days').value='2';
+  document.getElementById('habit-freq-type').value='days';
+  handleFreqType('days');
   document.querySelectorAll('.day-toggle.selected').forEach(function(b){b.classList.remove('selected');});
-
-  setTimeout(function(){ showMsg('add-habit-msg','✅ Added: '+icon+' '+name,'success'); }, 1500);
+  setTimeout(function(){ showMsg('add-habit-msg','✅ Added: '+icon+' '+name,'success'); }, 600);
   await loadHabits(); renderEverything();
 }
 async function archiveHabit(habitId) {
@@ -501,8 +581,36 @@ function renderGrid() {
       // Theme-aware checkbox style
       applyCheckboxThemeStyle(box, isFlexible);
 
-      if(timesRequired===0){box.style.opacity='0.2';box.style.cursor='default';}
-      else {
+      if(timesRequired===0){
+        // Unscheduled — dim but clickable for bonus credit
+        applyBoxVisual(box,timesLogged,1,b.week,true);
+        box.style.opacity=timesLogged>0?'1':'0.3';
+        box.style.cursor='pointer';
+        box.addEventListener('click',(function(habitId,date,weekNum,habitIdx,dayNum){
+          return function(){
+            if(habitId===-1)return;
+            var current=completionState[String(habitId)][dayNum]||0;
+            var next=current>=1?0:1;
+            completionState[String(habitId)][dayNum]=next;
+            logsLookup[String(habitId)]=logsLookup[String(habitId)]||{};
+            logsLookup[String(habitId)][date]=next;
+            if(next>0){
+              box.style.background=weekColors[weekNum]||'#8C5FD9';
+              box.style.color=weekTextColors[weekNum]||'#fff';
+              box.textContent='\u2713';
+              box.style.fontSize='11px';
+              box.style.fontWeight='700';
+              box.style.border='1.5px dashed '+(weekColors[weekNum]||'#8C5FD9');
+              box.style.opacity='1';
+            } else {
+              applyBoxVisual(box,0,1,weekNum,true);
+              box.style.opacity='0.3';
+            }
+            updateProgressCell(String(habitId),habitIdx);
+            saveLog(habitId,date,next);
+          };
+        })(h.id,isoDate,b.week,hi,b.day));
+      } else {
         applyBoxVisual(box,timesLogged,timesRequired,b.week,isFlexible);
         box.addEventListener('click',(function(habitId,date,reqTimes,weekNum,habitIdx,dayNum,flex){
           return function(){
@@ -810,7 +918,7 @@ function renderPlannedActualChart() {
 // ALL-TIME CHARTS
 // ============================================
 function renderAllTimeSection() {
-  renderFullHeatmap(); renderActualVsIntended(); renderRadar(); renderStreaks(); renderBestMonth(); renderHabitAge();
+  renderFullHeatmap(); renderActualVsIntended(); renderStreaks(); renderBestMonth(); renderHabitAge();
 }
 
 function getWeekDateRange(weekNum, year) {
@@ -963,28 +1071,6 @@ function renderActualVsIntended() {
 }
 var months_short=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-function renderRadar() {
-  if(radarChartInstance)radarChartInstance.destroy();
-  var catMap={},catAllTime={};
-  // This month
-  RAW_HABITS.forEach(function(h){ var hid=String(h.id),cat=h.category||'General'; if(!catMap[cat])catMap[cat]=0; for(var d=1;d<=DAYS_IN_MONTH;d++){var iso=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(d).padStart(2,'0');catMap[cat]+=(logsLookup[hid]&&logsLookup[hid][iso])||0;} });
-  // All time
-  RAW_HABITS.forEach(function(h){ var hid=String(h.id),cat=h.category||'General'; if(!catAllTime[cat])catAllTime[cat]=0; Object.values(allTimeLogs[hid]||{}).forEach(function(v){catAllTime[cat]+=v;}); });
-  var cats=Object.keys(Object.assign({},catMap,catAllTime));
-  if(cats.length===0)return;
-  var maxM=Math.max(1,Math.max.apply(null,Object.values(catMap).concat([0])));
-  var maxA=Math.max(1,Math.max.apply(null,Object.values(catAllTime).concat([0])));
-  var pink=getThemeColor('--c-pink'), purple=getThemeColor('--c-purple');
-  radarChartInstance=new Chart(document.getElementById('radarChart'),{
-    type:'radar',
-    data:{labels:cats,datasets:[
-      {label:'This month',data:cats.map(function(c){return Math.round(((catMap[c]||0)/maxM)*100);}),backgroundColor:hexToRgba(pink,0.15),borderColor:pink,borderWidth:2,pointBackgroundColor:pink,pointRadius:3},
-      {label:'All-time avg',data:cats.map(function(c){return Math.round(((catAllTime[c]||0)/maxA)*100);}),backgroundColor:hexToRgba(purple,0.08),borderColor:purple,borderWidth:1.5,borderDash:[4,4],pointBackgroundColor:purple,pointRadius:2}
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{r:{ticks:{display:false},pointLabels:{font:{size:10}},min:0,max:100}}}
-  });
-}
-
 function renderStreaks() {
   var el=document.getElementById('streaks-container'); if(!el)return; el.innerHTML='';
   if(RAW_HABITS.length===0){el.innerHTML='<p class="cell-subtitle">No habits yet</p>';return;}
@@ -1121,7 +1207,6 @@ function renderEverything() {
   if(barChartInstance)barChartInstance.destroy();
   if(plannedActualChartInstance)plannedActualChartInstance.destroy();
   if(allTimeScatterInstance)allTimeScatterInstance.destroy();
-  if(radarChartInstance)radarChartInstance.destroy();
   if(actualVsIntendedInstance)actualVsIntendedInstance.destroy();
   renderTopHabits(); renderDonuts(); renderCharts(); renderCorrelations(); renderGrid();
   renderMonthProgress(); renderWeeklyTasks(); renderPlannedActualChart(); renderAllTimeSection();
