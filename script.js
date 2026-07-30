@@ -286,6 +286,26 @@ function handleFreqType(val) {
   document.getElementById('freq-days-section').style.display=val==='days'?'block':'none';
   document.getElementById('freq-monthly-section').style.display=val==='monthly'?'block':'none';
   document.getElementById('freq-interval-section').style.display=val==='interval'?'block':'none';
+  if(val==='interval') populateStartDateDropdowns();
+}
+
+function populateStartDateDropdowns() {
+  // Day dropdown 1-31
+  var dayEl=document.getElementById('habit-start-day'); if(!dayEl)return;
+  if(dayEl.options.length===0){
+    for(var d=1;d<=31;d++){ var o=document.createElement('option'); o.value=d; o.textContent=d; dayEl.appendChild(o); }
+  }
+  // Year dropdown current year ± 2
+  var yearEl=document.getElementById('habit-start-year'); if(!yearEl)return;
+  if(yearEl.options.length===0){
+    var y=new Date().getFullYear();
+    for(var yr=y-2;yr<=y+1;yr++){ var o=document.createElement('option'); o.value=yr; o.textContent=yr; yearEl.appendChild(o); }
+  }
+  // Default to today
+  var now=new Date();
+  document.getElementById('habit-start-month').value=now.getMonth()+1;
+  document.getElementById('habit-start-day').value=now.getDate();
+  document.getElementById('habit-start-year').value=now.getFullYear();
 }
 
 async function submitAddHabit() {
@@ -316,18 +336,18 @@ async function submitAddHabit() {
     if(flexNeeded>0&&flexDays.length>0) schedRows.push({habit_id:habitId,day_of_week:7,times_required:flexNeeded,is_flexible:true});
 
   } else if(freqType==='monthly'){
-    // X times per month — store as all 7 days flexible
     var timesMonth = parseInt(document.getElementById('habit-times-month').value)||4;
-    for(var dow=0;dow<7;dow++){ schedRows.push({habit_id:habitId,day_of_week:dow,times_required:timesPerDay,is_flexible:true}); }
-    // Store monthly target in day_of_week=8 as a sentinel
-    schedRows.push({habit_id:habitId,day_of_week:8,times_required:timesMonth,is_flexible:true});
+    var { error: uErr } = await sb.from('habits').update({freq_type:'monthly',freq_value:timesMonth}).eq('id',habitId);
+    if(uErr) return showMsg('add-habit-msg','❌ freq update error: '+uErr.message,'error');
 
   } else if(freqType==='interval'){
-    // Every X days — treat all days as flexible
     var intervalDays = parseInt(document.getElementById('habit-interval-days').value)||2;
-    for(var dow=0;dow<7;dow++){ schedRows.push({habit_id:habitId,day_of_week:dow,times_required:timesPerDay,is_flexible:true}); }
-    // Store interval in day_of_week=9 as a sentinel
-    schedRows.push({habit_id:habitId,day_of_week:9,times_required:intervalDays,is_flexible:true});
+    var sm=document.getElementById('habit-start-month').value;
+    var sd=document.getElementById('habit-start-day').value;
+    var sy=document.getElementById('habit-start-year').value;
+    var startDate=sy+'-'+String(sm).padStart(2,'0')+'-'+String(sd).padStart(2,'0');
+    var { error: uErr } = await sb.from('habits').update({freq_type:'interval',freq_value:intervalDays,start_date:startDate}).eq('id',habitId);
+    if(uErr) return showMsg('add-habit-msg','❌ freq update error: '+uErr.message,'error');
   }
 
   if (schedRows.length>0) {
@@ -450,8 +470,8 @@ function buildWeekColors() {
 }
 var habits=[];
 function buildHabits() {
-  if (RAW_HABITS.length>0) { habits=RAW_HABITS.map(function(h,i){return{id:h.id,name:h.name,icon:h.icon||'✅',category:h.category||'General',colorClass:colorForHabitIndex(i)};}); }
-  else { habits=[{id:-1,name:'Add your first habit via ⚙ Settings',icon:'👆',category:'',colorClass:colorForHabitIndex(0)}]; }
+  if (RAW_HABITS.length>0) { habits=RAW_HABITS.map(function(h,i){return{id:h.id,name:h.name,icon:h.icon||'✅',category:h.category||'General',colorClass:colorForHabitIndex(i),freq_type:h.freq_type||'days',freq_value:h.freq_value||null,start_date:h.start_date||null};}); }
+  else { habits=[{id:-1,name:'Add your first habit via ⚙ Settings',icon:'👆',category:'',colorClass:colorForHabitIndex(0),freq_type:'days',freq_value:null,start_date:null}]; }
 }
 
 // ============================================
@@ -571,9 +591,25 @@ function renderGrid() {
       var cell=document.createElement('td'), box=document.createElement('div'); box.className='day-box';
       var isoDate=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(b.day).padStart(2,'0');
       var dow=(firstDayMonBased+b.day-1)%7, sched=scheduleLookup[hid]&&scheduleLookup[hid][dow];
-      var timesRequired=sched?sched.required:0;
+      var timesRequired, isFlexible;
+
+      if(h.freq_type==='monthly'){
+        // All days flexible/optional, clickable
+        timesRequired=1; isFlexible=true;
+
+      } else if(h.freq_type==='interval' && h.start_date && h.freq_value){
+        // Calculate if this calendar day is an "on" day
+        var cellDate=new Date(currentYear,currentMonth-1,b.day);
+        var startDate=new Date(h.start_date);
+        // Strip time
+        cellDate.setHours(0,0,0,0); startDate.setHours(0,0,0,0);
+        var daysSince=Math.round((cellDate-startDate)/86400000);
+        var isOnDay=(daysSince>=0 && daysSince%h.freq_value===0);
+        timesRequired=isOnDay?1:0;
+        isFlexible=false;
+
+      }
       var timesLogged=(logsLookup[hid]&&logsLookup[hid][isoDate])||0;
-      var isFlexible=sched?sched.flexible:true;
       // Stamp the box so CSS can target required vs flexible directly
       box.dataset.required = (!isFlexible && timesRequired > 0) ? 'true' : 'false';
       completionState[hid][b.day]=timesLogged;
@@ -732,12 +768,37 @@ var _ctxTarget=null;
 function updateProgressCell(hid, hi) {
   var cell=document.getElementById('progress-cell-'+hi); if(!cell)return;
   var h=habits[hi], totalDone=0, totalRequired=0;
-  for(var d=1;d<=DAYS_IN_MONTH;d++){
-    var dow=(firstDayMonBased+d-1)%7, sched=scheduleLookup[hid]&&scheduleLookup[hid][dow];
-    if(sched&&sched.required>0){ totalRequired+=sched.required; var iso=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(d).padStart(2,'0'); totalDone+=(logsLookup[hid]&&logsLookup[hid][iso])||0; }
+
+  if(h.freq_type==='monthly'&&h.freq_value){
+    // Progress = total logged this month / required times per month
+    totalRequired=h.freq_value;
+    Object.keys(logsLookup[hid]||{}).forEach(function(iso){
+      if(iso.startsWith(currentYear+'-'+String(currentMonth).padStart(2,'0')))
+        totalDone+=(logsLookup[hid][iso]||0);
+    });
+
+  } else if(h.freq_type==='interval'&&h.freq_value&&h.start_date){
+    // Count on-days in this month
+    var startDate=new Date(h.start_date); startDate.setHours(0,0,0,0);
+    for(var d=1;d<=DAYS_IN_MONTH;d++){
+      var cellDate=new Date(currentYear,currentMonth-1,d); cellDate.setHours(0,0,0,0);
+      var daysSince=Math.round((cellDate-startDate)/86400000);
+      if(daysSince>=0&&daysSince%h.freq_value===0){
+        totalRequired++;
+        var iso=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+        totalDone+=(logsLookup[hid]&&logsLookup[hid][iso])||0;
+      }
+    }
+
+  } else {
+    for(var d=1;d<=DAYS_IN_MONTH;d++){
+      var dow=(firstDayMonBased+d-1)%7, sched=scheduleLookup[hid]&&scheduleLookup[hid][dow];
+      if(sched&&sched.required>0){ totalRequired+=sched.required; var iso=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(d).padStart(2,'0'); totalDone+=(logsLookup[hid]&&logsLookup[hid][iso])||0; }
+    }
+    if(totalRequired===0){ totalDone=Object.values(logsLookup[hid]||{}).reduce(function(a,b){return a+b;},0); totalRequired=DAYS_IN_MONTH; }
   }
-  if(totalRequired===0){ totalDone=Object.values(logsLookup[hid]||{}).reduce(function(a,b){return a+b;},0); totalRequired=DAYS_IN_MONTH; }
-  var pct=Math.round((totalDone/totalRequired)*100);
+
+  var pct=Math.round((totalDone/Math.max(1,totalRequired))*100);
   if(!extraCreditEnabled)pct=Math.min(pct,100);
   cell.innerHTML='<div style="display:flex;justify-content:flex-end;font-size:11px;margin-bottom:3px;"><span style="color:var(--c-text-muted);font-weight:600;">'+pct+'%</span></div><div class="progress-track"><div style="background:'+h.colorClass+';width:'+Math.min(pct,100)+'%;height:100%;"></div></div>';
 }
