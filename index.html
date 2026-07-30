@@ -130,21 +130,8 @@
       <p class="cell-subtitle" style="margin-top:4px;">The app will show all days as optional — track on any day you choose.</p>
     </div>
     <div id="freq-interval-section" style="display:none;">
-      <div class="field-group" style="margin-top:10px;"><label>Every <input type="number" id="habit-interval-days" value="2" min="1" max="365" style="width:50px;margin:0 4px;"> days</label></div>
-      <div class="field-group" style="margin-top:6px;">
-        <label>Starting from</label>
-        <div style="display:flex;gap:4px;flex-wrap:wrap;">
-          <select id="habit-start-month" class="settings-select" style="flex:2;">
-            <option value="1">Jan</option><option value="2">Feb</option><option value="3">Mar</option>
-            <option value="4">Apr</option><option value="5">May</option><option value="6">Jun</option>
-            <option value="7">Jul</option><option value="8">Aug</option><option value="9">Sep</option>
-            <option value="10">Oct</option><option value="11">Nov</option><option value="12">Dec</option>
-          </select>
-          <select id="habit-start-day" class="settings-select" style="flex:1;"></select>
-          <select id="habit-start-year" class="settings-select" style="flex:1;"></select>
-        </div>
-      </div>
-      <p class="cell-subtitle" style="margin-top:4px;">The app counts days since this date and marks every Nth day as required.</p>
+      <div class="field-group" style="margin-top:10px;"><label>Every <input type="number" id="habit-interval-days" value="2" min="1" max="30" style="width:50px;margin:0 4px;"> days</label></div>
+      <p class="cell-subtitle" style="margin-top:4px;">e.g. Every 3 days = roughly 10 times/month.</p>
     </div>
     <button class="settings-btn" onclick="submitAddHabit()">+ Add Habit</button>
     <div id="add-habit-msg" class="auth-msg"></div>
