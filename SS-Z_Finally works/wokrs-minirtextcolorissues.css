@@ -328,20 +328,6 @@ body[data-theme="classic"] {
   --radius-outer: 3px;
   --radius-inner: 2px;
   --radius-sm: 2px;
-  
-  /* Week-specific BACKGROUND colors for donuts/checkboxes (distinct) */
-  --week-1-bg: #D4A574;
-  --week-2-bg: #C9965A;
-  --week-3-bg: #B89070;
-  --week-4-bg: #D9A642;
-  --week-5-bg: #A08560;
-  
-  /* Week-specific TEXT colors (readable on backgrounds) */
-  --week-1-text: #2C2420;
-  --week-2-text: #2C2420;
-  --week-3-text: #F5EFE5;
-  --week-4-text: #2C2420;
-  --week-5-text: #F5EFE5;
 }
 body[data-theme="classic"] .settings-label { color: #D4B896; }
 
@@ -972,6 +958,3 @@ body[data-theme="vaporwave"] #version-text { color: #8C5FD9 !important; }
 body[data-theme="classic"] #version-text { color: #D4B896 !important; }
 body[data-theme="basic"] #version-text { color: #60A5FA !important; }
 body[data-theme="gothic"] #version-text { color: #FFB3B3 !important; }
-
-/* Classic theme donation section text lighter */
-body[data-theme="classic"] .settings-section:nth-last-of-type(1) .cell-subtitle { color: #D4B896 !important; }

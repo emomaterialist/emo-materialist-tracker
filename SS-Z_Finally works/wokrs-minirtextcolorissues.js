@@ -473,7 +473,6 @@ function buildWeekColors() {
   } else if(theme==='gothic'){
     weekTextColors=['#FFB3B3','#FFB3B3','#FFB3B3','#FFB3B3','#FFB3B3'];
   } else if(theme==='classic'){
-    weekColors=['var(--week-1-bg)','var(--week-2-bg)','var(--week-3-bg)','var(--week-4-bg)','var(--week-5-bg)'];
     weekTextColors=['#2C2420','#2C2420','#2C2420','#2C2420','#2C2420'];
   } else if(theme==='superpink'){
     weekTextColors=['#FFF','#FFF','#FFF','#FFF','#C2446E'];
@@ -483,55 +482,6 @@ function buildWeekColors() {
     weekTextColors=['#FFF','#FFF','#FFF','#FFF','#FFF'];
   }
 }
-
-// ============ DEBUG SYSTEM ============
-function debugWeekColors() {
-  var theme = document.body.getAttribute('data-theme') || 'vaporwave';
-  var computedStyle = getComputedStyle(document.body);
-  
-  console.log('=== DEBUG WEEK COLORS ===');
-  console.log('Current Theme:', theme);
-  console.log('');
-  
-  // Check CSS variables
-  console.log('CSS Variables:');
-  for(var i=1; i<=5; i++){
-    var varName = '--week-'+i+'-color';
-    var value = computedStyle.getPropertyValue(varName).trim();
-    console.log(varName + ':', value || 'NOT FOUND');
-  }
-  console.log('');
-  
-  // Check actual donut colors
-  console.log('Donut Text Colors (SVG):');
-  document.querySelectorAll('.donut-row svg text').forEach(function(el, i){
-    var fill = el.getAttribute('fill');
-    console.log('Week ' + (i+1) + ' fill:', fill);
-  });
-  console.log('');
-  
-  // Check donut labels
-  console.log('Donut Labels (Wk X):');
-  document.querySelectorAll('.donut-row p').forEach(function(el, i){
-    var color = window.getComputedStyle(el).color;
-    console.log('Week ' + (i+1) + ' color:', color);
-  });
-  console.log('');
-  
-  // Check week headers
-  console.log('Weekly Table Headers:');
-  document.querySelectorAll('.weekly-tasks th').forEach(function(el, i){
-    var color = window.getComputedStyle(el).color;
-    console.log('Week ' + (i+1) + ' color:', color);
-  });
-}
-
-// Call debug on page load
-setTimeout(function(){
-  debugWeekColors();
-  console.log('Type debugWeekColors() in console to re-run anytime');
-}, 1000);
-
 var habits=[];
 function buildHabits() {
   if (RAW_HABITS.length>0) { habits=RAW_HABITS.map(function(h,i){return{id:h.id,name:h.name,icon:h.icon||'✅',category:h.category||'General',colorClass:colorForHabitIndex(i),freq_type:h.freq_type||'days',freq_value:h.freq_value||null,start_date:h.start_date||null};}); }
