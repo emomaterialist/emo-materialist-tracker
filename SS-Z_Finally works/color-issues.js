@@ -1376,33 +1376,6 @@ function checkForUpdate() {
     }
   },800);
 }
-// ============ EMOJI PICKER ============
-var HABIT_EMOJIS = ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','💕','💖','💗','💘','💝','💞','💓','💕','✅','💪','🏋️','🤸','🧘','🚴','🏃','🏊','🧗','🤾','⛹️','🤺','🏇','🤼','📚','📖','📝','✏️','📕','📗','📘','📙','📔','🥗','🥑','🍎','🥕','🥦','🍇','🥤','😴','🛌','💤','🌙','⭐','🎨','🎵','🎭','🎪','🎬','🎸','🎹','🎺','🎻','💻','📱','⌨️','🖱️','💼','📊','📈','🏅','🥇','🥈','🥉','🏆','⭐','🌟','💎','👑','🎯','☀️','🌈','⚡','🔥','💧','🌊','🍃','🌻','🌸','🌹','🌺','🎁','🎀','🎊','🎉','🦋','🐝','🐢','🦁','🐯','🦊'];
-
-function initEmojiPicker() {
-  var emojiGrid = document.getElementById('emoji-grid');
-  var modal = document.getElementById('emoji-picker-modal');
-  var btn = document.getElementById('emoji-picker-btn');
-  var input = document.getElementById('habit-icon');
-  
-  HABIT_EMOJIS.forEach(function(emoji){
-    var span = document.createElement('span');
-    span.textContent = emoji;
-    span.onclick = function(){
-      input.value = emoji;
-      btn.textContent = emoji + ' Choose Emoji';
-      modal.style.display = 'none';
-    };
-    emojiGrid.appendChild(span);
-  });
-  
-  btn.onclick = function(){ modal.style.display = 'flex'; };
-  modal.onclick = function(e){ if(e.target === modal) modal.style.display = 'none'; };
-}
-
-// Call on page load
-setTimeout(function(){ initEmojiPicker(); }, 500);
-
 
 // ============================================
 // INIT

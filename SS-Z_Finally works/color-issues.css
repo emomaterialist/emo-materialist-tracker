@@ -975,25 +975,3 @@ body[data-theme="gothic"] #version-text { color: #FFB3B3 !important; }
 
 /* Classic theme donation section text lighter */
 body[data-theme="classic"] .settings-section:nth-last-of-type(1) .cell-subtitle { color: #D4B896 !important; }
-
-/* Basic theme - day toggle text lighter */
-body[data-theme="basic"] .day-toggle { color: #60A5FA !important; }
-
-/* Basic theme - donation section text lighter */
-body[data-theme="basic"] .settings-section:nth-last-of-type(1) .cell-subtitle { color: #60A5FA !important; }
-
-/* Gothic theme - category buttons and text lighter */
-body[data-theme="gothic"] .category-btn { color: #FFB3B3 !important; }
-body[data-theme="gothic"] .settings-section button { color: #FFB3B3 !important; }
-body[data-theme="gothic"] .settings-section label { color: #FFB3B3 !important; }
-
-/* Gothic theme - day toggle labels lighter */
-body[data-theme="gothic"] .day-toggle-label { color: #FFB3B3 !important; }
-
-/* Gothic theme - force all text readable (nuclear option) */
-body[data-theme="gothic"] { --c-text-muted: #FFB3B3 !important; }
-body[data-theme="gothic"] button { color: #FFB3B3 !important; }
-body[data-theme="gothic"] .field-group label { color: #FFB3B3 !important; }
-
-/* Gothic theme - donation text lighter */
-body[data-theme="gothic"] .settings-section:nth-last-of-type(1) .cell-subtitle { color: #FFB3B3 !important; }
