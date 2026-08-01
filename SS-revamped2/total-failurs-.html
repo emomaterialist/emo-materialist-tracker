@@ -103,9 +103,9 @@
         <option value="Social">Social</option>
         <option value="__custom__">+ Add new category…</option>
       </select>
-      <div id="custom-cat-row" style="display:none;margin-top:6px;gap:6px;align-items:center;flex-wrap:nowrap;flex:1;">
-        <input type="text" id="custom-cat-input" placeholder="New category name" style="flex:1;min-width:0;padding:6px 8px;border:2px solid var(--c-pink);border-radius:var(--radius-sm);background:#fff;color:var(--c-dark);font-size:12px;font-family:inherit;">
-        <button class="settings-btn" style="padding:4px 8px;margin:0;white-space:nowrap;flex-shrink:0;" onclick="confirmCustomCategory()">Add</button>
+      <div id="custom-cat-row" style="display:none;margin-top:6px;gap:6px;align-items:center;flex-wrap:nowrap;">
+        <input type="text" id="custom-cat-input" class="settings-select" placeholder="New category name" style="flex:1;min-width:0;">
+        <button class="settings-btn" style="padding:4px 8px;margin:0;white-space:nowrap;" onclick="confirmCustomCategory()">Add</button>
       </div>
       <div id="cat-pills-row" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;"></div>
     </div>
@@ -152,18 +152,6 @@
   <div class="settings-section">
     <p class="settings-label">Your Habits</p>
     <div id="habit-list"></div>
-  </div>
-  <div class="settings-section">
-    <p class="settings-label">💿 App Updates</p>
-    <p class="cell-subtitle">Version 2.0 - Get the latest features & bug fixes</p>
-    <button class="settings-btn" onclick="checkForUpdate()" style="background:linear-gradient(180deg,#00FF00,#00DD00);color:#000;font-weight:600;margin-top:6px;">⬆ Update Now</button>
-    <button class="settings-btn" id="revert-btn" onclick="revertUpdate()" style="display:none;background:linear-gradient(180deg,#FF8800,#FF6600);color:#FFF;margin-top:4px;">↩ Revert Update</button>
-    <div id="update-msg" class="auth-msg" style="margin-top:6px;"></div>
-  </div>
-  <div class="settings-section">
-    <p class="settings-label">❤️ Support This App</p>
-    <p class="cell-subtitle">Love the tracker? Thanks! <3 !</p>
-    <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script><script type='text/javascript'>kofiwidget2.init('Support me on Ko-fi', '#72a4f2', 'R4Q3248OQQ');kofiwidget2.draw();</script>
   </div>
 </div>
 

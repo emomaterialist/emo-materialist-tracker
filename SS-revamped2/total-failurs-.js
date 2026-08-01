@@ -290,15 +290,18 @@ function handleFreqType(val) {
 }
 
 function populateStartDateDropdowns() {
+  // Day dropdown 1-31
   var dayEl=document.getElementById('habit-start-day'); if(!dayEl)return;
   if(dayEl.options.length===0){
     for(var d=1;d<=31;d++){ var o=document.createElement('option'); o.value=d; o.textContent=d; dayEl.appendChild(o); }
   }
+  // Year dropdown current year ± 2
   var yearEl=document.getElementById('habit-start-year'); if(!yearEl)return;
   if(yearEl.options.length===0){
     var y=new Date().getFullYear();
     for(var yr=y-2;yr<=y+1;yr++){ var o=document.createElement('option'); o.value=yr; o.textContent=yr; yearEl.appendChild(o); }
   }
+  // Default to today
   var now=new Date();
   document.getElementById('habit-start-month').value=now.getMonth()+1;
   document.getElementById('habit-start-day').value=now.getDate();
@@ -325,10 +328,12 @@ async function submitAddHabit() {
     var flexNeeded = parseInt(document.getElementById('habit-flex-needed').value)||0;
     document.querySelectorAll('#fixed-days-row .day-toggle.selected').forEach(function(btn){fixedDays.push(parseInt(btn.dataset.index));});
     document.querySelectorAll('#flex-days-row .day-toggle.selected').forEach(function(btn){flexDays.push(parseInt(btn.dataset.index));});
+    showMsg('add-habit-msg','Fixed days: ['+fixedDays+'] Flex days: ['+flexDays+']','info');
     if(fixedDays.length===0&&flexDays.length===0) return showMsg('add-habit-msg','Select at least one day.','error');
     if(flexDays.length>0&&flexNeeded===0) return showMsg('add-habit-msg','Set how many flexible days are needed per week.','error');
     fixedDays.forEach(function(dow){ schedRows.push({habit_id:habitId,day_of_week:dow,times_required:timesPerDay,is_flexible:false}); });
     flexDays.forEach(function(dow){ schedRows.push({habit_id:habitId,day_of_week:dow,times_required:timesPerDay,is_flexible:true}); });
+    if(flexNeeded>0&&flexDays.length>0) schedRows.push({habit_id:habitId,day_of_week:7,times_required:flexNeeded,is_flexible:true});
 
   } else if(freqType==='monthly'){
     var timesMonth = parseInt(document.getElementById('habit-times-month').value)||4;
@@ -462,25 +467,6 @@ function buildWeekColors() {
   weekColors=base;
   weekFillColors=base.map(function(c){return lightenColor(c,0.6);});
   weekTextColors=base.map(function(hex){ var rgb=hexToRgb(hex); if(!rgb)return'#fff'; var b=(rgb.r*299+rgb.g*587+rgb.b*114)/1000; return b>128?darkenColor(hex,0.55):lightenColor(hex,0.85); });
-  
-  // Theme-specific text color overrides for donut SVG percentage text
-  if(theme==='vaporwave'){
-    weekTextColors=['#2B1B40','#2B1B40','#2B1B40','#2B1B40','#2B1B40'];
-  } else if(theme==='vaporwave2'){
-    weekTextColors=['#FFF','#FFF','#FFF','#FFF','#FFF'];
-  } else if(theme==='basic'){
-    weekTextColors=['#1F2937','#1F2937','#1F2937','#1F2937','#1F2937'];
-  } else if(theme==='gothic'){
-    weekTextColors=['#FFB3B3','#FFB3B3','#FFB3B3','#FFB3B3','#FFB3B3'];
-  } else if(theme==='classic'){
-    weekTextColors=['#2C2420','#2C2420','#2C2420','#2C2420','#2C2420'];
-  } else if(theme==='superpink'){
-    weekTextColors=['#FFF','#FFF','#FFF','#FFF','#C2446E'];
-  } else if(theme==='retro95'){
-    weekTextColors=['#000000','#000000','#000000','#000000','#000000'];
-  } else if(theme==='tron'){
-    weekTextColors=['#FFF','#FFF','#FFF','#FFF','#FFF'];
-  }
 }
 var habits=[];
 function buildHabits() {
@@ -511,19 +497,6 @@ function getWeekCount(){return Math.ceil(DAYS_IN_MONTH/7);}
 function renderDonuts() {
   var el=document.getElementById('donut-row'); el.innerHTML='';
   var numWeeks=getWeekCount(), radius=26, circ=2*Math.PI*radius;
-  var currentTheme=document.body.getAttribute('data-theme')||'vaporwave';
-  var donutLabelColors={
-    'basic':'#1F2937',
-    'gothic':'#FFB3B3',
-    'tron':'#00FFFF',
-    'superpink':'#C2446E',
-    'classic':'#D4B896',
-    'retro95':'#000000',
-    'vaporwave':'var(--c-text-muted)',
-    'vaporwave2':'var(--c-text-muted)',
-    'light-gothic':'var(--c-text-muted)'
-  };
-  var labelColor=donutLabelColors[currentTheme]||'var(--c-text-muted)';
   for (var w=0;w<numWeeks;w++) {
     var ws=w*7+1, we=Math.min(ws+6,DAYS_IN_MONTH), tp=0, td=0;
     habits.forEach(function(h){
@@ -536,7 +509,7 @@ function renderDonuts() {
     var pct=tp>0?Math.round((td/tp)*100):0, offset=circ-(pct/100)*circ;
     var color=weekColors[w]||'#ccc', fill=weekFillColors[w]||'#eee', txt=weekTextColors[w]||'#333';
     var item=document.createElement('div'); item.style.cssText='flex:1;min-width:60px;text-align:center;';
-    item.innerHTML='<svg width="44" height="44" viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" fill="none" stroke="'+fill+'" stroke-width="8"></circle><circle cx="32" cy="32" r="26" fill="none" stroke="'+color+'" stroke-width="8" stroke-dasharray="'+circ+' '+circ+'" stroke-dashoffset="'+offset+'" transform="rotate(-90 32 32)" stroke-linecap="round"></circle><text x="32" y="37" text-anchor="middle" font-size="12" font-weight="600" fill="'+txt+'">'+pct+'%</text></svg><p style="font-size:10px;color:'+labelColor+';margin:2px 0 0;">Wk '+(w+1)+'</p>';
+    item.innerHTML='<svg width="44" height="44" viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" fill="none" stroke="'+fill+'" stroke-width="8"></circle><circle cx="32" cy="32" r="26" fill="none" stroke="'+color+'" stroke-width="8" stroke-dasharray="'+circ+' '+circ+'" stroke-dashoffset="'+offset+'" transform="rotate(-90 32 32)" stroke-linecap="round"></circle><text x="32" y="37" text-anchor="middle" font-size="12" font-weight="600" fill="'+txt+'">'+pct+'%</text></svg><p style="font-size:10px;color:var(--c-text-muted);margin:2px 0 0;">Wk '+(w+1)+'</p>';
     el.appendChild(item);
   }
 }
@@ -621,25 +594,21 @@ function renderGrid() {
       var timesRequired, isFlexible;
 
       if(h.freq_type==='monthly'){
-        // Monthly: all days are optional/flexible
+        // All days flexible/optional, clickable
         timesRequired=1; isFlexible=true;
 
       } else if(h.freq_type==='interval' && h.start_date && h.freq_value){
-        // Interval: calculate if this day is an "on" day
+        // Calculate if this calendar day is an "on" day
         var cellDate=new Date(currentYear,currentMonth-1,b.day);
         var startDate=new Date(h.start_date);
+        // Strip time
         cellDate.setHours(0,0,0,0); startDate.setHours(0,0,0,0);
         var daysSince=Math.round((cellDate-startDate)/86400000);
         var isOnDay=(daysSince>=0 && daysSince%h.freq_value===0);
         timesRequired=isOnDay?1:0;
         isFlexible=false;
 
-      } else {
-        // Days-based frequency: use schedule lookup
-        timesRequired=sched?sched.required:0;
-        isFlexible=sched?sched.flexible:true;
       }
-
       var timesLogged=(logsLookup[hid]&&logsLookup[hid][isoDate])||0;
       // Stamp the box so CSS can target required vs flexible directly
       box.dataset.required = (!isFlexible && timesRequired > 0) ? 'true' : 'false';
@@ -800,7 +769,7 @@ function updateProgressCell(hid, hi) {
   var cell=document.getElementById('progress-cell-'+hi); if(!cell)return;
   var h=habits[hi], totalDone=0, totalRequired=0;
 
-  if(h.freq_type==='monthly' && h.freq_value){
+  if(h.freq_type==='monthly'&&h.freq_value){
     // Progress = total logged this month / required times per month
     totalRequired=h.freq_value;
     Object.keys(logsLookup[hid]||{}).forEach(function(iso){
@@ -808,13 +777,13 @@ function updateProgressCell(hid, hi) {
         totalDone+=(logsLookup[hid][iso]||0);
     });
 
-  } else if(h.freq_type==='interval' && h.freq_value && h.start_date){
+  } else if(h.freq_type==='interval'&&h.freq_value&&h.start_date){
     // Count on-days in this month
     var startDate=new Date(h.start_date); startDate.setHours(0,0,0,0);
     for(var d=1;d<=DAYS_IN_MONTH;d++){
       var cellDate=new Date(currentYear,currentMonth-1,d); cellDate.setHours(0,0,0,0);
       var daysSince=Math.round((cellDate-startDate)/86400000);
-      if(daysSince>=0 && daysSince%h.freq_value===0){
+      if(daysSince>=0&&daysSince%h.freq_value===0){
         totalRequired++;
         var iso=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(d).padStart(2,'0');
         totalDone+=(logsLookup[hid]&&logsLookup[hid][iso])||0;
@@ -1130,19 +1099,17 @@ function renderActualVsIntended() {
     labels.push(d);
     var iso=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(d).padStart(2,'0');
     var dow=(firstDayMonBased+d-1)%7;
-    var dayActual=0, dayIntended=0;
-    habits.forEach(function(h,i){
+    var dayDone=0, dayRequired=0;
+    RAW_HABITS.forEach(function(h){
       if(h.id===-1)return;
       var hid=String(h.id);
       var sched=scheduleLookup[hid]&&scheduleLookup[hid][dow];
-      var req=sched?sched.required:1;
-      var done=(logsLookup[hid]&&logsLookup[hid][iso])||0;
-      var ratio=req>0?done/req:0;
-      dayActual+=extraCreditEnabled?ratio:Math.min(ratio,1);
-      dayIntended+=req;
+      var req=sched?sched.required:0;
+      dayRequired+=req;
+      dayDone+=(logsLookup[hid]&&logsLookup[hid][iso])||0;
     });
-    actual.push(dayActual);
-    intended.push(dayIntended);
+    actual.push(dayDone);
+    intended.push(dayRequired);
   }
 
   var pink=getThemeColor('--c-pink');
@@ -1304,36 +1271,6 @@ function renderEverything() {
   if(actualVsIntendedInstance)actualVsIntendedInstance.destroy();
   renderTopHabits(); renderDonuts(); renderCharts(); renderCorrelations(); renderGrid();
   renderMonthProgress(); renderWeeklyTasks(); renderPlannedActualChart(); renderAllTimeSection();
-}
-
-// ============ UPDATE & DONATION SYSTEM ============
-var appVersion='2.0';
-function checkForUpdate() {
-  showMsg('update-msg','Checking for updates...','info');
-  setTimeout(function(){
-    var currentStored=localStorage.getItem('appVersion')||'1.0';
-    if(appVersion>currentStored){
-      localStorage.setItem('lastVersionData',JSON.stringify({previous:currentStored,current:appVersion,timestamp:new Date().toISOString()}));
-      localStorage.setItem('appVersion',appVersion);
-      showMsg('update-msg','✅ Updated to v'+appVersion+'! Refresh the page.','success');
-      document.getElementById('revert-btn').style.display='block';
-      setTimeout(function(){location.reload();},1500);
-    } else {
-      showMsg('update-msg','✅ Already on latest version (v'+appVersion+')','success');
-    }
-  },800);
-}
-function revertUpdate() {
-  var lastData=JSON.parse(localStorage.getItem('lastVersionData')||'{}');
-  if(!lastData.previous){
-    showMsg('update-msg','❌ No previous version to revert to','error');
-    return;
-  }
-  localStorage.setItem('appVersion',lastData.previous);
-  showMsg('update-msg','✅ Reverted to v'+lastData.previous+'. Refresh to apply.','success');
-  document.getElementById('revert-btn').style.display='none';
-  console.log('USER_REVERTED_UPDATE',{email:currentUser?currentUser.email:'unknown',from:lastData.current,to:lastData.previous,timestamp:new Date().toISOString()});
-  setTimeout(function(){location.reload();},1500);
 }
 
 // ============================================
