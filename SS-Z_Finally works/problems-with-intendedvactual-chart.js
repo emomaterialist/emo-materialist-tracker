@@ -1177,35 +1177,21 @@ function renderActualVsIntended() {
   var el=document.getElementById('actualVsIntendedChart'); if(!el)return;
 
   var labels=[], actual=[], intended=[];
-  var dayDetails = {}; // Store details for each day
-  
   for(var d=1;d<=DAYS_IN_MONTH;d++){
     labels.push(d);
     var iso=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(d).padStart(2,'0');
     var dow=(firstDayMonBased+d-1)%7;
     var dayActual=0, dayIntended=0;
-    var intendedHabits=[], completedHabits=[];
-    
-    RAW_HABITS.forEach(function(h,i){
+    habits.forEach(function(h,i){
       if(h.id===-1)return;
       var hid=String(h.id);
       var sched=scheduleLookup[hid]&&scheduleLookup[hid][dow];
-      var req=sched?sched.required:0;
+      var req=sched?sched.required:1;
       var done=(logsLookup[hid]&&logsLookup[hid][iso])||0;
-      
-      if(req>0) {
-        intendedHabits.push({name: h.name, required: req});
-      }
-      if(done>0) {
-        completedHabits.push({name: h.name, completed: done});
-      }
-      
       var ratio=req>0?done/req:0;
       dayActual+=extraCreditEnabled?ratio:Math.min(ratio,1);
       dayIntended+=req;
     });
-    
-    dayDetails[d] = {intended: intendedHabits, completed: completedHabits};
     actual.push(dayActual);
     intended.push(dayIntended);
   }
@@ -1220,32 +1206,7 @@ function renderActualVsIntended() {
     ]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{
       title:function(ctx){return months_short[currentMonth-1]+' '+ctx[0].label+', '+currentYear;},
-      afterTitle:function(ctx){
-        var dayNum = parseInt(ctx[0].label);
-        var details = dayDetails[dayNum];
-        if(!details) return '';
-        
-        var html = '';
-        if(details.intended.length > 0) {
-          html += '\n📋 INTENDED:\n';
-          details.intended.forEach(function(h){
-            html += '  • ' + h.name + ' (x' + h.required + ')\n';
-          });
-        }
-        if(details.completed.length > 0) {
-          html += '\n✅ COMPLETED:\n';
-          details.completed.forEach(function(h){
-            html += '  ✓ ' + h.name + ' (x' + h.completed + ')\n';
-          });
-        }
-        if(details.intended.length === 0 && details.completed.length === 0) {
-          html += '\nNo habits scheduled for this day';
-        }
-        return html;
-      },
-      label:function(ctx){
-        return ctx.dataset.label + ': ' + Math.round(ctx.raw*10)/10 + ' habits';
-      }
+      label:function(ctx){return ctx.dataset.label+': '+ctx.raw+' habits';}
     }}},
     scales:{
       x:{ticks:{color:'#898781',font:{size:9},autoSkip:true,maxTicksLimit:16},grid:{color:'rgba(128,128,128,0.15)'},title:{display:true,text:'Day of month',color:'#898781',font:{size:10}}},
@@ -1394,86 +1355,6 @@ function renderEverything() {
   if(actualVsIntendedInstance)actualVsIntendedInstance.destroy();
   renderTopHabits(); renderDonuts(); renderCharts(); renderCorrelations(); renderGrid();
   renderMonthProgress(); renderWeeklyTasks(); renderPlannedActualChart(); renderAllTimeSection();
-}
-
-// ============ DEBUG: Actual vs Intended ============
-function debugActualVsIntended() {
-  try {
-    console.log('DEBUG: debugActualVsIntended() called');
-    
-    var today = new Date();
-    today.setHours(0,0,0,0);
-    var dayOfWeek = today.getDay();
-    
-    var debugDiv = document.getElementById('debug-actual-vs-intended') || document.createElement('div');
-    debugDiv.id = 'debug-actual-vs-intended';
-    debugDiv.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#000;color:#0F0;padding:12px;font-family:monospace;font-size:11px;border:2px solid #0F0;max-width:400px;max-height:400px;overflow-y:auto;z-index:10000;line-height:1.4;';
-    
-    var html = '<strong>DEBUG: Actual vs Intended</strong><br>';
-    html += 'Today: ' + today.toDateString() + ' (Day ' + dayOfWeek + ')<br>';
-    html += 'RAW_HABITS length: ' + (typeof RAW_HABITS !== 'undefined' ? RAW_HABITS.length : 'undefined') + '<br>';
-    html += 'scheduleLookup exists: ' + (typeof scheduleLookup !== 'undefined' ? 'yes' : 'no') + '<br><br>';
-    
-    if(typeof RAW_HABITS === 'undefined' || !RAW_HABITS) {
-      html += '<strong style="color:#F00;">ERROR: RAW_HABITS not defined!</strong>';
-      debugDiv.innerHTML = html;
-      if(!debugDiv.parentElement) document.body.appendChild(debugDiv);
-      console.log('ERROR: RAW_HABITS is undefined');
-      return;
-    }
-    
-    var totalIntended = 0;
-    var habitDetails = [];
-    
-    RAW_HABITS.forEach(function(h, idx){
-      try {
-        var hid = String(h.id);
-        var timesRequired = 0;
-        
-        // Check scheduleLookup for this habit on this day
-        if(typeof scheduleLookup !== 'undefined' && scheduleLookup[hid]) {
-          var dayData = scheduleLookup[hid][dayOfWeek];
-          if(dayData) {
-            timesRequired = dayData.required || 0;
-          }
-        }
-        
-        totalIntended += timesRequired;
-        habitDetails.push({
-          name: h.name || 'Unknown',
-          id: h.id,
-          required: timesRequired,
-          freq: h.freq_type || 'unknown',
-          archived: h.archived ? 'yes' : 'no'
-        });
-      } catch(e) {
-        habitDetails.push({name: 'Error processing', id: h.id, error: e.message});
-        console.log('Error processing habit ' + idx + ':', e);
-      }
-    });
-    
-    html += '<strong>Habits (' + RAW_HABITS.length + '):</strong><br>';
-    habitDetails.forEach(function(d){
-      if(d.error) {
-        html += d.name + ' (ID ' + d.id + '): ERROR - ' + d.error + '<br>';
-      } else {
-        html += d.name + ' (ID ' + d.id + '): ' + d.required + ' [' + d.freq + ', archived:' + d.archived + ']<br>';
-      }
-    });
-    
-    html += '<br><strong style="color:#FFF;">Total Intended: ' + totalIntended + '</strong>';
-    
-    debugDiv.innerHTML = html;
-    if(!debugDiv.parentElement) document.body.appendChild(debugDiv);
-    
-    console.log('DEBUG output complete. Total intended:', totalIntended);
-  } catch(e) {
-    console.log('DEBUG function error:', e);
-    var debugDiv = document.getElementById('debug-actual-vs-intended') || document.createElement('div');
-    debugDiv.innerHTML = '<strong style="color:#F00;">DEBUG ERROR:</strong><br>' + e.message;
-    debugDiv.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#000;color:#F00;padding:12px;font-family:monospace;font-size:11px;border:2px solid #F00;z-index:10000;';
-    if(!debugDiv.parentElement) document.body.appendChild(debugDiv);
-  }
 }
 
 // ============ UPDATE & DONATION SYSTEM ============
