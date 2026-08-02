@@ -413,20 +413,6 @@ body[data-theme="gothic"] {
   --c-grid-dot: rgba(139,0,0,0.08);
   --c-font: "Roboto Mono", monospace;
   --radius-outer: 0px; --radius-inner: 0px; --radius-sm: 0px;
-  
-  /* Week-specific BACKGROUND colors for donuts/checkboxes */
-  --week-1-bg: #C41E3A;
-  --week-2-bg: #8B0000;
-  --week-3-bg: #DC143C;
-  --week-4-bg: #5C0000;
-  --week-5-bg: #3A0000;
-  
-  /* Week-specific TEXT colors (readable on backgrounds) */
-  --week-1-text: #FFF;
-  --week-2-text: #FFF;
-  --week-3-text: #FFF;
-  --week-4-text: #FFB3B3;
-  --week-5-text: #FFB3B3;
 }
 
 /* ---- Theme 7: Tron / Neon ---- */

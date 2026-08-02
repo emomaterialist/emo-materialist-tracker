@@ -471,11 +471,10 @@ function buildWeekColors() {
   } else if(theme==='basic'){
     weekTextColors=['#1F2937','#1F2937','#1F2937','#1F2937','#1F2937'];
   } else if(theme==='gothic'){
-    weekColors=['var(--week-1-bg)','var(--week-2-bg)','var(--week-3-bg)','var(--week-4-bg)','var(--week-5-bg)'];
-    weekTextColors=['var(--week-1-text)','var(--week-2-text)','var(--week-3-text)','var(--week-4-text)','var(--week-5-text)'];
+    weekTextColors=['#FFB3B3','#FFB3B3','#FFB3B3','#FFB3B3','#FFB3B3'];
   } else if(theme==='classic'){
     weekColors=['var(--week-1-bg)','var(--week-2-bg)','var(--week-3-bg)','var(--week-4-bg)','var(--week-5-bg)'];
-    weekTextColors=['var(--week-1-text)','var(--week-2-text)','var(--week-3-text)','var(--week-4-text)','var(--week-5-text)'];
+    weekTextColors=['#2C2420','#2C2420','#2C2420','#2C2420','#2C2420'];
   } else if(theme==='superpink'){
     weekTextColors=['#FFF','#FFF','#FFF','#FFF','#C2446E'];
   } else if(theme==='retro95'){
@@ -1377,6 +1376,33 @@ function checkForUpdate() {
     }
   },800);
 }
+// ============ EMOJI PICKER ============
+var HABIT_EMOJIS = ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','💕','💖','💗','💘','💝','💞','💓','💕','✅','💪','🏋️','🤸','🧘','🚴','🏃','🏊','🧗','🤾','⛹️','🤺','🏇','🤼','📚','📖','📝','✏️','📕','📗','📘','📙','📔','🥗','🥑','🍎','🥕','🥦','🍇','🥤','😴','🛌','💤','🌙','⭐','🎨','🎵','🎭','🎪','🎬','🎸','🎹','🎺','🎻','💻','📱','⌨️','🖱️','💼','📊','📈','🏅','🥇','🥈','🥉','🏆','⭐','🌟','💎','👑','🎯','☀️','🌈','⚡','🔥','💧','🌊','🍃','🌻','🌸','🌹','🌺','🎁','🎀','🎊','🎉','🦋','🐝','🐢','🦁','🐯','🦊'];
+
+function initEmojiPicker() {
+  var emojiGrid = document.getElementById('emoji-grid');
+  var modal = document.getElementById('emoji-picker-modal');
+  var btn = document.getElementById('emoji-picker-btn');
+  var input = document.getElementById('habit-icon');
+  
+  HABIT_EMOJIS.forEach(function(emoji){
+    var span = document.createElement('span');
+    span.textContent = emoji;
+    span.onclick = function(){
+      input.value = emoji;
+      btn.textContent = emoji + ' Choose Emoji';
+      modal.style.display = 'none';
+    };
+    emojiGrid.appendChild(span);
+  });
+  
+  btn.onclick = function(){ modal.style.display = 'flex'; };
+  modal.onclick = function(e){ if(e.target === modal) modal.style.display = 'none'; };
+}
+
+// Call on page load
+setTimeout(function(){ initEmojiPicker(); }, 500);
+
 
 // ============================================
 // INIT
