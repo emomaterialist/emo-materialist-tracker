@@ -27,19 +27,15 @@
         <div class="field-group"><label>Email</label><input type="email" id="login-email" placeholder="your@email.com"></div>
         <div class="field-group"><label>Password</label><input type="password" id="login-password" placeholder="••••••••"></div>
         <button class="auth-btn" onclick="handleLogin()">Log In</button>
-        <button type="button" style="width:100%;padding:6px;background:none;border:none;color:var(--c-text-muted);cursor:pointer;font-size:11px;margin-top:8px;text-decoration:underline;" onclick="handleForgotPassword()">Forgot password?</button>
         <div id="login-msg" class="auth-msg"></div>
       </div>
       <div id="form-signup" style="display:none;">
-        <div class="field-group"><label>Purchase Code</label><input type="text" id="signup-code" placeholder="" style="text-transform:uppercase;"></div>
+        <div class="field-group"><label>Purchase Code</label><input type="text" id="signup-code" placeholder="V4P0RW4V3-XXXX-XXXX" style="text-transform:uppercase;"></div>
         <div class="field-group"><label>Email</label><input type="email" id="signup-email" placeholder="your@email.com"></div>
         <div class="field-group"><label>Password</label><input type="password" id="signup-password" placeholder="at least 6 characters"></div>
         <button class="auth-btn" onclick="handleSignup()">Create Account</button>
         <div id="signup-msg" class="auth-msg"></div>
       </div>
-      <div style="text-align:center;padding:12px;font-size:11px;color:var(--c-text-muted);">
-      Continued use means you agree to the <a href="#" id="terms-link" style="text-decoration:underline;color:var(--c-pink);cursor:pointer;">Terms and Conditions</a>
-    </div>
     </div>
   </div>
 </div>
@@ -330,49 +326,6 @@
     </table>
   </div>
 </div>
-<div id="terms-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:10000;overflow:auto;">
-  <div style="background:var(--c-body-bg);max-width:500px;margin:40px auto;padding:20px;border:3px solid var(--c-dark);border-radius:var(--radius-outer);box-shadow:4px 4px 0 var(--c-dark);">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;border-bottom:2px solid var(--c-pink);padding-bottom:10px;">
-      <h2 style="margin:0;font-size:16px;color:var(--c-text);">Terms and Conditions</h2>
-      <button id="terms-close" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--c-text);">✕</button>
-    </div>
-    <div id="terms-content" style="max-height:400px;overflow-y:auto;color:var(--c-text);font-size:12px;line-height:1.6;">
-      <p><strong>Last Updated: August 2026</strong></p>
-      
-      <h3>License Grant</h3>
-      <p>You purchase a license to use the app. You don't own the code.</p>
-      
-      <h3>Usage Rights</h3>
-      <p>Personal, non-commercial use only. No reselling, sharing, or reverse-engineering.</p>
-      
-      <h3>Account & Login</h3>
-      <p>Keep your password secure. We're not liable for unauthorized access.</p>
-      
-      <h3>Data Storage</h3>
-      <p>All habit data stored on Supabase servers. Encrypted and private.</p>
-      
-      <h3>Data Privacy</h3>
-      <p>We won't share your data with third parties. You're responsible for what you track.</p>
-      
-      <h3>Data Deletion</h3>
-      <p>Delete your account anytime. Data deletion takes up to 30 days. Email emomaterialist@gmail.com for account deletion.</p>
-      
-      <h3>Updates</h3>
-      <p>We may update the app automatically without notice. You get the latest version on page refresh.</p>
-      
-      <h3>No Warranty</h3>
-      <p>App provided "as is". No guarantees it won't break or lose data.</p>
-      
-      <h3>Limitations</h3>
-      <p>Not liable for: lost data, missed habits, emotional damage, or business losses. You can save your data whenever you want, reccomended interval to save your habits: monthly (add it as a habit!) </p>
-      
-      <h3>Not Medical Advice</h3>
-      <p>For personal tracking only. Not a substitute for therapy, doctors, or professional help.</p>
-      
-      <h3>Governing Law</h3>
-      <p>These terms governed by the laws of New York, USA.</p>
-    </div>
-  </div>
-</div>
+
 </body>
 </html>

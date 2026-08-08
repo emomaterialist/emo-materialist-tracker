@@ -44,17 +44,6 @@ async function handleLogin() {
   if (error) return showMsg('login-msg', error.message, 'error');
   currentUser = data.user; onLoggedIn();
 }
-async function handleForgotPassword() {
-  var email = document.getElementById('login-email').value.trim();
-  if (!email) {
-    email = prompt('Enter your email address:');
-    if (!email) return;
-  }
-  showMsg('login-msg','Sending reset email...','info');
-  var { error } = await sb.auth.resetPasswordForEmail(email);
-  if (error) return showMsg('login-msg','Error: ' + error.message,'error');
-  showMsg('login-msg','✅ Check your email for the reset link!','success');
-}
 async function handleSignup() {
   var code = document.getElementById('signup-code').value.trim().toUpperCase();
   var email = document.getElementById('signup-email').value.trim();
@@ -1469,20 +1458,3 @@ function checkForUpdate() {
   var sel=document.getElementById('theme-select'); if(sel)sel.value=saved;
 })();
 checkSession();
-
-// ============================================
-// TERMS AND CONDITIONS MODAL
-// ============================================
-document.getElementById('terms-link').addEventListener('click', function(e){
-  e.preventDefault();
-  document.getElementById('terms-modal').style.display = 'block';
-});
-
-document.getElementById('terms-close').addEventListener('click', function(){
-  document.getElementById('terms-modal').style.display = 'none';
-});
-
-document.getElementById('terms-modal').addEventListener('click', function(e){
-  if(e.target.id === 'terms-modal') 
-    this.style.display = 'none';
-});
