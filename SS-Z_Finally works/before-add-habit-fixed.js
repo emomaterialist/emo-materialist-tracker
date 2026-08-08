@@ -91,37 +91,6 @@ function onLoggedIn() {
   initMonthYearPickers();
   updateMonthLabel();
   loadAndRender();
-// 1. Define emojis
-var emojiArray = ['✅','💪','🏃','🧘','📖','💰','🛏️','🧴','🚴','🤸','⛹️','🏋️','🧗','🚶','🤾','⚽','🏀','🎾','🏐','🏈','🏸','🥋','🤺','🏹','🎣','🎯','📓','📔','📕','📗','📘','📙','📚','📒','📝','📋','❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💖','🌟','❤️‍🔥','❤️‍🩹','💔','❣️','💕','💞','💓','💗','💘','💝','🏄','🚣','🏊','🤽','🛹','🛼','🥌','⛷️','🏂','🪂','🏌️','🏎️','🏍️','🏉','🏏','🏑','🏒','🥍','🏓','🎳','🥊','🥅','⛳','⛸️','🎽','🏅','🥇','🥈','🥉','🏋️‍♂️','🏋️‍♀️','🏃‍♂️','🏃‍♀️','🚶‍♂️','🚶‍♀️','🧘‍♂️','🧘‍♀️','🚴‍♂️','🚴‍♀️','🚵‍♂️','🚵‍♀️','🤸‍♂️','🤸‍♀️','⛹️‍♂️','⛹️‍♀️','🤾‍♂️','🤾‍♀️','🧗‍♂️','🧗‍♀️','🏌️‍♂️','🏌️‍♀️','❌','🗓️','📅','📆','📊','📈','📉','📁','📂','📌','📍','📎','⏰','⏱️','⏲️','⏳','💵','💴','💶','💷','💳','💎','📥','📤','✉️','📩','📨','🛀','🧼','🪥','🧽','🪮','💤','🧉','🍵','☕','🥛','🥤','🧃','🍎','🥦','🥗','🥑','🥩','🥚','💧'];
-
-
-// 2. Populate grid (run once after login)
-function initEmojiPicker() {
-  var grid = document.getElementById('emoji-grid');
-  grid.innerHTML = '';
-  emojiArray.forEach(function(emoji) {
-    var btn = document.createElement('button');
-    btn.textContent = emoji;
-    btn.style.fontSize = '28px';
-    btn.onclick = function() {
-      document.getElementById('habit-icon').value = emoji;
-      document.getElementById('emoji-picker-btn').textContent = emoji + ' Choose Emoji';
-      document.getElementById('emoji-picker-modal').style.display = 'none';
-    };
-    grid.appendChild(btn);
-  });
-}
-
-// 3. Show/hide modal
-initEmojiPicker();
-document.getElementById('emoji-picker-btn').onclick = function() {
-  document.getElementById('emoji-picker-modal').style.display = 'block';
-};
-document.getElementById('emoji-picker-modal').onclick = function(e) {
-  if(e.target.id === 'emoji-picker-modal') 
-    this.style.display = 'none';
-};
-  
 }
 
 // ============================================
