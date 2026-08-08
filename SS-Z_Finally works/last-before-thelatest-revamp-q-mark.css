@@ -339,9 +339,9 @@ body[data-theme="classic"] {
   /* Week-specific TEXT colors (readable on backgrounds) */
   --week-1-text: #2C2420;
   --week-2-text: #2C2420;
-  --week-3-text: #2C2420;  /* dark brown - readable! */
+  --week-3-text: #F5EFE5;
   --week-4-text: #2C2420;
-  --week-5-text: #2C2420;
+  --week-5-text: #F5EFE5;
 }
 body[data-theme="classic"] .settings-label { color: #D4B896; }
 
@@ -1011,8 +1011,3 @@ body[data-theme="gothic"] .field-group label { color: #FFB3B3 !important; }
 
 /* Gothic theme - donation text lighter */
 body[data-theme="gothic"] .settings-section:nth-last-of-type(1) .cell-subtitle { color: #FFB3B3 !important; }
-
-/* Vaporwave donation text lighter */
-body[data-theme="vaporwave"] .settings-section:nth-last-of-type(1) .cell-subtitle { 
-  color: #F23E9E !important; 
-}

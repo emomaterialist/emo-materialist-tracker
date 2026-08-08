@@ -472,14 +472,14 @@ function buildWeekColors() {
     weekTextColors=['#1F2937','#1F2937','#1F2937','#1F2937','#1F2937'];
   } else if(theme==='gothic'){
     weekColors=['var(--week-1-bg)','var(--week-2-bg)','var(--week-3-bg)','var(--week-4-bg)','var(--week-5-bg)'];
-    weekTextColors=['#ff8269','#CC6666','#fca2a2','#AA4444','#C44444'];
+    weekTextColors=['var(--week-1-text)','var(--week-2-text)','var(--week-3-text)','var(--week-4-text)','var(--week-5-text)'];
   } else if(theme==='classic'){
     weekColors=['var(--week-1-bg)','var(--week-2-bg)','var(--week-3-bg)','var(--week-4-bg)','var(--week-5-bg)'];
     weekTextColors=['var(--week-1-text)','var(--week-2-text)','var(--week-3-text)','var(--week-4-text)','var(--week-5-text)'];
   } else if(theme==='superpink'){
-    weekTextColors=['#fca2d5','#fca2d5','#fca2d5','#bf082c','#C2446E'];
+    weekTextColors=['#FFF','#FFF','#FFF','#FFF','#C2446E'];
   } else if(theme==='retro95'){
-    weekTextColors=['#000000','#000000','#000000','#000000','#ffffff'];
+    weekTextColors=['#000000','#000000','#000000','#000000','#000000'];
   } else if(theme==='tron'){
     weekTextColors=['#FFF','#FFF','#FFF','#FFF','#FFF'];
   }
@@ -1394,6 +1394,86 @@ function renderEverything() {
   if(actualVsIntendedInstance)actualVsIntendedInstance.destroy();
   renderTopHabits(); renderDonuts(); renderCharts(); renderCorrelations(); renderGrid();
   renderMonthProgress(); renderWeeklyTasks(); renderPlannedActualChart(); renderAllTimeSection();
+}
+
+// ============ DEBUG: Actual vs Intended ============
+function debugActualVsIntended() {
+  try {
+    console.log('DEBUG: debugActualVsIntended() called');
+    
+    var today = new Date();
+    today.setHours(0,0,0,0);
+    var dayOfWeek = today.getDay();
+    
+    var debugDiv = document.getElementById('debug-actual-vs-intended') || document.createElement('div');
+    debugDiv.id = 'debug-actual-vs-intended';
+    debugDiv.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#000;color:#0F0;padding:12px;font-family:monospace;font-size:11px;border:2px solid #0F0;max-width:400px;max-height:400px;overflow-y:auto;z-index:10000;line-height:1.4;';
+    
+    var html = '<strong>DEBUG: Actual vs Intended</strong><br>';
+    html += 'Today: ' + today.toDateString() + ' (Day ' + dayOfWeek + ')<br>';
+    html += 'RAW_HABITS length: ' + (typeof RAW_HABITS !== 'undefined' ? RAW_HABITS.length : 'undefined') + '<br>';
+    html += 'scheduleLookup exists: ' + (typeof scheduleLookup !== 'undefined' ? 'yes' : 'no') + '<br><br>';
+    
+    if(typeof RAW_HABITS === 'undefined' || !RAW_HABITS) {
+      html += '<strong style="color:#F00;">ERROR: RAW_HABITS not defined!</strong>';
+      debugDiv.innerHTML = html;
+      if(!debugDiv.parentElement) document.body.appendChild(debugDiv);
+      console.log('ERROR: RAW_HABITS is undefined');
+      return;
+    }
+    
+    var totalIntended = 0;
+    var habitDetails = [];
+    
+    RAW_HABITS.forEach(function(h, idx){
+      try {
+        var hid = String(h.id);
+        var timesRequired = 0;
+        
+        // Check scheduleLookup for this habit on this day
+        if(typeof scheduleLookup !== 'undefined' && scheduleLookup[hid]) {
+          var dayData = scheduleLookup[hid][dayOfWeek];
+          if(dayData) {
+            timesRequired = dayData.required || 0;
+          }
+        }
+        
+        totalIntended += timesRequired;
+        habitDetails.push({
+          name: h.name || 'Unknown',
+          id: h.id,
+          required: timesRequired,
+          freq: h.freq_type || 'unknown',
+          archived: h.archived ? 'yes' : 'no'
+        });
+      } catch(e) {
+        habitDetails.push({name: 'Error processing', id: h.id, error: e.message});
+        console.log('Error processing habit ' + idx + ':', e);
+      }
+    });
+    
+    html += '<strong>Habits (' + RAW_HABITS.length + '):</strong><br>';
+    habitDetails.forEach(function(d){
+      if(d.error) {
+        html += d.name + ' (ID ' + d.id + '): ERROR - ' + d.error + '<br>';
+      } else {
+        html += d.name + ' (ID ' + d.id + '): ' + d.required + ' [' + d.freq + ', archived:' + d.archived + ']<br>';
+      }
+    });
+    
+    html += '<br><strong style="color:#FFF;">Total Intended: ' + totalIntended + '</strong>';
+    
+    debugDiv.innerHTML = html;
+    if(!debugDiv.parentElement) document.body.appendChild(debugDiv);
+    
+    console.log('DEBUG output complete. Total intended:', totalIntended);
+  } catch(e) {
+    console.log('DEBUG function error:', e);
+    var debugDiv = document.getElementById('debug-actual-vs-intended') || document.createElement('div');
+    debugDiv.innerHTML = '<strong style="color:#F00;">DEBUG ERROR:</strong><br>' + e.message;
+    debugDiv.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#000;color:#F00;padding:12px;font-family:monospace;font-size:11px;border:2px solid #F00;z-index:10000;';
+    if(!debugDiv.parentElement) document.body.appendChild(debugDiv);
+  }
 }
 
 // ============ UPDATE & DONATION SYSTEM ============
