@@ -1229,27 +1229,11 @@ function renderActualVsIntended() {
     var intendedHabits=[], completedHabits=[];
     
     RAW_HABITS.forEach(function(h,i){
-  if(h.id===-1)return;
-  var hid=String(h.id);
-  var req=0;
-  
-  // Handle days-based habits
-  var sched=scheduleLookup[hid]&&scheduleLookup[hid][dow];
-  if(sched && sched.required>0) {
-    req=sched.required;
-  }
-  
-  // Handle interval habits
-  else if(h.freq_type==='interval' && h.freq_value && h.start_date){
-    var cellDate=new Date(currentYear,currentMonth-1,d);
-    var startDate=new Date(h.start_date);
-    cellDate.setHours(0,0,0,0); startDate.setHours(0,0,0,0);
-    var daysSince=Math.round((cellDate-startDate)/86400000);
-    var isOnDay=(daysSince>=0 && daysSince%h.freq_value===0);
-    req=isOnDay?1:0;
-  }
-  
-  var done=(logsLookup[hid]&&logsLookup[hid][iso])||0;
+      if(h.id===-1)return;
+      var hid=String(h.id);
+      var sched=scheduleLookup[hid]&&scheduleLookup[hid][dow];
+      var req=sched?sched.required:0;
+      var done=(logsLookup[hid]&&logsLookup[hid][iso])||0;
       
       if(req>0) {
         intendedHabits.push({name: h.name, required: req});
