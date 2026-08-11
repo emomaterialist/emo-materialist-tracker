@@ -507,11 +507,11 @@ function buildWeekColors() {
   
   // Theme-specific text color overrides for donut SVG percentage text
   if(theme==='vaporwave'){
-    weekTextColors=['#2B1B40','#2B1B40','#2B1B40','#2B1B40','#9265b8'];
+    weekTextColors=['#2B1B40','#2B1B40','#2B1B40','#2B1B40','#2B1B40'];
   } else if(theme==='vaporwave2'){
     weekTextColors=['#FFF','#FFF','#FFF','#FFF','#FFF'];
   } else if(theme==='basic'){
-    weekTextColors=['#1F2937','#1F2937','#1F2937','#1F2937','#8ad4ff'];
+    weekTextColors=['#1F2937','#1F2937','#1F2937','#1F2937','#1F2937'];
   } else if(theme==='gothic'){
     weekColors=['var(--week-1-bg)','var(--week-2-bg)','var(--week-3-bg)','var(--week-4-bg)','var(--week-5-bg)'];
     weekTextColors=['#ff8269','#CC6666','#fca2a2','#AA4444','#C44444'];
