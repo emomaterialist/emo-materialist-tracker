@@ -470,9 +470,7 @@ var HABIT_COLOR_CONFIG = {
   retro95:    { mode:'curated', palette:['#FFFFFF','#FF6600','#FF2E92','#9933FF','#39FF14','#00F0FF','#FFB347','#FF0055','#FFFF00','#AA00FF','#00FF88','#FF9900'] },
   gothic:     { mode:'curated', palette:['#8B0000','#1A4A1A','#1A1A5C','#4A0E5C','#5C3A00','#005C5C','#2A2A2A','#FF6B6B','#DC143C','#5C0000','#FF9999','#FFB3B3'] },
   tron:       { mode:'curated', palette:['#00FFFF','#FF00FF','#FFFF00','#00FF88','#FF6600','#AA00FF','#FF0055','#00CCFF','#FF99FF','#99FF00','#FF9900','#00FFCC'] },
-  superpink:  { mode:'curated', palette:['#FFB3C6','#FF85A1','#FF5C8A','#E8407A','#C2446E','#FF9EBA','#FFD6E5','#FF6E96','#FFE0EB','#FF3399','#FFAAC8','#D96080'] },
-  'light-pastel': { mode:'curated', palette:['#F0A8B8','#E8B4C4','#D4A5D4','#E8D4D4','#E8B8D4','#F0C8C8','#D4C8E8','#E8C8D4','#F0B8C8','#E8C4D4','#F0D4D4','#D4D4E8'] },
-  'light-melon':  { mode:'curated', palette:['#FFB366','#FFC488','#E8A040','#FFD480','#F0B840','#FFB880','#F0A860','#FFB360','#FFCC99','#E8B855','#FFB366','#F0A850'] }
+  superpink:  { mode:'curated', palette:['#FFB3C6','#FF85A1','#FF5C8A','#E8407A','#C2446E','#FF9EBA','#FFD6E5','#FF6E96','#FFE0EB','#FF3399','#FFAAC8','#D96080'] }
 };
 var GOLDEN_ANGLE = 137.508;
 function colorForHabitIndex(i) {
@@ -526,12 +524,6 @@ function buildWeekColors() {
     weekTextColors=['#000000','#000000','#000000','#000000','#ffffff'];
   } else if(theme==='tron'){
     weekTextColors=['#FFF','#FFF','#FFF','#FFF','#FFF'];
-  } else if(theme==='light-pastel'){
-    base=['#F0A8B8','#D4A5D4','#E8B8A8','#E8C8D4'];
-    weekTextColors=['#5C4C4C','#5C4C4C','#5C4C4C','#5C4C4C'];
-  } else if(theme==='light-melon'){
-    base=['#FFB366','#E8A040','#FFD480','#F0B840'];
-    weekTextColors=['#6B5530','#6B5530','#6B5530','#6B5530'];
   }
 }
 
