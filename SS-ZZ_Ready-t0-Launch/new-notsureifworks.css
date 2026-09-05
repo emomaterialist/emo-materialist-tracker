@@ -233,6 +233,7 @@
   align-items: center;
   padding: 6px 0;
   border-bottom: 1px solid rgba(244,232,250,0.1);
+  color: #F4E8FA;
   font-size: 12px;
 }
 .habit-del-btn {
@@ -447,7 +448,7 @@ body {
 .habit-label-cell {
   font-size: 12px;
   font-weight: 600;
-  color: var(--habit-text-color, var(--c-text));  /* ← Use the variable! */
+  color: var(--c-text);
   white-space: nowrap;
   padding-right: 10px !important;
   display: table-cell;
@@ -606,7 +607,7 @@ body {
   border: 2px solid var(--c-pink);
   border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--day-toggle-color);  /* ← Use CSS variable */
+  color: rgba(244,232,250,0.8);
   cursor: pointer;
   transition: background 0.1s;
 }
@@ -702,40 +703,15 @@ body, body[data-theme="vaporwave"] {
   --radius-outer: 14px;
   --radius-inner: 11px;
   --radius-sm: 4px;
-  /* Week colors (single source of truth) */
-  --week-1-bg: #F23E9E;
-  --week-2-bg: #8C5FD9;
-  --week-3-bg: #E08858;
-  --week-4-bg: #C7B8D8;
-  --week-5-bg: #6B4F7A;
-  --week-1-text: #2B1B40;
-  --week-2-text: #2B1B40;
-  --week-3-text: #2B1B40;
-  --week-4-text: #2B1B40;
-  --week-5-text: #9265b8;
-  --donut-label-color: #2B1B40;
-  /* Checkbox symbols (modular per theme) */
-  --checkbox-required-empty: '✕';
-  --checkbox-required-done: '✓';
-  --checkbox-flexible-empty: '?';
-  /* Checkbox symbols (modular per theme) */
-  --checkbox-required-empty: '✕';
-  --checkbox-required-done: '✓';
-  --checkbox-flexible-empty: '?';
-  /* Checkbox symbols (modular per theme) */
-  --checkbox-required-empty: '✕';
-  --checkbox-required-done: '✓';
-  --checkbox-flexible-empty: '?';
 }
 body[data-theme="vaporwave"] .habit-del-btn { border-color: #F23E9E; color: #F23E9E; }
 body[data-theme="vaporwave"] .habit-list-row { color: #F23E9E; }
 body[data-theme="vaporwave"] .habit-list-row span { color: #F23E9E !important; }
+body[data-theme="vaporwave"] .day-toggle { color: rgba(244,232,250,0.8) !important; }
 body[data-theme="vaporwave"] #version-text { color: #8C5FD9 !important; }
 body[data-theme="vaporwave"] .donut-label { color: #2B1B40 !important; }
 body[data-theme="vaporwave"] .settings-section .cell-subtitle { color: #F23E9E !important; }
-body, body[data-theme="vaporwave"] {
-  --day-toggle-color: #F23E9E;  /* Dark purple for light bg #E4D9F0 */
-}
+body[data-theme="vaporwave"] .day-toggle { color: #F23E9E !important; }
 
 /* ---- THEME 2: Classic Elegant ---- */
 body[data-theme="classic"] {
@@ -764,26 +740,15 @@ body[data-theme="classic"] {
   --week-3-text: #2C2420;
   --week-4-text: #2C2420;
   --week-5-text: #2C2420;
-  --donut-label-color: #D4B896;
-  /* Checkbox symbols (modular per theme) */
-  --checkbox-required-empty: '◆';
-  --checkbox-required-done: '✓';
-  --checkbox-flexible-empty: '?';
-  /* Checkbox symbols (modular per theme) */
-  --checkbox-required-empty: '◆';
-  --checkbox-required-done: '✓';
-  --checkbox-flexible-empty: '?';
 }
 body[data-theme="classic"] .settings-label { color: #D4B896; }
 body[data-theme="classic"] .habit-del-btn { border-color: #7A2E3A; color: #7A2E3A; }
 body[data-theme="classic"] .habit-list-row { color: #D4B896; }
 body[data-theme="classic"] .habit-list-row span { color: #D4B896 !important; }
+body[data-theme="classic"] .day-toggle { color: #D4B896; }
 body[data-theme="classic"] #version-text { color: #D4B896 !important; }
 body[data-theme="classic"] .donut-label { color: #D4B896 !important; }
 body[data-theme="classic"] .settings-section .cell-subtitle { color: #D4B896 !important; }
-body[data-theme="classic"] {
-  --day-toggle-color: #D4B896;  /* Dark brown for cream bg #FAF6EF */
-}
 
 /* ---- THEME 3: Basic / Clean ---- */
 body[data-theme="basic"] {
@@ -802,36 +767,14 @@ body[data-theme="basic"] {
   --radius-outer: 6px;
   --radius-inner: 4px;
   --radius-sm: 3px;
-  /* Week colors (single source of truth) */
-  --week-1-bg: #2563EB;
-  --week-2-bg: #3B82F6;
-  --week-3-bg: #60A5FA;
-  --week-4-bg: #64748B;
-  --week-5-bg: #1F2937;
-  --week-1-text: #1F2937;
-  --week-2-text: #1F2937;
-  --week-3-text: #1F2937;
-  --week-4-text: #1F2937;
-  --week-5-text: #8ad4ff;
-  --donut-label-color: #1F2937;
-  /* Checkbox symbols (modular per theme) */
-  --checkbox-required-empty: '○';
-  --checkbox-required-done: '●';
-  --checkbox-flexible-empty: '?';
-  /* Checkbox symbols (modular per theme) */
-  --checkbox-required-empty: '○';
-  --checkbox-required-done: '●';
-  --checkbox-flexible-empty: '?';
 }
 body[data-theme="basic"] .habit-del-btn { border-color: #374151; color: #374151; }
 body[data-theme="basic"] .habit-list-row { color: #60A5FA; }
 body[data-theme="basic"] .habit-list-row span { color: #60A5FA !important; }
+body[data-theme="basic"] .day-toggle { color: #1F2937; }
 body[data-theme="basic"] #version-text { color: #60A5FA !important; }
 body[data-theme="basic"] .donut-label { color: #1F2937 !important; }
 body[data-theme="basic"] .settings-section .cell-subtitle { color: #60A5FA !important; }
-body[data-theme="basic"] {
-  --day-toggle-color: #a8c2ed;  /* Dark gray for white bg #FFFFFF */
-}
 
 /* ---- THEME 4: Vaporwave 2 (Neon Alt) ---- */
 body[data-theme="vaporwave2"] {
@@ -850,27 +793,6 @@ body[data-theme="vaporwave2"] {
   --radius-outer: 0px;
   --radius-inner: 0px;
   --radius-sm: 0px;
-  /* Week colors (single source of truth) */
-  --week-1-bg: #00F0FF;
-  --week-2-bg: #FFFF00;
-  --week-3-bg: #FF2E92;
-  --week-4-bg: #CC88FF;
-  --week-5-bg: #FFA040;
-  --week-1-text: #FFF;
-  --week-2-text: #FFF;
-  --week-3-text: #FFF;
-  --week-4-text: #FFF;
-  --week-5-text: #FFF;
-  --donut-label-color: #F0E8FF;
-  /* Checkbox symbols (modular per theme) */
-  --checkbox-required-empty: '◈';
-  --checkbox-required-done: '◆';
-  --checkbox-flexible-empty: '?';
-  /* Checkbox symbols (modular per theme) */
-  --checkbox-required-empty: '◈';
-  --checkbox-required-done: '◆';
-  --checkbox-flexible-empty: '?';
-  --day-toggle-color: #00F0FF;  /* Neon cyan for dark bg */
 }
 body[data-theme="vaporwave2"] .day-box[data-required="true"] {
   box-shadow: 0 0 6px currentColor;
@@ -893,23 +815,6 @@ body[data-theme="retro95"] {
   --radius-outer: 0px;
   --radius-inner: 0px;
   --radius-sm: 0px;
-  /* Week colors (single source of truth) */
-  --week-1-bg: #FF2E92;
-  --week-2-bg: #9933FF;
-  --week-3-bg: #FF6600;
-  --week-4-bg: #DFDFDF;
-  --week-5-bg: #808080;
-  --week-1-text: #000000;
-  --week-2-text: #000000;
-  --week-3-text: #000000;
-  --week-4-text: #000000;
-  --week-5-text: #ffffff;
-  --donut-label-color: #000000;
-  /* Checkbox symbols (modular per theme) */
-  --checkbox-required-empty: '□';
-  --checkbox-required-done: '■';
-  --checkbox-flexible-empty: '?';
-  --day-toggle-color: #000000;  /* Black for gray bg */
 }
 body[data-theme="retro95"] .cell-border { border: 2px solid; border-color: #DFDFDF #000 #000 #DFDFDF; box-shadow: inset 1px 1px 0 #FFFFFF, inset -1px -1px 0 #808080; background: #C0C0C0; padding: 2px; }
 body[data-theme="retro95"] .title-bar { background: linear-gradient(90deg, #FF2E92, #9933FF); border: none; border-bottom: 2px solid #000; box-shadow: inset 1px 1px 0 rgba(255,255,255,0.3); }
@@ -955,12 +860,6 @@ body[data-theme="gothic"] {
   --week-3-text: #FFF;
   --week-4-text: #FFB3B3;
   --week-5-text: #FFB3B3;
-  --donut-label-color: #FFB3B3;
-  /* Checkbox symbols (modular per theme) */
-  --checkbox-required-empty: '✦';
-  --checkbox-required-done: '✧';
-  --checkbox-flexible-empty: '?';
-  --day-toggle-color: #e3a8b1;  /* Near-black for white bg */
 }
 body[data-theme="gothic"] .title-text { font-family: "Monsieur La Doulaise", cursive !important; font-size: 24px !important; letter-spacing: 1px !important; color: #FFFFFF !important; font-weight: 400 !important; text-transform: none !important; }
 body[data-theme="gothic"] .title-bar { background: linear-gradient(90deg, #8B0000, #3A0000); border-color: #3A0000; }
@@ -979,8 +878,8 @@ body[data-theme="gothic"] .cell-subtitle, body[data-theme="gothic"] .top-habit-r
 body[data-theme="gothic"] .habit-label-cell, body[data-theme="gothic"] .task-row input[type="text"] { color: #1A1A1A; }
 body[data-theme="gothic"] .auth-tab { color: #5C0000; }
 body[data-theme="gothic"] .auth-tab.active { color: #8B0000; border-bottom-color: #8B0000; }
-
-
+body[data-theme="gothic"] .day-toggle { color: #3A0000; border-color: #8B0000; }
+body[data-theme="gothic"] .day-toggle.selected { background: #8B0000; color: #FFF; }
 body[data-theme="gothic"] #version-text { color: #FFB3B3 !important; }
 body[data-theme="gothic"] .donut-label { color: #FFB3B3 !important; }
 body[data-theme="gothic"] .settings-section .cell-subtitle { color: #FFB3B3 !important; }
@@ -1002,23 +901,6 @@ body[data-theme="tron"] {
   --radius-outer: 0px;
   --radius-inner: 0px;
   --radius-sm: 0px;
-  /* Week colors (single source of truth) */
-  --week-1-bg: #00FFFF;
-  --week-2-bg: #FF00FF;
-  --week-3-bg: #FFFF00;
-  --week-4-bg: #00FF88;
-  --week-5-bg: #FF6600;
-  --week-1-text: #FFF;
-  --week-2-text: #FFF;
-  --week-3-text: #FFF;
-  --week-4-text: #FFF;
-  --week-5-text: #FFF;
-  --donut-label-color: #00FFFF;
-  /* Checkbox symbols (modular per theme) */
-  --checkbox-required-empty: '◈';
-  --checkbox-required-done: '◆';
-  --checkbox-flexible-empty: '?';
-  --day-toggle-color: #00FFFF;  /* Neon cyan for very dark bg */
 }
 body[data-theme="tron"] .cell-border { border: 2px solid #00FFFF; box-shadow: 0 0 8px rgba(0,255,255,0.4), 4px 4px 0 #000; background: #000; }
 body[data-theme="tron"] .title-bar { background: #000; border: none; border-bottom: 2px solid #00FFFF; }
@@ -1059,23 +941,6 @@ body[data-theme="superpink"] {
   --radius-outer: 3px;
   --radius-inner: 3px;
   --radius-sm: 3px;
-  /* Week colors (single source of truth) */
-  --week-1-bg: #FF2E92;
-  --week-2-bg: #CC0044;
-  --week-3-bg: #8833CC;
-  --week-4-bg: #FF44AA;
-  --week-5-bg: #FF6644;
-  --week-1-text: #fca2d5;
-  --week-2-text: #fca2d5;
-  --week-3-text: #fca2d5;
-  --week-4-text: #bf082c;
-  --week-5-text: #C2446E;
-  --donut-label-color: #C2446E;
-  /* Checkbox symbols (modular per theme) */
-  --checkbox-required-empty: '♡';
-  --checkbox-required-done: '♥';
-  --checkbox-flexible-empty: '?';
-  --day-toggle-color: #8B4466;  /* Dark mauve for light pink bg */
 }
 body[data-theme="superpink"] .cell-border { border: none; background: linear-gradient(180deg,#FFE8F0 0%,#FFC8D8 100%); box-shadow: 0 6px 0 #D96080, 0 2px 12px rgba(255,100,150,0.3); }
 body[data-theme="superpink"] .title-bar { background: linear-gradient(180deg,#FF9EBA 0%,#FF6E96 100%); border: none; box-shadow: inset 0 1px 0 rgba(255,255,255,0.5); }
@@ -1095,8 +960,8 @@ body[data-theme="superpink"] .cell-subtitle { color: #C2446E; }
 body[data-theme="superpink"] .top-habit-row, body[data-theme="superpink"] .top-habit-count { color: #C2446E; }
 body[data-theme="superpink"] .habit-label-cell, body[data-theme="superpink"] .task-row input[type="text"] { color: #C2446E; }
 body[data-theme="superpink"] .auth-tab { color: #E8407A; }
-body[data-theme="superpink"] .auth-tab.active { color: #2605fa; border-bottom-color: #C2446E; }
-
+body[data-theme="superpink"] .auth-tab.active { color: #C2446E; border-bottom-color: #C2446E; }
+body[data-theme="superpink"] .day-toggle { color: #C2446E; border-color: #FF9EBA; }
 body[data-theme="superpink"] #version-text { color: #C2446E !important; }
 body[data-theme="superpink"] .settings-section .cell-subtitle { color: #C2446E !important; }
 
@@ -1138,20 +1003,14 @@ body[data-theme="light-pastel"] {
   --week-3-text: #5c3c5c;
   --week-4-text: #5c3c5c;
   --week-5-text: #5c3c5c;
-  --donut-label-color: #5c3c5c;
-  /* Checkbox symbols (modular per theme) */
-  --checkbox-required-empty: '◇';
-  --checkbox-required-done: '◆';
-  --checkbox-flexible-empty: '?';
-  --day-toggle-color: #e2c1f5;  /* Dark purple for pale bg */
 }
 body[data-theme="light-pastel"] .habit-del-btn { border-color: #d4a8d8; color: #d4a8d8; }
 body[data-theme="light-pastel"] .habit-list-row { color: #d4a8d8; }
 body[data-theme="light-pastel"] .habit-list-row span { color: #d4a8d8 !important; }
-
-body[data-theme="light-pastel"] #version-text { color: #cda0fa !important; }
+body[data-theme="light-pastel"] .day-toggle { color: #5c3c5c; }
+body[data-theme="light-pastel"] #version-text { color: #5c3c5c !important; }
 body[data-theme="light-pastel"] .donut-label { color: #5c3c5c !important; }
-body[data-theme="light-pastel"] .settings-section .cell-subtitle { color: #e0c8f5 !important; }
+body[data-theme="light-pastel"] .settings-section .cell-subtitle { color: #5c3c5c !important; }
 
 /* ---- THEME 10: Light Melon ---- */
 body[data-theme="light-melon"] {
@@ -1159,7 +1018,7 @@ body[data-theme="light-melon"] {
   --c-pink: #f6e48e;
   --c-purple: #f8c391;
   --c-orange: #f67481;
-  --c-body-bg: #4287f5;
+  --c-body-bg: #fef8ec;
   --c-body-bg-alt: #f5ebd5;
   --c-text: #6B5530;
   --c-text-muted: #b39977;
@@ -1180,12 +1039,6 @@ body[data-theme="light-melon"] {
   --week-3-text: #6B5530;
   --week-4-text: #6B5530;
   --week-5-text: #6B5530;
-  --donut-label-color: #6B5530;
-  /* Checkbox symbols (modular per theme) */
-  --checkbox-required-empty: '○';
-  --checkbox-required-done: '◉';
-  --checkbox-flexible-empty: '?';
-  --day-toggle-color: #6B5530;  /* Dark brown for cream bg */
 }
 body[data-theme="light-melon"] .cell-border { border: 2px solid; border-color: #fef8ec #6B5530 #6B5530 #fef8ec; box-shadow: inset 1px 1px 0 #FFFFFF, inset -1px -1px 0 #b39977; background: #fef8ec; padding: 2px; }
 body[data-theme="light-melon"] .title-bar { background: linear-gradient(90deg, #f6e48e, #f8c391); border: none; border-bottom: 2px solid #6B5530; box-shadow: inset 1px 1px 0 rgba(255,255,255,0.4); }
@@ -1196,17 +1049,14 @@ body[data-theme="light-melon"] .cell-body { background: #fef8ec; border: none; b
 body[data-theme="light-melon"] .correlation-card { border: 2px solid; border-color: #b39977 #fef8ec #fef8ec #b39977; background: #f5ebd5; box-shadow: inset 1px 1px 0 #FFF; color: #6B5530; }
 body[data-theme="light-melon"] .settings-btn, body[data-theme="light-melon"] .auth-btn, body[data-theme="light-melon"] .update-btn { border: 2px solid; border-color: #fef8ec #b39977 #b39977 #fef8ec; box-shadow: inset 1px 1px 0 #FFF; background: #fef8ec; color: #6B5530; }
 body[data-theme="light-melon"] .settings-select, body[data-theme="light-melon"] .field-group input { border: 2px solid; border-color: #b39977 #fef8ec #fef8ec #b39977; box-shadow: inset 1px 1px 0 #FFF; background: #FFFFFF; color: #6B5530; }
-body[data-theme="light-melon"] .field-group label { color: #3A2D1F; }
 body[data-theme="light-melon"] .progress-track { border: 2px solid; border-color: #b39977 #fef8ec #fef8ec #b39977; box-shadow: inset 1px 1px 0 #000; background: #f5ebd5; }
-body[data-theme="light-melon"] .settings-panel { background: #fae6a0; border-right: 2px solid; border-color: #fef8ec #b39977 #b39977 #fef8ec; }
-body[data-theme="light-melon"] .settings-header { color: #6B5530; }
-body[data-theme="light-melon"] .settings-label { color: #6e4d1f ; }
-body[data-theme="light-melon"] .settings-value { color: #6B5530; }
-body[data-theme="light-melon"] .settings-close { color: #6B5530; }
+body[data-theme="light-melon"] .settings-panel { background: #fef8ec; border-right: 2px solid; border-color: #fef8ec #b39977 #b39977 #fef8ec; }
+body[data-theme="light-melon"] .settings-header, body[data-theme="light-melon"] .settings-label, body[data-theme="light-melon"] .settings-value, body[data-theme="light-melon"] .settings-close, body[data-theme="light-melon"] .habit-list-row { color: #6B5530; }
 body[data-theme="light-melon"] .settings-toggle-btn { border: 2px solid; border-color: #fef8ec #b39977 #b39977 #fef8ec; box-shadow: inset 1px 1px 0 #FFF; background: #fef8ec; }
 body[data-theme="light-melon"] .week-col-header { background: linear-gradient(90deg,#f6e48e,#f8c391); color: #6B5530; }
 body[data-theme="light-melon"] .habit-del-btn { border-color: #f6e48e; color: #f6e48e; }
-body[data-theme="light-melon"] .habit-list-row span { color: #754d15 !important; }
+body[data-theme="light-melon"] .habit-list-row { color: #f6e48e; }
+body[data-theme="light-melon"] .habit-list-row span { color: #f6e48e !important; }
 body[data-theme="light-melon"] .day-toggle { color: #6B5530; }
 body[data-theme="light-melon"] #version-text { color: #6B5530 !important; }
 body[data-theme="light-melon"] .day-box { border-color: #f6e48e !important; }
@@ -1244,31 +1094,26 @@ body[data-theme="experimental"] {
   --radius-outer: 0px;
   --radius-inner: 0px;
   --radius-sm: 0px;
-    /* CHANGED: Week-specific BACKGROUND colors - NEON TEST PALETTE */
-  --week-1-bg: #665582;      /* light purple */
-  --week-2-bg: #FF006E;      /* Neon Pink */
-  --week-3-bg: #39FF14;      /* Neon Lime */
-  --week-4-bg: #FFFF00;      /* Neon Yellow */
-  --week-5-bg: #FF6600;      /* Neon Orange */
-  /* CHANGED: Week-specific TEXT colors - High contrast black text */
-  --week-1-text: #123000;
-  --week-2-text: #001230;
-  --week-3-text: #012300;
-  --week-4-text: #000000;
-  --week-5-text: #000000;
-  --donut-label-color: #FF00FF;
-  /* Checkbox symbols (modular per theme) */
-  --checkbox-required-empty: '⭐';
-  --checkbox-required-done: '🐴';
-  --checkbox-flexible-empty: '❓';
-  --day-toggle-color: #f0e7a8;  /* NEON YELLOW */
-  --habit-text-color: #4d785a;  /* NEON GREEN - stands out! */
+  /* CHANGED: Week-specific BACKGROUND colors */
+  --week-1-bg: #f6e48e;
+  --week-2-bg: #f8c391;
+  --week-3-bg: #f67481;
+  --week-4-bg: #f5ebd5;
+  --week-5-bg: #b39977;
+  /* CHANGED: Week-specific TEXT colors (all same for consistency) */
+  --week-1-text: #6B5530;
+  --week-2-text: #6B5530;
+  --week-3-text: #6B5530;
+  --week-4-text: #6B5530;
+  --week-5-text: #6B5530;
 }
-
-body[data-theme="experimental"] #version-text { color: #F4E8FA !important; }
-body[data-theme="experimental"] .donut-label { color: #831ceb !important; }
-body[data-theme="experimental"] .settings-section .cell-subtitle { color: #F4E8FA !important; } /*Love the Tracker? Thanks! Msg color change */
-body[data-theme="experimental"] .checkbox-grid th {  color: #1846ed; /* Days of month checkboxes color change */}
-/* Experimental theme — fix Your Habits readability */
-body[data-theme="experimental"] #habit-list .habit-list-row > span {color: #F4E8FA !important;}
-body[data-theme="experimental"] #habit-list .habit-list-row > span > span {color: #DCCFE6 !important; opacity: 1 !important;}
+body[data-theme="experimental"] .habit-del-btn { border-color: #f6e48e; color: #f6e48e; }
+body[data-theme="experimental"] .habit-list-row { color: #f6e48e; }
+body[data-theme="experimental"] .habit-list-row span { color: #f6e48e !important; }
+body[data-theme="experimental"] .day-toggle { color: #6B5530; }
+body[data-theme="experimental"] #version-text { color: #6B5530 !important; }
+body[data-theme="experimental"] .donut-label { color: #6B5530 !important; }
+body[data-theme="experimental"] .settings-section .cell-subtitle { color: #ed1822 !important; } /*Love the Tracker? Thanks! Msg color change */
+body[data-theme="experimental"] .checkbox-grid th {
+  color: #1846ed; /* Days of month checkboxes color change */
+}

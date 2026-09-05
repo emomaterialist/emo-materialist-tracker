@@ -462,7 +462,6 @@ async function loadAndRender() {
 // COLOR HELPERS
 // ============================================
 function getThemeColor(varName) { return getComputedStyle(document.body).getPropertyValue(varName).trim(); }
-function getCheckboxSymbol(symbolType) { var varName='--checkbox-'+symbolType; var value=getComputedStyle(document.body).getPropertyValue(varName).trim(); return value.replace(/['"]/g,''); }
 var HABIT_COLOR_CONFIG = {
   vaporwave:  { mode:'hsl-band', baseHue:0, hueRange:360, sat:80, light:62 },
   vaporwave2: { mode:'hsl-band', baseHue:180, hueRange:160, sat:85, light:55 },
@@ -473,8 +472,7 @@ var HABIT_COLOR_CONFIG = {
   tron:       { mode:'curated', palette:['#00FFFF','#FF00FF','#FFFF00','#00FF88','#FF6600','#AA00FF','#FF0055','#00CCFF','#FF99FF','#99FF00','#FF9900','#00FFCC'] },
   superpink:  { mode:'curated', palette:['#FFB3C6','#FF85A1','#FF5C8A','#E8407A','#C2446E','#FF9EBA','#FFD6E5','#FF6E96','#FFE0EB','#FF3399','#FFAAC8','#D96080'] },
   'light-pastel': { mode:'curated', palette:['#ffd0ef','#f0d0ff','#ede5eb','#a08ba0','#6b4c6b','#ffc8e8','#e8d0f5','#f5c8f0','#e8b8e8','#d4a8d8','#f0c8f0','#ede8f0'] },
-  'light-melon':  { mode:'curated', palette:['#f6e48e','#f8c391','#f67481','#f5ebd5','#b39977','#ffeb99','#f0d77d','#e6c999','#ffc896','#f0b88f','#f8d4a8','#ffb38f'] },
-  'experimental': { mode:'curated', palette:['#f6e48e','#f8c391','#f67481','#f5ebd5','#b39977','#ffeb99','#f0d77d','#e6c999','#ffc896','#f0b88f','#f8d4a8','#ffb38f'] }
+  'light-melon':  { mode:'curated', palette:['#f6e48e','#f8c391','#f67481','#f5ebd5','#b39977','#ffeb99','#f0d77d','#e6c999','#ffc896','#f0b88f','#f8d4a8','#ffb38f'] }
 };
 var GOLDEN_ANGLE = 137.508;
 function colorForHabitIndex(i) {
@@ -494,28 +492,47 @@ function darkenColor(hex,a) { var r=hexToRgb(hex); if(!r)return hex; return 'rgb
 // ============================================
 var weekColors=[], weekFillColors=[], weekTextColors=[];
 function buildWeekColors() {
-  var computedStyle = getComputedStyle(document.body);
+  var theme=document.body.getAttribute('data-theme')||'vaporwave';
+  var base;
+  if(theme==='tron'){
+    base=['#00FFFF','#FF00FF','#FFFF00','#00FF88','#FF6600'];
+  } else if(theme==='vaporwave2'){
+    base=['#00F0FF','#FFFF00','#FF2E92','#CC88FF','#FFA040'];
+  } else if(theme==='superpink'){
+    base=['#FF2E92','#CC0044','#8833CC','#FF44AA','#FF6644'];
+  } else {
+    base=['--c-pink','--c-orange','--c-purple','--c-text-muted','--c-dark'].map(getThemeColor);
+  }
+  weekColors=base;
+  weekFillColors=base.map(function(c){return lightenColor(c,0.6);});
+  weekTextColors=base.map(function(hex){ var rgb=hexToRgb(hex); if(!rgb)return'#fff'; var b=(rgb.r*299+rgb.g*587+rgb.b*114)/1000; return b>128?darkenColor(hex,0.55):lightenColor(hex,0.85); });
   
-  // Get week colors from CSS variables (single source of truth)
-  weekColors = [
-    computedStyle.getPropertyValue('--week-1-bg').trim(),
-    computedStyle.getPropertyValue('--week-2-bg').trim(),
-    computedStyle.getPropertyValue('--week-3-bg').trim(),
-    computedStyle.getPropertyValue('--week-4-bg').trim(),
-    computedStyle.getPropertyValue('--week-5-bg').trim()
-  ];
-  
-  // Get week text colors from CSS variables
-  weekTextColors = [
-    computedStyle.getPropertyValue('--week-1-text').trim(),
-    computedStyle.getPropertyValue('--week-2-text').trim(),
-    computedStyle.getPropertyValue('--week-3-text').trim(),
-    computedStyle.getPropertyValue('--week-4-text').trim(),
-    computedStyle.getPropertyValue('--week-5-text').trim()
-  ];
-  
-  // Create lighter fill versions
-  weekFillColors = weekColors.map(function(c){ return lightenColor(c, 0.6); });
+  // Theme-specific text color overrides for donut SVG percentage text
+  if(theme==='vaporwave'){
+    weekTextColors=['#2B1B40','#2B1B40','#2B1B40','#2B1B40','#9265b8'];
+  } else if(theme==='vaporwave2'){
+    weekTextColors=['#FFF','#FFF','#FFF','#FFF','#FFF'];
+  } else if(theme==='basic'){
+    weekTextColors=['#1F2937','#1F2937','#1F2937','#1F2937','#8ad4ff'];
+  } else if(theme==='gothic'){
+    weekColors=['var(--week-1-bg)','var(--week-2-bg)','var(--week-3-bg)','var(--week-4-bg)','var(--week-5-bg)'];
+    weekTextColors=['#ff8269','#CC6666','#fca2a2','#AA4444','#C44444'];
+  } else if(theme==='classic'){
+    weekColors=['var(--week-1-bg)','var(--week-2-bg)','var(--week-3-bg)','var(--week-4-bg)','var(--week-5-bg)'];
+    weekTextColors=['var(--week-1-text)','var(--week-2-text)','var(--week-3-text)','var(--week-4-text)','var(--week-5-text)'];
+  } else if(theme==='superpink'){
+    weekTextColors=['#fca2d5','#fca2d5','#fca2d5','#bf082c','#C2446E'];
+  } else if(theme==='retro95'){
+    weekTextColors=['#000000','#000000','#000000','#000000','#ffffff'];
+  } else if(theme==='tron'){
+    weekTextColors=['#FFF','#FFF','#FFF','#FFF','#FFF'];
+  } else if(theme==='light-pastel'){
+    base=['#ffd0ef','#f0d0ff','#e8b8a8','#ede5eb'];
+    weekTextColors=['#6b4c6b','#6b4c6b','#6b4c6b','#6b4c6b'];
+  } else if(theme==='light-melon'){
+    base=['#f6e48e','#f8c391','#f67481','#f5ebd5'];
+    weekTextColors=['#6B5530','#6B5530','#6B5530','#6B5530'];
+  }
 }
 
 // ============ DEBUG SYSTEM ============
@@ -596,8 +613,18 @@ function renderDonuts() {
   var el=document.getElementById('donut-row'); el.innerHTML='';
   var numWeeks=getWeekCount(), radius=26, circ=2*Math.PI*radius;
   var currentTheme=document.body.getAttribute('data-theme')||'vaporwave';
-  var donutLabelColor = getComputedStyle(document.body).getPropertyValue('--donut-label-color').trim();
-  var donutLabelColor = getComputedStyle(document.body).getPropertyValue('--donut-label-color').trim();
+  var donutLabelColors={
+    'basic':'#1F2937',
+    'gothic':'#FFB3B3',
+    'tron':'#00FFFF',
+    'superpink':'#C2446E',
+    'classic':'#D4B896',
+    'retro95':'#000000',
+    'vaporwave':'var(--c-text-muted)',
+    'vaporwave2':'var(--c-text-muted)',
+    'light-gothic':'var(--c-text-muted)'
+  };
+  var labelColor=donutLabelColors[currentTheme]||'var(--c-text-muted)';
   for (var w=0;w<numWeeks;w++) {
     var ws=w*7+1, we=Math.min(ws+6,DAYS_IN_MONTH), tp=0, td=0;
     habits.forEach(function(h){
@@ -610,7 +637,7 @@ function renderDonuts() {
     var pct=tp>0?Math.round((td/tp)*100):0, offset=circ-(pct/100)*circ;
     var color=weekColors[w]||'#ccc', fill=weekFillColors[w]||'#eee', txt=weekTextColors[w]||'#333';
     var item=document.createElement('div'); item.style.cssText='flex:1;min-width:60px;text-align:center;';
-    item.innerHTML='<svg width="44" height="44" viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" fill="none" stroke="'+fill+'" stroke-width="8"></circle><circle cx="32" cy="32" r="26" fill="none" stroke="'+color+'" stroke-width="8" stroke-dasharray="'+circ+' '+circ+'" stroke-dashoffset="'+offset+'" transform="rotate(-90 32 32)" stroke-linecap="round"></circle><text x="32" y="37" text-anchor="middle" font-size="12" font-weight="600" fill="'+txt+'">'+pct+'%</text></svg><p style="font-size:10px;color:'+donutLabelColor+';margin:2px 0 0;">Wk '+(w+1)+'</p>';
+    item.innerHTML='<svg width="44" height="44" viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" fill="none" stroke="'+fill+'" stroke-width="8"></circle><circle cx="32" cy="32" r="26" fill="none" stroke="'+color+'" stroke-width="8" stroke-dasharray="'+circ+' '+circ+'" stroke-dashoffset="'+offset+'" transform="rotate(-90 32 32)" stroke-linecap="round"></circle><text x="32" y="37" text-anchor="middle" font-size="12" font-weight="600" fill="'+txt+'">'+pct+'%</text></svg><p style="font-size:10px;color:'+labelColor+';margin:2px 0 0;">Wk '+(w+1)+'</p>';
     el.appendChild(item);
   }
 }
@@ -814,21 +841,18 @@ function applyBoxVisual(box, timesLogged, timesRequired, week, isFlexible) {
       box.style.color=baseColor;
       box.style.fontSize='10px';
       box.style.fontWeight='700';
-      /* CHANGED: Read from CSS variable for modular per-theme aesthetics */
-      box.textContent=getCheckboxSymbol('flexible-empty');
+      box.textContent='?';
     } else {
       box.style.border='3px solid '+baseColor;
       box.style.color=baseColor;
       box.style.fontSize='9px';
       box.style.fontWeight='700';
-      /* CHANGED: Read from CSS variable for modular per-theme aesthetics */
-      box.textContent=getCheckboxSymbol('required-empty');
+      box.textContent='\u2715';
     }
   } else if(timesLogged>=timesRequired){
     box.style.background=baseColor;
     box.style.color=weekTextColors[week]||'#fff';
-    /* CHANGED: Read from CSS variable for modular per-theme aesthetics */
-    box.textContent=getCheckboxSymbol('required-done');
+    box.textContent='\u2713';
     box.style.fontSize='11px';
     box.style.fontWeight='700';
     if(isFlexible){
