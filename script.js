@@ -1486,3 +1486,7 @@ document.getElementById('terms-modal').addEventListener('click', function(e){
   if(e.target.id === 'terms-modal') 
     this.style.display = 'none';
 });
+
+
+
+

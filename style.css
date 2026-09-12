@@ -1272,3 +1272,191 @@ body[data-theme="experimental"] .checkbox-grid th {  color: #1846ed; /* Days of 
 /* Experimental theme — fix Your Habits readability */
 body[data-theme="experimental"] #habit-list .habit-list-row > span {color: #F4E8FA !important;}
 body[data-theme="experimental"] #habit-list .habit-list-row > span > span {color: #DCCFE6 !important; opacity: 1 !important;}
+
+
+/* ---- THEME 12: V4P3 (Vaporwave 4 - Synthwave/Neon) ---- */
+body[data-theme="v4p3"] {
+  /* Primary accents - magenta & purple */
+  --c-pink: #FF00FF;
+  --c-purple: #9933FF;
+  /* Background gradient - orange to red ombre */
+  --c-page-bg-1: #FF8800;
+  --c-page-bg-2: #CC0000;
+  /* Body backgrounds */
+  --c-body-bg: #0f02fa;
+  --c-body-bg-alt: #550055;
+  /* Text - bright neon green */
+  --c-text: #00FF00;
+  --c-text-muted: #00DD00;
+  /* Dark accent - black */
+  --c-dark: #000000;
+  --c-orange: #FF6600;
+  /* Red dotted grid */
+  --c-grid-dot: #CC0000;
+  /* Fonts - Times New Roman + Courier */
+  --c-font: "Times New Roman", Georgia, serif;
+  --radius-outer: 0px;
+  --radius-inner: 0px;
+  --radius-sm: 0px;
+  /* Weekly colors - magenta, yellow, orange, cyan, purple */
+  --week-1-bg: #FF00FF;
+  --week-2-bg: #FFFF00;
+  --week-3-bg: #FF6600;
+  --week-4-bg: #00FFFF;
+  --week-5-bg: #9933FF;
+  /* Week text - high contrast black */
+  --week-1-text: #000000;
+  --week-2-text: #000000;
+  --week-3-text: #000000;
+  --week-4-text: #000000;
+  --week-5-text: #000000;
+  --donut-label-color: #00FF00;
+  /* Checkbox symbols */
+  --checkbox-required-empty: '▲';
+  --checkbox-required-done: '◆';
+  --checkbox-flexible-empty: '◊';
+  --day-toggle-color: #00FFFF;
+  --habit-text-color: #00FF00;
+  --c-chart-bg: #5615ab;
+}
+
+/* V4P3 theme overrides */
+body[data-theme="v4p3"] .cell-body { background: #5615ab; border: 2px solid #9933FF; } 
+
+body[data-theme="v4p3"] .habit-del-btn { border-color: #FF00FF; color: #FF00FF; }
+body[data-theme="v4p3"] .habit-list-row span { color: #00FF00 !important; }
+body[data-theme="v4p3"] #version-text { color: #00FFFF !important; }
+body[data-theme="v4p3"] .donut-label { color: #00FF00 !important; }
+body[data-theme="v4p3"] .settings-section .cell-subtitle { color: #00FFFF !important; }
+body[data-theme="v4p3"] .checkbox-grid th { color: #00FF00; }
+body[data-theme="v4p3"] .settings-panel { background: linear-gradient(180deg, #FF7700, #CC0000); border: 3px solid #FF00FF; }
+
+body[data-theme="v4p3"] .settings-label { color: #00FF00; }
+body[data-theme="v4p3"] .field-group label { color: #00FF00; }
+body[data-theme="v4p3"] .day-toggle { color: #00FFFF !important; }
+body[data-theme="v4p3"] .day-toggle.selected { background: #FF00FF !important; color: #000000 !important; }
+
+
+body[data-theme="v4p3"] .chart-container { background: var(--c-chart-bg) !important; }
+body[data-theme="v4p3"] canvas { background: var(--c-chart-bg) !important; }
+body[data-theme="v4p3"] .day-box { background: var(--c-chart-bg) !important; }
+body[data-theme="v4p3"] .grid-cell { background: var(--c-chart-bg) !important; }
+body[data-theme="v4p3"] .checkbox-grid { background: var(--c-chart-bg) !important; }
+body[data-theme="v4p3"] #grid-table td { background: var(--c-chart-bg) !important; }
+body[data-theme="v4p3"] .progress-cell { background: var(--c-chart-bg) !important; }
+
+
+
+
+
+/* ---- DEBUG THEME: Every element a unique color for identification ---- */
+body[data-theme="debug"] {
+  --c-dark: hsl(0, 100%, 50%);           /* Red */
+  --c-pink: hsl(30, 100%, 50%);          /* Orange */
+  --c-purple: hsl(60, 100%, 50%);        /* Yellow */
+  --c-orange: hsl(90, 100%, 50%);        /* Yellow-green */
+  --c-body-bg: hsl(120, 100%, 40%);      /* Green */
+  --c-body-bg-alt: hsl(150, 100%, 40%);  /* Cyan-green */
+  --c-text: hsl(180, 100%, 40%);         /* Cyan */
+  --c-text-muted: hsl(210, 100%, 50%);   /* Light blue */
+  --c-page-bg-1: hsl(240, 100%, 50%);    /* Blue */
+  --c-page-bg-2: hsl(270, 100%, 50%);    /* Purple */
+  --c-grid-dot: hsl(300, 100%, 50%);     /* Magenta */
+  --c-font: monospace;
+  --radius-outer: 8px;
+  --radius-inner: 6px;
+  --radius-sm: 4px;
+  /* Weekly colors - rainbow */
+  --week-1-bg: hsl(0, 100%, 50%);
+  --week-2-bg: hsl(60, 100%, 50%);
+  --week-3-bg: hsl(120, 100%, 40%);
+  --week-4-bg: hsl(180, 100%, 40%);
+  --week-5-bg: hsl(240, 100%, 50%);
+  --week-1-text: #000000;
+  --week-2-text: #000000;
+  --week-3-text: #000000;
+  --week-4-text: #000000;
+  --week-5-text: #000000;
+  --donut-label-color: hsl(0, 100%, 50%);
+  --checkbox-required-empty: '🔴';
+  --checkbox-required-done: '🟢';
+  --checkbox-flexible-empty: '🔵';
+  --day-toggle-color: hsl(60, 100%, 50%);
+  --habit-text-color: #000000;
+  --chart-bg: hsl(150, 100%, 50%);
+}
+
+/* Debug-specific overrides */
+body[data-theme="debug"] .habit-del-btn { background: hsl(330, 100%, 50%) !important; color: #000000 !important; border-color: #000000 !important; }
+body[data-theme="debug"] .habit-list-row { background: hsl(45, 100%, 50%) !important; color: #000000 !important; }
+body[data-theme="debug"] .settings-panel { background: hsl(210, 100%, 60%) !important; border: 3px solid #000000 !important; }
+body[data-theme="debug"] .settings-section { background: hsl(90, 100%, 50%) !important; }
+body[data-theme="debug"] .cell-body { background: hsl(180, 100%, 50%) !important; }
+body[data-theme="debug"] .cell-border { background: hsl(120, 100%, 50%) !important; border: 2px solid #000000 !important; }
+body[data-theme="debug"] .correlation-card { background: hsl(270, 100%, 50%) !important; color: #000000 !important; }
+body[data-theme="debug"] .day-box { background: hsl(30, 100%, 50%) !important; }
+body[data-theme="debug"] .grid-cell { background: hsl(75, 100%, 50%) !important; }
+body[data-theme="debug"] .checkbox-grid { background: hsl(165, 100%, 50%) !important; }
+body[data-theme="debug"] #grid-table td { background: hsl(195, 100%, 50%) !important; }
+body[data-theme="debug"] .progress-cell { background: hsl(225, 100%, 50%) !important; }
+body[data-theme="debug"] .progress-track { background: hsl(255, 100%, 50%) !important; }
+body[data-theme="debug"] .chart-container { background: hsl(15, 100%, 50%) !important; }
+body[data-theme="debug"] canvas { background: hsl(45, 100%, 50%) !important; }
+body[data-theme="debug"] .settings-label { color: #000000 !important; background: hsl(90, 100%, 50%) !important; }
+body[data-theme="debug"] .field-group label { color: #000000 !important; background: hsl(120, 100%, 50%) !important; }
+body[data-theme="debug"] .title-bar { background: hsl(300, 100%, 50%) !important; color: #000000 !important; }
+body[data-theme="debug"] .donut-label { color: #000000 !important; }
+body[data-theme="debug"] .settings-section .cell-subtitle { color: #000000 !important; background: hsl(60, 100%, 50%) !important; }
+body[data-theme="debug"] .checkbox-grid th { color: #000000 !important; background: hsl(150, 100%, 50%) !important; }
+
+
+/* ---- THEME: Dark Romantic (Winter Dark Palette) ---- */
+body[data-theme="dark-romantic"] {
+  /* Deep burgundy/magenta accents */
+  --c-pink: #D1436B;
+  --c-purple: #5B2E5F;
+  /* Dark romantic backgrounds */
+  --c-page-bg-1: #1A1A2E;
+  --c-page-bg-2: #16213E;
+  --c-body-bg: #2D2D44;
+  --c-body-bg-alt: #3A3A52;
+  /* Text - soft light for contrast */
+  --c-text: #E8E8F0;
+  --c-text-muted: #A8A8B8;
+  /* Dark accent */
+  --c-dark: #0F0F1E;
+  --c-orange: #8B5A3C;
+  --c-grid-dot: rgba(139, 69, 108, 0.3);
+  --c-font: "Georgia", serif;
+  --radius-outer: 0px;
+  --radius-inner: 0px;
+  --radius-sm: 0px;
+  /* Weekly colors - dark romantic palette */
+  --week-1-bg: #8B1E4F;      /* Deep burgundy */
+  --week-2-bg: #1B5E5E;      /* Teal */
+  --week-3-bg: #2D5A2D;      /* Deep forest green */
+  --week-4-bg: #1A4A6F;      /* Deep blue */
+  --week-5-bg: #5B2E5F;      /* Deep purple */
+  --week-1-text: #F0E8E8;
+  --week-2-text: #E8F0F0;
+  --week-3-text: #E8F0E8;
+  --week-4-text: #E8F0F8;
+  --week-5-text: #F0E8F8;
+  --donut-label-color: #E8D9D9;
+  --checkbox-required-empty: '◇';
+  --checkbox-required-done: '◆';
+  --checkbox-flexible-empty: '◊';
+  --day-toggle-color: #D1436B;
+  --habit-text-color: #E8D9D9;
+}
+
+/* Dark Romantic overrides */
+body[data-theme="dark-romantic"] .habit-del-btn { border-color: #D1436B; color: #D1436B; }
+body[data-theme="dark-romantic"] .habit-list-row span { color: #D1946B !important; }
+body[data-theme="dark-romantic"] .settings-panel { background: linear-gradient(180deg, #2D2D44, #1A1A2E); border: 2px solid #5B2E5F; }
+body[data-theme="dark-romantic"] .cell-body { background: #3A3A52; border: 1px solid #5B2E5F; }
+body[data-theme="dark-romantic"] .settings-label { color: #E8D9D9; }
+body[data-theme="dark-romantic"] .field-group label { color: #E8D9D9; }
+body[data-theme="dark-romantic"] .day-toggle { color: #D1946B !important; }
+body[data-theme="dark-romantic"] .donut-label { color: #E8D9D9 !important; }
+body[data-theme="dark-romantic"] .settings-section .cell-subtitle { color: #A8A8B8 !important; }
