@@ -677,44 +677,6 @@ button.settings-btn:active { transform: translateY(0); }
   transform: scale(1.1);
 }
 
-
-/* =============================================
-   EMOJI PICKER FIX
-============================================= */
-#emoji-grid {
-  max-height: 400px;
-  overflow-y: auto;
-  padding: 10px;
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 8px;
-}
-
-#emoji-picker-modal {
-  position: relative;
-}
-
-#emoji-picker-modal button:first-child {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  background: transparent;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: var(--c-text);
-  padding: 0;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-
-
-
-
 /* =============================================
    THEME DEFINITIONS
    INSTRUCTIONS: All code for each theme (color vars + overrides) 
@@ -787,7 +749,7 @@ body[data-theme="classic"] {
   --c-text-muted: #6B5B47;
   --c-page-bg-1: #F0E8DA;
   --c-page-bg-2: #DDD0B8;
-  --c-grid-dot: rgba(44,36,32,0.5);
+  --c-grid-dot: rgba(44,36,32,0.08);
   --c-font: Georgia, "Times New Roman", serif;
   --radius-outer: 3px;
   --radius-inner: 2px;
@@ -835,7 +797,7 @@ body[data-theme="basic"] {
   --c-text-muted: #64748B;
   --c-page-bg-1: #F8FAFC;
   --c-page-bg-2: #F8FAFC;
-  --c-grid-dot: rgba(0,0,100,0.25);
+  --c-grid-dot: rgba(0,0,0,0);
   --c-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
   --radius-outer: 6px;
   --radius-inner: 4px;
@@ -883,7 +845,8 @@ body[data-theme="vaporwave2"] {
   --c-text-muted: #C9B8E8;
   --c-page-bg-1: #0A050F;
   --c-page-bg-2: #0A050F;
-  --c-grid-dot: rgba(255,46,146,0.29);  
+  --c-grid-dot: rgba(255,46,146,0.15);
+  --c-font: "Courier New", monospace;
   --radius-outer: 0px;
   --radius-inner: 0px;
   --radius-sm: 0px;
@@ -977,7 +940,7 @@ body[data-theme="gothic"] {
   --c-text-muted: #5C0000;
   --c-page-bg-1: #FFFFFF;
   --c-page-bg-2: #FFFFFF;
-  --c-grid-dot: rgba(139,0,0,0.8);
+  --c-grid-dot: rgba(139,0,0,0.08);
   --c-font: "Roboto Mono", monospace;
   --radius-outer: 0px;
   --radius-inner: 0px;
@@ -1034,7 +997,7 @@ body[data-theme="tron"] {
   --c-text-muted: #808080;
   --c-page-bg-1: #000000;
   --c-page-bg-2: #000000;
-  --c-grid-dot: rgba(0,255,255,0.29);
+  --c-grid-dot: rgba(0,255,255,0.06);
   --c-font: "Roboto Mono", monospace;
   --radius-outer: 0px;
   --radius-inner: 0px;
@@ -1079,86 +1042,63 @@ body[data-theme="tron"] #version-text { color: #00FFFF !important; }
 body[data-theme="tron"] .donut-label { color: #00FFFF !important; }
 body[data-theme="tron"] .settings-section .cell-subtitle { color: #00FFFF !important; }
 
-
-/* ---- THEME 8: Super Pink (2000s HOT PINK - Black Outlines) ---- */
+/* ---- THEME 8: Super Pink ---- */
 body[data-theme="superpink"] {
-  --c-dark: #D70087;
-  --c-pink: #FF0080;
-  --c-purple: #FF66D9;
-  --c-orange: #FF99E6;
-  --c-body-bg: #FFB3E6;
-  --c-body-bg-alt: #FFD9F0;
-  --c-text: #D70087;
-  --c-text-muted: #FF0080;
-  --c-page-bg-1: #FF1493;
-  --c-page-bg-2: #FF0080;
-  --c-grid-dot: rgba(215,0,135,0.9);
+  --c-dark: #C2446E;
+  --c-pink: #FF6E96;
+  --c-purple: #FF9EBA;
+  --c-orange: #FFD6E5;
+  --c-body-bg: #FFC8D8;
+  --c-body-bg-alt: #FFE8F0;
+  --c-text: #C2446E;
+  --c-text-muted: #E8407A;
+  --c-page-bg-1: #FF85A1;
+  --c-page-bg-2: #FF6E96;
+  --c-grid-dot: rgba(194,68,110,0.1);
   --c-font: "Nunito", sans-serif;
   --radius-outer: 3px;
   --radius-inner: 3px;
   --radius-sm: 3px;
-  /* Week colors */
-  --week-1-bg: #FF0080;
-  --week-2-bg: #9B59B6;
-  --week-3-bg: #3498DB;
-  --week-4-bg: #f78736;
-  --week-5-bg: #ffc852;
-  --week-1-text: #000000;
-  --week-2-text: #000000;
-  --week-3-text: #000000;
-  --week-4-text: #000000;
-  --week-5-text: #000000;
-  --donut-label-color: #D70087;
-  /* Checkbox symbols */
+  /* Week colors (single source of truth) */
+  --week-1-bg: #FF2E92;
+  --week-2-bg: #CC0044;
+  --week-3-bg: #8833CC;
+  --week-4-bg: #FF44AA;
+  --week-5-bg: #FF6644;
+  --week-1-text: #fca2d5;
+  --week-2-text: #fca2d5;
+  --week-3-text: #fca2d5;
+  --week-4-text: #bf082c;
+  --week-5-text: #C2446E;
+  --donut-label-color: #C2446E;
+  /* Checkbox symbols (modular per theme) */
   --checkbox-required-empty: '♡';
   --checkbox-required-done: '♥';
   --checkbox-flexible-empty: '?';
-  --day-toggle-color: #D70087;
+  --day-toggle-color: #8B4466;  /* Dark mauve for light pink bg */
 }
+body[data-theme="superpink"] .cell-border { border: none; background: linear-gradient(180deg,#FFE8F0 0%,#FFC8D8 100%); box-shadow: 0 6px 0 #D96080, 0 2px 12px rgba(255,100,150,0.3); }
+body[data-theme="superpink"] .title-bar { background: linear-gradient(180deg,#FF9EBA 0%,#FF6E96 100%); border: none; box-shadow: inset 0 1px 0 rgba(255,255,255,0.5); }
+body[data-theme="superpink"] .title-text { font-family: "Sacramento", cursive !important; font-size: 24px !important; font-weight: 400 !important; text-transform: none !important; letter-spacing: 1px !important; color: #FFF !important; text-shadow: 0 1px 2px rgba(180,40,80,0.4) !important; }
+body[data-theme="superpink"] .title-glyph { background: #FFFFFF; box-shadow: none; }
+body[data-theme="superpink"] .title-dots span { background: rgba(255,255,255,0.8); border-radius: 50%; }
+body[data-theme="superpink"] .cell-body { background: linear-gradient(180deg,#FFE8F0 0%,#FFC8D8 100%); border: none; }
+body[data-theme="superpink"] .correlation-card { background: linear-gradient(180deg,#FFF,#FFE8F0); border: 1px solid #FF9EBA; color: #C2446E; box-shadow: 0 2px 0 #F08098; }
+body[data-theme="superpink"] .settings-panel { background: linear-gradient(180deg,#FFB3C6,#FF85A1); }
+body[data-theme="superpink"] .settings-label, body[data-theme="superpink"] .settings-header, body[data-theme="superpink"] .settings-value, body[data-theme="superpink"] .settings-close, body[data-theme="superpink"] .habit-list-row { color: #FFF; }
+body[data-theme="superpink"] .donut-label { color: #C2446E !important; }
+body[data-theme="superpink"] .settings-btn, body[data-theme="superpink"] .auth-btn, body[data-theme="superpink"] .update-btn { background: linear-gradient(180deg,#FF9EBA,#FF6E96); border: none; color: #FFF; box-shadow: 0 3px 0 #D95070, inset 0 1px 0 rgba(255,255,255,0.4); }
+body[data-theme="superpink"] .settings-select, body[data-theme="superpink"] .field-group input { background: linear-gradient(180deg,#FFF,#FFE8F0); border: 2px solid #FF9EBA; color: #C2446E; box-shadow: inset 0 1px 3px rgba(255,100,150,0.15); }
+body[data-theme="superpink"] .progress-track { background: #FFE0EB; border: 1px solid #FF9EBA; }
+body[data-theme="superpink"] .settings-toggle-btn { background: linear-gradient(180deg,#FF9EBA,#FF6E96); border: none; box-shadow: 0 3px 0 #D95070; }
+body[data-theme="superpink"] .cell-subtitle { color: #C2446E; }
+body[data-theme="superpink"] .top-habit-row, body[data-theme="superpink"] .top-habit-count { color: #C2446E; }
+body[data-theme="superpink"] .habit-label-cell, body[data-theme="superpink"] .task-row input[type="text"] { color: #C2446E; }
+body[data-theme="superpink"] .auth-tab { color: #E8407A; }
+body[data-theme="superpink"] .auth-tab.active { color: #2605fa; border-bottom-color: #C2446E; }
 
-body[data-theme="superpink"] .cell-border { border: 3px solid #000000; background: linear-gradient(180deg,#FFD9F0 0%,#FFB3E6 100%); box-shadow: 6px 6px 0px #000000; }
-
-body[data-theme="superpink"] .title-bar { background: linear-gradient(180deg,#FF66D9 0%,#FF0080 100%); border: 3px solid #000000; box-shadow: inset 0 1px 0 rgba(0,0,0,0.3); }
-
-body[data-theme="superpink"] .title-text { font-family: "Sacramento", cursive !important; font-size: 24px !important; font-weight: 400 !important; text-transform: none !important; letter-spacing: 1px !important; color: #FFF !important; text-shadow: 2px 2px 0px #000000 !important; }
-
-body[data-theme="superpink"] .title-glyph { background: #FFFFFF; border: 2px solid #000000; box-shadow: none; }
-
-body[data-theme="superpink"] .title-dots span { background: #000000; border-radius: 50%; }
-
-body[data-theme="superpink"] .cell-body { background: linear-gradient(180deg,#FFD9F0 0%,#FFB3E6 100%); border: none; }
-
-body[data-theme="superpink"] .correlation-card { background: linear-gradient(180deg,#FFF,#FFD9F0); border: 3px solid #000000; color: #D70087; box-shadow: 4px 4px 0px #000000; }
-
-body[data-theme="superpink"] .settings-panel { background: linear-gradient(180deg,#FF80D9,#FF1493); border: 3px solid #000000; box-shadow: 6px 6px 0px #000000; }
-
-body[data-theme="superpink"] .settings-label, body[data-theme="superpink"] .settings-header, body[data-theme="superpink"] .settings-value, body[data-theme="superpink"] .settings-close, body[data-theme="superpink"] .habit-list-row { color: #000000; text-shadow: 1px 1px 0px rgba(255,255,255,0.5); }
-
-body[data-theme="superpink"] .donut-label { color: #D70087 !important; text-shadow: 1px 1px 0px #000000; }
-
-body[data-theme="superpink"] .settings-btn, body[data-theme="superpink"] .auth-btn, body[data-theme="superpink"] .update-btn { background: linear-gradient(180deg,#FF66D9,#FF0080); border: 3px solid #000000; color: #FFF; box-shadow: 4px 4px 0px #000000, inset 0 1px 0 rgba(0,0,0,0.3); text-shadow: 1px 1px 0px #000000; }
-
-body[data-theme="superpink"] .settings-select, body[data-theme="superpink"] .field-group input { background: linear-gradient(180deg,#FFF,#FFD9F0); border: 3px solid #000000; color: #D70087; box-shadow: inset 2px 2px 0px rgba(0,0,0,0.1); }
-
-body[data-theme="superpink"] .progress-track { background: #FFC0EB; border: 2px solid #000000; }
-
-body[data-theme="superpink"] .settings-toggle-btn { background: linear-gradient(180deg,#FF66D9,#FF0080); border: 3px solid #000000; box-shadow: 4px 4px 0px #000000; }
-
-body[data-theme="superpink"] .cell-subtitle { color: #D70087; text-shadow: 1px 1px 0px rgba(0,0,0,0.2); }
-
-body[data-theme="superpink"] .top-habit-row, body[data-theme="superpink"] .top-habit-count { color: #D70087; }
-
-body[data-theme="superpink"] .habit-label-cell, body[data-theme="superpink"] .task-row input[type="text"] { color: #D70087; }
-
-body[data-theme="superpink"] .auth-tab { color: #FF0080; }
-
-body[data-theme="superpink"] .auth-tab.active { color: #D70087; border-bottom: 3px solid #000000; }
-
-body[data-theme="superpink"] #version-text { color: #D70087 !important; text-shadow: 1px 1px 0px #000000; }
-
-body[data-theme="superpink"] .settings-section .cell-subtitle { color: #D70087 !important; }
-
-body[data-theme="superpink"] #best-month-container span { color: #D70087 !important; }
+body[data-theme="superpink"] #version-text { color: #C2446E !important; }
+body[data-theme="superpink"] .settings-section .cell-subtitle { color: #C2446E !important; }
 
 /* ---- THEME 9: Light Ash Pastel ---- */
 body[data-theme="light-pastel"] {
@@ -1240,7 +1180,7 @@ body[data-theme="light-melon"] {
   --week-3-text: #6B5530;
   --week-4-text: #6B5530;
   --week-5-text: #6B5530;
-  --donut-label-color: #8a6a5a;
+  --donut-label-color: #6B5530;
   /* Checkbox symbols (modular per theme) */
   --checkbox-required-empty: '○';
   --checkbox-required-done: '◉';
@@ -1319,7 +1259,7 @@ body[data-theme="experimental"] {
   --donut-label-color: #FF00FF;
   /* Checkbox symbols (modular per theme) */
   --checkbox-required-empty: '⭐';
-  --checkbox-required-done: '💿';
+  --checkbox-required-done: '🐴';
   --checkbox-flexible-empty: '❓';
   --day-toggle-color: #f0e7a8;  /* NEON YELLOW */
   --habit-text-color: #4d785a;  /* NEON GREEN - stands out! */
@@ -1341,7 +1281,7 @@ body[data-theme="v4p3"] {
   --c-purple: #9933FF;
   /* Background gradient - orange to red ombre */
   --c-page-bg-1: #FF8800;
-  --c-page-bg-2:  #FF6600;
+  --c-page-bg-2: #CC0000;
   /* Body backgrounds */
   --c-body-bg: #0f02fa;
   --c-body-bg-alt: #550055;
@@ -1365,12 +1305,12 @@ body[data-theme="v4p3"] {
   --week-4-bg: #00FFFF;
   --week-5-bg: #9933FF;
   /* Week text - high contrast black */
-  --week-1-text: #00FF00;
---week-2-text: #00FF00;
---week-3-text: #00FF00;
---week-4-text: #00FF00;
---week-5-text: #00FF00;
-  --donut-label-color: #39FF14;
+  --week-1-text: #000000;
+  --week-2-text: #000000;
+  --week-3-text: #000000;
+  --week-4-text: #000000;
+  --week-5-text: #000000;
+  --donut-label-color: #00FF00;
   /* Checkbox symbols */
   --checkbox-required-empty: '▲';
   --checkbox-required-done: '◆';
@@ -1396,11 +1336,9 @@ body[data-theme="v4p3"] .field-group label { color: #00FF00; }
 body[data-theme="v4p3"] .day-toggle { color: #00FFFF !important; }
 body[data-theme="v4p3"] .day-toggle.selected { background: #FF00FF !important; color: #000000 !important; }
 
-/* Option 3: Match chart bg */
-body[data-theme="v4p3"] .correlation-card { background: #48089c !important; border: 2px solid #FF00FF !important; }
 
 body[data-theme="v4p3"] .chart-container { background: var(--c-chart-bg) !important; }
-
+body[data-theme="v4p3"] canvas { background: var(--c-chart-bg) !important; }
 body[data-theme="v4p3"] .day-box { background: var(--c-chart-bg) !important; }
 body[data-theme="v4p3"] .grid-cell { background: var(--c-chart-bg) !important; }
 body[data-theme="v4p3"] .checkbox-grid { background: var(--c-chart-bg) !important; }
@@ -1416,10 +1354,7 @@ body[data-theme="debug"] {
   --c-dark: hsl(0, 100%, 50%);           /* Red */
   --c-pink: hsl(30, 100%, 50%);          /* Orange */
   --c-purple: hsl(60, 100%, 50%);        /* Yellow */
-  --c-orange: hsl(90, 100%, 50%); 
-  
-  
-  /* Yellow-green */
+  --c-orange: hsl(90, 100%, 50%);        /* Yellow-green */
   --c-body-bg: hsl(120, 100%, 40%);      /* Green */
   --c-body-bg-alt: hsl(150, 100%, 40%);  /* Cyan-green */
   --c-text: hsl(180, 100%, 40%);         /* Cyan */
@@ -1461,7 +1396,7 @@ body[data-theme="debug"] .cell-border { background: hsl(120, 100%, 50%) !importa
 body[data-theme="debug"] .correlation-card { background: hsl(270, 100%, 50%) !important; color: #000000 !important; }
 body[data-theme="debug"] .day-box { background: hsl(30, 100%, 50%) !important; }
 body[data-theme="debug"] .grid-cell { background: hsl(75, 100%, 50%) !important; }
-body[data-theme="debug"] .checkbox-grid { background: hsl(195, 100%, 50%) !important; }
+body[data-theme="debug"] .checkbox-grid { background: hsl(165, 100%, 50%) !important; }
 body[data-theme="debug"] #grid-table td { background: hsl(195, 100%, 50%) !important; }
 body[data-theme="debug"] .progress-cell { background: hsl(225, 100%, 50%) !important; }
 body[data-theme="debug"] .progress-track { background: hsl(255, 100%, 50%) !important; }
@@ -1497,11 +1432,11 @@ body[data-theme="dark-romantic"] {
   --radius-inner: 0px;
   --radius-sm: 0px;
   /* Weekly colors - dark romantic palette */
-  --week-1-bg: #A03060;      /* Deep burgundy */
---week-2-bg: #2A7070;      /* Teal */
---week-3-bg: #3D7A3D;      /* Deep forest green */
---week-4-bg: #2A6A9F;      /* Deep blue */
---week-5-bg: #704E7F;      /* Deep purple */
+  --week-1-bg: #8B1E4F;      /* Deep burgundy */
+  --week-2-bg: #1B5E5E;      /* Teal */
+  --week-3-bg: #2D5A2D;      /* Deep forest green */
+  --week-4-bg: #1A4A6F;      /* Deep blue */
+  --week-5-bg: #5B2E5F;      /* Deep purple */
   --week-1-text: #F0E8E8;
   --week-2-text: #E8F0F0;
   --week-3-text: #E8F0E8;

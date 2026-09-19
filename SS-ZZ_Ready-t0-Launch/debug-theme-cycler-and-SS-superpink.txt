@@ -1,0 +1,226 @@
+
+
+// ============================================
+// DEBUG THEME CYCLER - Magenta Highlight Edition
+// ============================================
+
+const debugOverrides = [
+  { selector: '.habit-del-btn', name: 'habit-del-btn' },
+  { selector: '.habit-list-row', name: 'habit-list-row' },
+  { selector: '.settings-panel', name: 'settings-panel' },
+  { selector: '.settings-section', name: 'settings-section' },
+  { selector: '.cell-body', name: 'cell-body' },
+  { selector: '.cell-border', name: 'cell-border' },
+  { selector: '.correlation-card', name: 'correlation-card' },
+  { selector: '.day-box', name: 'day-box' },
+  { selector: '.grid-cell', name: 'grid-cell' },
+  { selector: '.checkbox-grid', name: 'checkbox-grid' },
+  { selector: '#grid-table td', name: 'grid-table td' },
+  { selector: '.progress-cell', name: 'progress-cell' },
+  { selector: '.progress-track', name: 'progress-track' },
+  { selector: '.chart-container', name: 'chart-container' },
+  { selector: 'canvas', name: 'canvas' },
+  { selector: '.settings-label', name: 'settings-label' },
+  { selector: '.field-group label', name: 'field-group label' },
+  { selector: '.title-bar', name: 'title-bar' },
+  { selector: '.settings-section .cell-subtitle', name: 'cell-subtitle' },
+  { selector: '.checkbox-grid th', name: 'checkbox-grid th' }
+];
+
+let debugCyclerState = {
+  currentIndex: 0,
+  isRunning: false,
+  intervalId: null,
+  styleEl: null
+};
+
+const MAGENTA_HIGHLIGHT = '#FF00FF';
+
+function initDebugCycler() {
+  // Create style element for debug colors
+  debugCyclerState.styleEl = document.createElement('style');
+  debugCyclerState.styleEl.id = 'debug-cycler-style';
+  document.head.appendChild(debugCyclerState.styleEl);
+  
+  // Create control panel
+  const panel = document.createElement('div');
+  panel.id = 'debug-cycler-panel';
+  panel.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #1a1a1a;
+    border: 3px solid #FF00FF;
+    border-radius: 8px;
+    padding: 15px;
+    z-index: 99999;
+    font-family: monospace;
+    color: #ddd;
+    max-width: 320px;
+  `;
+  
+  panel.innerHTML = `
+    <div style="margin-bottom: 10px; font-weight: bold; font-size: 12px; color: #FF00FF;">
+      🐛 DEBUG CYCLER (Magenta Mode)
+    </div>
+    <div id="debug-cycler-display" style="background: #222; padding: 10px; border-radius: 4px; margin-bottom: 10px; font-size: 11px; white-space: pre-wrap; word-break: break-all; border: 2px solid #FF00FF; color: #FF00FF;">
+      Ready
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 10px;">
+      <button id="debug-back-btn" style="padding: 8px; background: #333; color: #FF00FF; border: 2px solid #FF00FF; cursor: pointer; font-weight: bold; font-size: 11px;">← Back 1</button>
+      <button id="debug-forward-btn" style="padding: 8px; background: #333; color: #FF00FF; border: 2px solid #FF00FF; cursor: pointer; font-weight: bold; font-size: 11px;">Forward 1 →</button>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px;">
+      <button id="debug-start-btn" style="padding: 8px; background: #FF00FF; color: #000; border: none; cursor: pointer; font-weight: bold; font-size: 11px;">▶ Start</button>
+      <button id="debug-stop-btn" style="padding: 8px; background: #FF00FF; color: #000; border: none; cursor: pointer; font-weight: bold; font-size: 11px;">⏹ Stop</button>
+    </div>
+  `;
+  
+  document.body.appendChild(panel);
+  
+  // Attach events
+  document.getElementById('debug-start-btn').onclick = debugCyclerStart;
+  document.getElementById('debug-stop-btn').onclick = debugCyclerStop;
+  document.getElementById('debug-forward-btn').onclick = debugCyclerForward;
+  document.getElementById('debug-back-btn').onclick = debugCyclerBack;
+  
+  // Set to dark-romantic theme
+  if(document.body.getAttribute('data-theme') !== 'dark-romantic') {
+    document.body.setAttribute('data-theme', 'dark-romantic');
+  }
+}
+
+function debugCyclerUpdate() {
+  const item = debugOverrides[debugCyclerState.currentIndex];
+  
+  // Update display with MAGENTA
+  const display = document.getElementById('debug-cycler-display');
+  display.textContent = `[${debugCyclerState.currentIndex + 1}/${debugOverrides.length}]\n\n${item.selector}`;
+  display.style.background = MAGENTA_HIGHLIGHT;
+  display.style.color = '#000';
+  display.style.borderColor = MAGENTA_HIGHLIGHT;
+  
+  // Apply CSS - highlight current selector with MAGENTA
+  let css = 'body[data-theme="dark-romantic"] ';
+  
+  debugOverrides.forEach((override, i) => {
+    if(i === debugCyclerState.currentIndex) {
+      // Highlight this one with BRIGHT MAGENTA
+      css += override.selector + ' { background: ' + MAGENTA_HIGHLIGHT + ' !important; color: #000 !important; border-color: ' + MAGENTA_HIGHLIGHT + ' !important; box-shadow: 0 0 20px ' + MAGENTA_HIGHLIGHT + ' !important; }\n';
+      css += 'body[data-theme="dark-romantic"] ' + override.selector + ' * { background: inherit !important; color: inherit !important; }\n';
+    }
+  });
+  
+  debugCyclerState.styleEl.textContent = css;
+}
+
+function debugCyclerStart() {
+  if(debugCyclerState.isRunning) return;
+  debugCyclerState.isRunning = true;
+  debugCyclerState.intervalId = setInterval(() => {
+    debugCyclerState.currentIndex = (debugCyclerState.currentIndex + 1) % debugOverrides.length;
+    debugCyclerUpdate();
+  }, 1500);
+  debugCyclerUpdate();
+}
+
+function debugCyclerStop() {
+  if(debugCyclerState.intervalId) {
+    clearInterval(debugCyclerState.intervalId);
+    debugCyclerState.intervalId = null;
+  }
+  debugCyclerState.isRunning = false;
+  debugCyclerUpdate();
+}
+
+function debugCyclerForward() {
+  debugCyclerStop();
+  debugCyclerState.currentIndex = (debugCyclerState.currentIndex + 1) % debugOverrides.length;
+  debugCyclerUpdate();
+}
+
+function debugCyclerBack() {
+  debugCyclerStop();
+  debugCyclerState.currentIndex = (debugCyclerState.currentIndex - 1 + debugOverrides.length) % debugOverrides.length;
+  debugCyclerUpdate();
+}
+
+// Initialize when DOM ready
+if(document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initDebugCycler);
+} else {
+  initDebugCycler();
+}
+
+
+
+
+
+
+
+Old superpink theme: 
+
+
+/* ---- THEME 8: Super Pink ---- */
+body[data-theme="superpink"] {
+  --c-dark: #C2446E;
+  --c-pink: #FF6E96;
+  --c-purple: #FF9EBA;
+  --c-orange: #FFD6E5;
+  --c-body-bg: #FFC8D8;
+  --c-body-bg-alt: #FFE8F0;
+  --c-text: #C2446E;
+  --c-text-muted: #E8407A;
+  --c-page-bg-1: #FF85A1;
+  --c-page-bg-2: #FF6E96;
+  --c-grid-dot: rgba(194,68,110,0.1);
+  --c-font: "Nunito", sans-serif;
+  --radius-outer: 3px;
+  --radius-inner: 3px;
+  --radius-sm: 3px;
+  /* Week colors (REVAMPED for superpink - high contrast against light pink bg) */
+--week-1-bg: #ff52eb;
+--week-2-bg: #9B59B6;
+--week-3-bg: #3498DB;
+--week-4-bg: #f78736;
+--week-5-bg: #ffc852;
+--week-1-text: #e3025c;
+--week-2-text: #e3025c;
+--week-3-text: #e3025c;
+--week-4-text: #e3025c;
+--week-5-text: #e3025c;
+  --donut-label-color: #C2446E;
+  /* Checkbox symbols (modular per theme) */
+  --checkbox-required-empty: '♡';
+  --checkbox-required-done: '♥';
+  --checkbox-flexible-empty: '?';
+  --day-toggle-color: #8B4466;  /* Dark mauve for light pink bg */
+}
+body[data-theme="superpink"] .cell-border { border: none; background: linear-gradient(180deg,#FFE8F0 0%,#FFC8D8 100%); box-shadow: 0 6px 0 #D96080, 0 2px 12px rgba(255,100,150,0.3); }
+body[data-theme="superpink"] .title-bar { background: linear-gradient(180deg,#FF9EBA 0%,#FF6E96 100%); border: none; box-shadow: inset 0 1px 0 rgba(255,255,255,0.5); }
+body[data-theme="superpink"] .title-text { font-family: "Sacramento", cursive !important; font-size: 24px !important; font-weight: 400 !important; text-transform: none !important; letter-spacing: 1px !important; color: #FFF !important; text-shadow: 0 1px 2px rgba(180,40,80,0.4) !important; }
+body[data-theme="superpink"] .title-glyph { background: #FFFFFF; box-shadow: none; }
+body[data-theme="superpink"] .title-dots span { background: rgba(255,255,255,0.8); border-radius: 50%; }
+body[data-theme="superpink"] .cell-body { background: linear-gradient(180deg,#FFE8F0 0%,#FFC8D8 100%); border: none; }
+body[data-theme="superpink"] .correlation-card { background: linear-gradient(180deg,#FFF,#FFE8F0); border: 1px solid #FF9EBA; color: #C2446E; box-shadow: 0 2px 0 #F08098; }
+body[data-theme="superpink"] .settings-panel { background: linear-gradient(180deg,#FFB3C6,#FF85A1); }
+body[data-theme="superpink"] .settings-label, body[data-theme="superpink"] .settings-header, body[data-theme="superpink"] .settings-value, body[data-theme="superpink"] .settings-close, body[data-theme="superpink"] .habit-list-row { color: #FFF; }
+body[data-theme="superpink"] .donut-label { color: #C2446E !important; }
+body[data-theme="superpink"] .settings-btn, body[data-theme="superpink"] .auth-btn, body[data-theme="superpink"] .update-btn { background: linear-gradient(180deg,#FF9EBA,#FF6E96); border: none; color: #FFF; box-shadow: 0 3px 0 #D95070, inset 0 1px 0 rgba(255,255,255,0.4); }
+body[data-theme="superpink"] .settings-select, body[data-theme="superpink"] .field-group input { background: linear-gradient(180deg,#FFF,#FFE8F0); border: 2px solid #FF9EBA; color: #C2446E; box-shadow: inset 0 1px 3px rgba(255,100,150,0.15); }
+body[data-theme="superpink"] .progress-track { background: #FFE0EB; border: 1px solid #FF9EBA; }
+body[data-theme="superpink"] .settings-toggle-btn { background: linear-gradient(180deg,#FF9EBA,#FF6E96); border: none; box-shadow: 0 3px 0 #D95070; }
+body[data-theme="superpink"] .cell-subtitle { color: #C2446E; }
+body[data-theme="superpink"] .top-habit-row, body[data-theme="superpink"] .top-habit-count { color: #C2446E; }
+body[data-theme="superpink"] .habit-label-cell, body[data-theme="superpink"] .task-row input[type="text"] { color: #C2446E; }
+body[data-theme="superpink"] .auth-tab { color: #E8407A; }
+body[data-theme="superpink"] .auth-tab.active { color: #2605fa; border-bottom-color: #C2446E; }
+
+body[data-theme="superpink"] #version-text { color: #C2446E !important; }
+body[data-theme="superpink"] .settings-section .cell-subtitle { color: #C2446E !important; }
+
+body[data-theme="superpink"] #best-month-container span { color: #C2446E !important; }
+
+body[data-theme="superpink"] {
+  --c-pink: #FF0080;
+}
