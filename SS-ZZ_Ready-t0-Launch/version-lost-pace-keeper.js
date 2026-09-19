@@ -909,33 +909,6 @@ function updateProgressCell(hid, hi) {
 }
 
 // ============================================
-// MONTH PROGRESS
-// ============================================
-function renderMonthProgress() {
-  var el = document.getElementById('month-progress-panel'); if(!el) return; el.innerHTML='';
-  if(habits.length===0 || (habits.length===1 && habits[0].id===-1)) { el.innerHTML='<p class="cell-subtitle">Add habits to track</p>'; return; }
-  
-  var today=new Date(); var daysElapsedThisMonth=today.getFullYear()===currentYear && today.getMonth()+1===currentMonth ? today.getDate() : DAYS_IN_MONTH;
-  var expectedPct=Math.round((daysElapsedThisMonth/DAYS_IN_MONTH)*100);
-  
-  habits.forEach(function(h,hi) {
-    if(h.id===-1) return;
-    var hid=String(h.id), totalDone=0, totalRequired=0;
-    for(var d=1;d<=DAYS_IN_MONTH;d++) {
-      var dow=(firstDayMonBased+d-1)%7, sched=scheduleLookup[hid]&&scheduleLookup[hid][dow];
-      if(sched&&sched.required>0) { totalRequired+=sched.required; var iso=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(d).padStart(2,'0'); totalDone+=(logsLookup[hid]&&logsLookup[hid][iso])||0; }
-    }
-    if(totalRequired===0) { totalDone=Object.values(logsLookup[hid]||{}).reduce(function(a,b){return a+b;},0); totalRequired=DAYS_IN_MONTH; }
-    var pct=Math.round((totalDone/Math.max(1,totalRequired))*100); if(!extraCreditEnabled)pct=Math.min(pct,100);
-    var behind=expectedPct-pct, behindText=(behind>0?'−'+behind+'% behind':'✓ on track');
-    var behindColor=behind>0?'#ff6b6b':'#51cf66';
-    var row=document.createElement('div'); row.style.cssText='display:flex;justify-content:space-between;align-items:center;font-size:11px;margin-bottom:6px;';
-    row.innerHTML='<span style="color:var(--c-text);">'+h.icon+' '+h.name+'</span><span style="display:flex;gap:6px;"><span style="color:var(--c-text-muted);font-weight:600;">'+pct+'%</span><span style="color:'+behindColor+';font-weight:600;">'+behindText+'</span></span>';
-    el.appendChild(row);
-  });
-}
-
-// ============================================
 // WEEKLY TASKS
 // ============================================
 var weeklyTaskData=[{week:'Week 1',tasks:[]},{week:'Week 2',tasks:[]},{week:'Week 3',tasks:[]},{week:'Week 4',tasks:[]},{week:'Week 5',tasks:[]}];
@@ -1230,7 +1203,7 @@ function renderActualVsIntended() {
   actualVsIntendedInstance=new Chart(el,{
     type:'line',
     data:{labels:labels,datasets:[
-      {label:'Intended',data:intended,borderColor:hexToRgba(purple,0.4),backgroundColor:hexToRgba(purple,0.5),borderWidth:1.5,borderDash:[4,3],fill:true,tension:0,pointRadius:0,order:2},
+      {label:'Intended',data:intended,borderColor:hexToRgba(purple,0.4),backgroundColor:hexToRgba(purple,0.35),borderWidth:1.5,borderDash:[4,3],fill:true,tension:0,pointRadius:0,order:2},
       {label:'Actual',data:actual,borderColor:pink,backgroundColor:hexToRgba(pink,0.08),borderWidth:2,fill:false,tension:0.3,pointRadius:2,pointBackgroundColor:pink,order:1}
     ]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{
@@ -1457,3 +1430,117 @@ document.getElementById('terms-modal').addEventListener('click', function(e){
   if(e.target.id === 'terms-modal') 
     this.style.display = 'none';
 });
+
+// ============================================
+// DEBUG THEME CYCLER
+// ============================================
+const debugOverrides = [
+  { selector: '.habit-del-btn', name: 'habit-del-btn' },
+  { selector: '.habit-list-row', name: 'habit-list-row' },
+  { selector: '.settings-panel', name: 'settings-panel' },
+  { selector: '.settings-section', name: 'settings-section' },
+  { selector: '.cell-body', name: 'cell-body' },
+  { selector: '.cell-border', name: 'cell-border' },
+  { selector: '.correlation-card', name: 'correlation-card' },
+  { selector: '.day-box', name: 'day-box' },
+  { selector: '.grid-cell', name: 'grid-cell' },
+  { selector: '.checkbox-grid', name: 'checkbox-grid' },
+  { selector: '#grid-table td', name: 'grid-table td' },
+  { selector: '.progress-cell', name: 'progress-cell' },
+  { selector: '.progress-track', name: 'progress-track' },
+  { selector: '.chart-container', name: 'chart-container' },
+  { selector: 'canvas', name: 'canvas' },
+  { selector: '.settings-label', name: 'settings-label' },
+  { selector: '.field-group label', name: 'field-group label' },
+  { selector: '.title-bar', name: 'title-bar' },
+  { selector: '.settings-section .cell-subtitle', name: 'cell-subtitle' },
+  { selector: '.checkbox-grid th', name: 'checkbox-grid th' }
+];
+
+let debugCyclerState = {
+  currentIndex: 0,
+  isRunning: false,
+  intervalId: null,
+  styleEl: null
+};
+
+const MAGENTA_HIGHLIGHT = '#FF00FF';
+
+function initDebugCycler() {
+  debugCyclerState.styleEl = document.createElement('style');
+  debugCyclerState.styleEl.id = 'debug-cycler-style';
+  document.head.appendChild(debugCyclerState.styleEl);
+  
+  const panel = document.createElement('div');
+  panel.id = 'debug-cycler-panel';
+  panel.style.cssText = `position:fixed;bottom:20px;right:20px;background:#1a1a1a;border:3px solid #FF00FF;border-radius:8px;padding:15px;z-index:99999;font-family:monospace;color:#ddd;max-width:320px;`;
+  
+  panel.innerHTML = `<div style="margin-bottom:10px;font-weight:bold;font-size:12px;color:#FF00FF;">🐛 DEBUG CYCLER (Magenta Mode)</div><div id="debug-cycler-display" style="background:#222;padding:10px;border-radius:4px;margin-bottom:10px;font-size:11px;white-space:pre-wrap;word-break:break-all;border:2px solid #FF00FF;color:#FF00FF;">Ready</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:10px;"><button id="debug-back-btn" style="padding:8px;background:#333;color:#FF00FF;border:2px solid #FF00FF;cursor:pointer;font-weight:bold;font-size:11px;">← Back 1</button><button id="debug-forward-btn" style="padding:8px;background:#333;color:#FF00FF;border:2px solid #FF00FF;cursor:pointer;font-weight:bold;font-size:11px;">Forward 1 →</button></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;"><button id="debug-start-btn" style="padding:8px;background:#FF00FF;color:#000;border:none;cursor:pointer;font-weight:bold;font-size:11px;">▶ Start</button><button id="debug-stop-btn" style="padding:8px;background:#FF00FF;color:#000;border:none;cursor:pointer;font-weight:bold;font-size:11px;">⏹ Stop</button></div>`;
+  
+  document.body.appendChild(panel);
+  
+  document.getElementById('debug-start-btn').onclick = debugCyclerStart;
+  document.getElementById('debug-stop-btn').onclick = debugCyclerStop;
+  document.getElementById('debug-forward-btn').onclick = debugCyclerForward;
+  document.getElementById('debug-back-btn').onclick = debugCyclerBack;
+  
+  if(document.body.getAttribute('data-theme') !== 'dark-romantic') {
+    document.body.setAttribute('data-theme', 'dark-romantic');
+  }
+}
+
+function debugCyclerUpdate() {
+  const item = debugOverrides[debugCyclerState.currentIndex];
+  const display = document.getElementById('debug-cycler-display');
+  display.textContent = `[${debugCyclerState.currentIndex + 1}/${debugOverrides.length}]\n\n${item.selector}`;
+  display.style.background = MAGENTA_HIGHLIGHT;
+  display.style.color = '#000';
+  display.style.borderColor = MAGENTA_HIGHLIGHT;
+  
+  let css = 'body[data-theme="dark-romantic"] ';
+  debugOverrides.forEach((override, i) => {
+    if(i === debugCyclerState.currentIndex) {
+      css += override.selector + ' { background: ' + MAGENTA_HIGHLIGHT + ' !important; color: #000 !important; border-color: ' + MAGENTA_HIGHLIGHT + ' !important; box-shadow: 0 0 20px ' + MAGENTA_HIGHLIGHT + ' !important; }\n';
+      css += 'body[data-theme="dark-romantic"] ' + override.selector + ' * { background: inherit !important; color: inherit !important; }\n';
+    }
+  });
+  
+  debugCyclerState.styleEl.textContent = css;
+}
+
+function debugCyclerStart() {
+  if(debugCyclerState.isRunning) return;
+  debugCyclerState.isRunning = true;
+  debugCyclerState.intervalId = setInterval(() => {
+    debugCyclerState.currentIndex = (debugCyclerState.currentIndex + 1) % debugOverrides.length;
+    debugCyclerUpdate();
+  }, 1500);
+  debugCyclerUpdate();
+}
+
+function debugCyclerStop() {
+  if(debugCyclerState.intervalId) {
+    clearInterval(debugCyclerState.intervalId);
+    debugCyclerState.intervalId = null;
+  }
+  debugCyclerState.isRunning = false;
+  debugCyclerUpdate();
+}
+
+function debugCyclerForward() {
+  debugCyclerStop();
+  debugCyclerState.currentIndex = (debugCyclerState.currentIndex + 1) % debugOverrides.length;
+  debugCyclerUpdate();
+}
+
+function debugCyclerBack() {
+  debugCyclerStop();
+  debugCyclerState.currentIndex = (debugCyclerState.currentIndex - 1 + debugOverrides.length) % debugOverrides.length;
+  debugCyclerUpdate();
+}
+
+if(document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initDebugCycler);
+} else {
+  initDebugCycler();
+}
