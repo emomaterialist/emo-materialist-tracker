@@ -1467,116 +1467,119 @@ document.getElementById('terms-modal').addEventListener('click', function(e){
     this.style.display = 'none';
 });
 
-// ============================================
-// DEBUG THEME CYCLER
-// ============================================
-const debugOverrides = [
-  { selector: '.habit-del-btn', name: 'habit-del-btn' },
-  { selector: '.habit-list-row', name: 'habit-list-row' },
-  { selector: '.settings-panel', name: 'settings-panel' },
-  { selector: '.settings-section', name: 'settings-section' },
-  { selector: '.cell-body', name: 'cell-body' },
-  { selector: '.cell-border', name: 'cell-border' },
-  { selector: '.correlation-card', name: 'correlation-card' },
-  { selector: '.day-box', name: 'day-box' },
-  { selector: '.grid-cell', name: 'grid-cell' },
-  { selector: '.checkbox-grid', name: 'checkbox-grid' },
-  { selector: '#grid-table td', name: 'grid-table td' },
-  { selector: '.progress-cell', name: 'progress-cell' },
-  { selector: '.progress-track', name: 'progress-track' },
-  { selector: '.chart-container', name: 'chart-container' },
-  { selector: 'canvas', name: 'canvas' },
-  { selector: '.settings-label', name: 'settings-label' },
-  { selector: '.field-group label', name: 'field-group label' },
-  { selector: '.title-bar', name: 'title-bar' },
-  { selector: '.settings-section .cell-subtitle', name: 'cell-subtitle' },
-  { selector: '.checkbox-grid th', name: 'checkbox-grid th' }
-];
 
-let debugCyclerState = {
-  currentIndex: 0,
-  isRunning: false,
-  intervalId: null,
-  styleEl: null
-};
 
-const MAGENTA_HIGHLIGHT = '#FF00FF';
 
-function initDebugCycler() {
-  debugCyclerState.styleEl = document.createElement('style');
-  debugCyclerState.styleEl.id = 'debug-cycler-style';
-  document.head.appendChild(debugCyclerState.styleEl);
+// // ============================================
+// // DEBUG THEME CYCLER
+// // ============================================
+// const debugOverrides = [
+//   { selector: '.habit-del-btn', name: 'habit-del-btn' },
+//   { selector: '.habit-list-row', name: 'habit-list-row' },
+//   { selector: '.settings-panel', name: 'settings-panel' },
+//   { selector: '.settings-section', name: 'settings-section' },
+//   { selector: '.cell-body', name: 'cell-body' },
+//   { selector: '.cell-border', name: 'cell-border' },
+//   { selector: '.correlation-card', name: 'correlation-card' },
+//   { selector: '.day-box', name: 'day-box' },
+//   { selector: '.grid-cell', name: 'grid-cell' },
+//   { selector: '.checkbox-grid', name: 'checkbox-grid' },
+//   { selector: '#grid-table td', name: 'grid-table td' },
+//   { selector: '.progress-cell', name: 'progress-cell' },
+//   { selector: '.progress-track', name: 'progress-track' },
+//   { selector: '.chart-container', name: 'chart-container' },
+//   { selector: 'canvas', name: 'canvas' },
+//   { selector: '.settings-label', name: 'settings-label' },
+//   { selector: '.field-group label', name: 'field-group label' },
+//   { selector: '.title-bar', name: 'title-bar' },
+//   { selector: '.settings-section .cell-subtitle', name: 'cell-subtitle' },
+//   { selector: '.checkbox-grid th', name: 'checkbox-grid th' }
+// ];
+
+// let debugCyclerState = {
+//   currentIndex: 0,
+//   isRunning: false,
+//   intervalId: null,
+//   styleEl: null
+// };
+
+// const MAGENTA_HIGHLIGHT = '#FF00FF';
+
+// function initDebugCycler() {
+//   debugCyclerState.styleEl = document.createElement('style');
+//   debugCyclerState.styleEl.id = 'debug-cycler-style';
+//   document.head.appendChild(debugCyclerState.styleEl);
   
-  const panel = document.createElement('div');
-  panel.id = 'debug-cycler-panel';
-  panel.style.cssText = `position:fixed;bottom:20px;right:20px;background:#1a1a1a;border:3px solid #FF00FF;border-radius:8px;padding:15px;z-index:99999;font-family:monospace;color:#ddd;max-width:320px;`;
+//   const panel = document.createElement('div');
+//   panel.id = 'debug-cycler-panel';
+//   panel.style.cssText = `position:fixed;bottom:20px;right:20px;background:#1a1a1a;border:3px solid #FF00FF;border-radius:8px;padding:15px;z-index:99999;font-family:monospace;color:#ddd;max-width:320px;`;
   
-  panel.innerHTML = `<div style="margin-bottom:10px;font-weight:bold;font-size:12px;color:#FF00FF;">🐛 DEBUG CYCLER (Magenta Mode)</div><div id="debug-cycler-display" style="background:#222;padding:10px;border-radius:4px;margin-bottom:10px;font-size:11px;white-space:pre-wrap;word-break:break-all;border:2px solid #FF00FF;color:#FF00FF;">Ready</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:10px;"><button id="debug-back-btn" style="padding:8px;background:#333;color:#FF00FF;border:2px solid #FF00FF;cursor:pointer;font-weight:bold;font-size:11px;">← Back 1</button><button id="debug-forward-btn" style="padding:8px;background:#333;color:#FF00FF;border:2px solid #FF00FF;cursor:pointer;font-weight:bold;font-size:11px;">Forward 1 →</button></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;"><button id="debug-start-btn" style="padding:8px;background:#FF00FF;color:#000;border:none;cursor:pointer;font-weight:bold;font-size:11px;">▶ Start</button><button id="debug-stop-btn" style="padding:8px;background:#FF00FF;color:#000;border:none;cursor:pointer;font-weight:bold;font-size:11px;">⏹ Stop</button></div>`;
+//   panel.innerHTML = `<div style="margin-bottom:10px;font-weight:bold;font-size:12px;color:#FF00FF;">🐛 DEBUG CYCLER (Magenta Mode)</div><div id="debug-cycler-display" style="background:#222;padding:10px;border-radius:4px;margin-bottom:10px;font-size:11px;white-space:pre-wrap;word-break:break-all;border:2px solid #FF00FF;color:#FF00FF;">Ready</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:10px;"><button id="debug-back-btn" style="padding:8px;background:#333;color:#FF00FF;border:2px solid #FF00FF;cursor:pointer;font-weight:bold;font-size:11px;">← Back 1</button><button id="debug-forward-btn" style="padding:8px;background:#333;color:#FF00FF;border:2px solid #FF00FF;cursor:pointer;font-weight:bold;font-size:11px;">Forward 1 →</button></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;"><button id="debug-start-btn" style="padding:8px;background:#FF00FF;color:#000;border:none;cursor:pointer;font-weight:bold;font-size:11px;">▶ Start</button><button id="debug-stop-btn" style="padding:8px;background:#FF00FF;color:#000;border:none;cursor:pointer;font-weight:bold;font-size:11px;">⏹ Stop</button></div>`;
   
-  document.body.appendChild(panel);
+//   document.body.appendChild(panel);
   
-  document.getElementById('debug-start-btn').onclick = debugCyclerStart;
-  document.getElementById('debug-stop-btn').onclick = debugCyclerStop;
-  document.getElementById('debug-forward-btn').onclick = debugCyclerForward;
-  document.getElementById('debug-back-btn').onclick = debugCyclerBack;
+//   document.getElementById('debug-start-btn').onclick = debugCyclerStart;
+//   document.getElementById('debug-stop-btn').onclick = debugCyclerStop;
+//   document.getElementById('debug-forward-btn').onclick = debugCyclerForward;
+//   document.getElementById('debug-back-btn').onclick = debugCyclerBack;
   
-  if(document.body.getAttribute('data-theme') !== 'dark-romantic') {
-    document.body.setAttribute('data-theme', 'dark-romantic');
-  }
-}
+//   if(document.body.getAttribute('data-theme') !== 'dark-romantic') {
+//     document.body.setAttribute('data-theme', 'dark-romantic');
+//   }
+// }
 
-function debugCyclerUpdate() {
-  const item = debugOverrides[debugCyclerState.currentIndex];
-  const display = document.getElementById('debug-cycler-display');
-  display.textContent = `[${debugCyclerState.currentIndex + 1}/${debugOverrides.length}]\n\n${item.selector}`;
-  display.style.background = MAGENTA_HIGHLIGHT;
-  display.style.color = '#000';
-  display.style.borderColor = MAGENTA_HIGHLIGHT;
+// function debugCyclerUpdate() {
+//   const item = debugOverrides[debugCyclerState.currentIndex];
+//   const display = document.getElementById('debug-cycler-display');
+//   display.textContent = `[${debugCyclerState.currentIndex + 1}/${debugOverrides.length}]\n\n${item.selector}`;
+//   display.style.background = MAGENTA_HIGHLIGHT;
+//   display.style.color = '#000';
+//   display.style.borderColor = MAGENTA_HIGHLIGHT;
   
-  let css = 'body[data-theme="dark-romantic"] ';
-  debugOverrides.forEach((override, i) => {
-    if(i === debugCyclerState.currentIndex) {
-      css += override.selector + ' { background: ' + MAGENTA_HIGHLIGHT + ' !important; color: #000 !important; border-color: ' + MAGENTA_HIGHLIGHT + ' !important; box-shadow: 0 0 20px ' + MAGENTA_HIGHLIGHT + ' !important; }\n';
-      css += 'body[data-theme="dark-romantic"] ' + override.selector + ' * { background: inherit !important; color: inherit !important; }\n';
-    }
-  });
+//   let css = 'body[data-theme="dark-romantic"] ';
+//   debugOverrides.forEach((override, i) => {
+//     if(i === debugCyclerState.currentIndex) {
+//       css += override.selector + ' { background: ' + MAGENTA_HIGHLIGHT + ' !important; color: #000 !important; border-color: ' + MAGENTA_HIGHLIGHT + ' !important; box-shadow: 0 0 20px ' + MAGENTA_HIGHLIGHT + ' !important; }\n';
+//       css += 'body[data-theme="dark-romantic"] ' + override.selector + ' * { background: inherit !important; color: inherit !important; }\n';
+//     }
+//   });
   
-  debugCyclerState.styleEl.textContent = css;
-}
+//   debugCyclerState.styleEl.textContent = css;
+// }
 
-function debugCyclerStart() {
-  if(debugCyclerState.isRunning) return;
-  debugCyclerState.isRunning = true;
-  debugCyclerState.intervalId = setInterval(() => {
-    debugCyclerState.currentIndex = (debugCyclerState.currentIndex + 1) % debugOverrides.length;
-    debugCyclerUpdate();
-  }, 1500);
-  debugCyclerUpdate();
-}
+// function debugCyclerStart() {
+//   if(debugCyclerState.isRunning) return;
+//   debugCyclerState.isRunning = true;
+//   debugCyclerState.intervalId = setInterval(() => {
+//     debugCyclerState.currentIndex = (debugCyclerState.currentIndex + 1) % debugOverrides.length;
+//     debugCyclerUpdate();
+//   }, 1500);
+//   debugCyclerUpdate();
+// }
 
-function debugCyclerStop() {
-  if(debugCyclerState.intervalId) {
-    clearInterval(debugCyclerState.intervalId);
-    debugCyclerState.intervalId = null;
-  }
-  debugCyclerState.isRunning = false;
-  debugCyclerUpdate();
-}
+// function debugCyclerStop() {
+//   if(debugCyclerState.intervalId) {
+//     clearInterval(debugCyclerState.intervalId);
+//     debugCyclerState.intervalId = null;
+//   }
+//   debugCyclerState.isRunning = false;
+//   debugCyclerUpdate();
+// }
 
-function debugCyclerForward() {
-  debugCyclerStop();
-  debugCyclerState.currentIndex = (debugCyclerState.currentIndex + 1) % debugOverrides.length;
-  debugCyclerUpdate();
-}
+// function debugCyclerForward() {
+//   debugCyclerStop();
+//   debugCyclerState.currentIndex = (debugCyclerState.currentIndex + 1) % debugOverrides.length;
+//   debugCyclerUpdate();
+// }
 
-function debugCyclerBack() {
-  debugCyclerStop();
-  debugCyclerState.currentIndex = (debugCyclerState.currentIndex - 1 + debugOverrides.length) % debugOverrides.length;
-  debugCyclerUpdate();
-}
+// function debugCyclerBack() {
+//   debugCyclerStop();
+//   debugCyclerState.currentIndex = (debugCyclerState.currentIndex - 1 + debugOverrides.length) % debugOverrides.length;
+//   debugCyclerUpdate();
+// }
 
-if(document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initDebugCycler);
-} else {
-  initDebugCycler();
-}
+// if(document.readyState === 'loading') {
+//   document.addEventListener('DOMContentLoaded', initDebugCycler);
+// } else {
+//   initDebugCycler();
+// }
