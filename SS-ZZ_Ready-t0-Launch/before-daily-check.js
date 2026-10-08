@@ -286,14 +286,12 @@ function renderHabitList() {
     form.querySelector('#esc-'+h.id).onclick=function(){form.style.display='none';editBtn.textContent='✏️';};
   });
 }
-
 function refreshCharts() {
   if (lineChartInstance) lineChartInstance.destroy();
   if (barChartInstance) barChartInstance.destroy();
   if (plannedActualChartInstance) plannedActualChartInstance.destroy();
   buildWeekColors(); buildHabits();
   renderTopHabits(); renderDonuts(); renderCharts(); renderMonthProgress();
-  renderToday();
   var label = document.getElementById('last-updated');
   if (label) { var now=new Date(); label.textContent='Updated '+now.getHours()+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0'); }
 }
@@ -679,42 +677,6 @@ function renderCorrelations() {
 }
 
 // ============================================
-// TBD Title; Builds the hover text shown on a habit's name in the monthly grid.
-// ==========================================
-// Builds the hover text shown on a habit's name in the monthly grid.
-function buildHabitTooltip(h) {
-  if (h.id === -1) return '';
-  var dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  var monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var hid = String(h.id);
-  var lines = ['Schedule:'];
-
-  if (h.freq_type === 'monthly' && h.freq_value) {
-    lines.push('Required: ' + h.freq_value + ' times per month (any day)');
-  } else if (h.freq_type === 'interval' && h.freq_value && h.start_date) {
-    var p = h.start_date.split('-');
-    lines.push('Required: every ' + h.freq_value + ' days');
-    lines.push('Starting: ' + monthNames[parseInt(p[1], 10) - 1] + ' ' + parseInt(p[2], 10) + ', ' + p[0]);
-  } else {
-    var req = [], flex = [], perDay = 1;
-    for (var i = 0; i < 7; i++) {
-      var s = scheduleLookup[hid] && scheduleLookup[hid][i];
-      if (!s) continue;
-      if (s.required > perDay) perDay = s.required;
-      if (s.flexible) flex.push(dayNames[i]);
-      else if (s.required > 0) req.push(dayNames[i]);
-    }
-    var perDayText = perDay > 1 ? ' (' + perDay + 'x per day)' : '';
-    if (req.length) lines.push('Required: ' + req.join(' ') + perDayText);
-    if (flex.length) lines.push('Flexible: ' + flex.join(' ') + (req.length ? '' : perDayText));
-    if (!req.length && !flex.length) lines.push('Required: none');
-  }
-
-  lines.push('Category: ' + (h.category || 'General'));
-  return lines.join('\n');
-}
-
-// ============================================
 // CHECKBOX GRID
 // ============================================
 var completionState={};
@@ -736,7 +698,7 @@ function renderGrid() {
     var hid=String(h.id); completionState[hid]={};
     var row=document.createElement('tr');
     var labelCell=document.createElement('td'); labelCell.className='habit-label-cell';
-    labelCell.title=buildHabitTooltip(h);
+    labelCell.title=h.category?'Category: '+h.category:'';
     labelCell.innerHTML='<span class="habit-icon" style="background:'+h.colorClass+';"></span>'+h.icon+' '+h.name;
     row.appendChild(labelCell);
 
@@ -1443,128 +1405,6 @@ function exportToCSV() {
 }
 
 // ============================================
-// TODAY'S REQUIRED HABITS
-// ============================================
-var DAY_ABBR = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-
-function localISO(d) {
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-}
-
-// Returns {required, tag} if the habit is required today, otherwise null.
-// Same rules as the monthly grid: flexible and "X per month" habits are optional, so they are not listed.
-function getTodayRequirement(h, now) {
-  var hid = String(h.id);
-  var dow = (now.getDay()+6)%7;
-  if (h.freq_type === 'monthly') return null;
-  if (h.freq_type === 'interval' && h.start_date && h.freq_value) {
-    var cellDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    var startDate = new Date(h.start_date);
-    startDate.setHours(0,0,0,0);
-    var daysSince = Math.round((cellDate - startDate)/86400000);
-    if (daysSince >= 0 && daysSince % h.freq_value === 0) return { required: 1, tag: 'every '+h.freq_value+' days' };
-    return null;
-  }
-  var sched = scheduleLookup[hid] && scheduleLookup[hid][dow];
-  if (!sched || sched.flexible || !(sched.required > 0)) return null;
-  var fixedDays = [];
-  for (var i = 0; i < 7; i++) {
-    var s = scheduleLookup[hid][i];
-    if (s && !s.flexible && s.required > 0) fixedDays.push(DAY_ABBR[i]);
-  }
-  return { required: sched.required, tag: fixedDays.length === 7 ? 'daily' : fixedDays.join(' ') };
-}
-
-function renderToday() {
-  var listEl = document.getElementById('today-list');
-  if (!listEl) return;
-  var now = new Date();
-  var iso = localISO(now);
-  document.getElementById('today-dow').textContent = DAYS_OF_WEEK[(now.getDay()+6)%7];
-  document.getElementById('today-date').textContent = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
-  listEl.innerHTML = '';
-
-  var items = [];
-  RAW_HABITS.forEach(function(h) {
-    var req = getTodayRequirement(h, now);
-    if (!req) return;
-    var hid = String(h.id);
-    var done = (allTimeLogs[hid] && allTimeLogs[hid][iso]) || 0;
-    items.push({ h: h, req: req, done: done });
-  });
-
-  var doneCount = items.filter(function(it) { return it.done >= it.req.required; }).length;
-  document.getElementById('today-done').textContent = doneCount;
-  document.getElementById('today-total').textContent = items.length;
-  var pct = items.length ? Math.round((doneCount / items.length) * 100) : 0;
-  document.getElementById('today-bar-fill').style.width = pct + '%';
-
-  if (items.length === 0) {
-    var empty = document.createElement('p');
-    empty.className = 'today-empty';
-    empty.style.gridColumn = '1 / -1';
-    empty.textContent = 'Nothing is required today. Enjoy the day off.';
-    listEl.appendChild(empty);
-    return;
-  }
-
-  items.forEach(function(it) {
-    var label = document.createElement('label');
-    label.className = 'today-item';
-    var cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.checked = it.done >= it.req.required;
-    var box = document.createElement('span');
-    box.className = 'today-box';
-    var name = document.createElement('span');
-    name.className = 'today-name';
-    name.textContent = it.h.icon + ' ' + it.h.name;
-    var tag = document.createElement('span');
-    tag.className = 'today-tag';
-    tag.textContent = (it.req.required > 1 ? it.done + '/' + it.req.required + ' \u00B7 ' : '') + it.req.tag;
-    label.appendChild(cb); label.appendChild(box); label.appendChild(name); label.appendChild(tag);
-    label.addEventListener('click', function(e) {
-      e.preventDefault();
-      onTodayClick(it.h, it.req.required, iso);
-    });
-    listEl.appendChild(label);
-  });
-}
-
-function setLocalLog(hid, iso, n) {
-  if (!allTimeLogs[hid]) allTimeLogs[hid] = {};
-  allTimeLogs[hid][iso] = n;
-  var inShownMonth = iso.indexOf(currentYear+'-'+String(currentMonth).padStart(2,'0')) === 0;
-  if (inShownMonth) {
-    if (!logsLookup[hid]) logsLookup[hid] = {};
-    logsLookup[hid][iso] = n;
-    renderGrid();      // keep the monthly checkboxes in sync
-    refreshCharts();   // also redraws the Today box
-  } else {
-    renderToday();
-  }
-}
-
-async function onTodayClick(h, required, iso) {
-  var hid = String(h.id);
-  var cur = (allTimeLogs[hid] && allTimeLogs[hid][iso]) || 0;
-  var next = required === 1 ? (cur >= 1 ? 0 : 1) : (cur >= required ? 0 : cur + 1);
-  setLocalLog(hid, iso, next);
-  var res = await sb.from('habit_logs').upsert(
-    { habit_id: h.id, log_date: iso, times_completed: next },
-    { onConflict: 'habit_id,log_date' }
-  );
-  if (res.error) {
-    setLocalLog(hid, iso, cur);
-    alert('Could not save that check: ' + res.error.message);
-  }
-}
-
-// If the page stays open past midnight, switch the box to the new day.
-setInterval(function() { if (currentUser) renderToday(); }, 60000);
-
-
-// ============================================
 // MASTER RENDER
 // ============================================
 function renderEverything() {
@@ -1575,7 +1415,7 @@ function renderEverything() {
   if(allTimeScatterInstance)allTimeScatterInstance.destroy();
   if(actualVsIntendedInstance)actualVsIntendedInstance.destroy();
   renderTopHabits(); renderDonuts(); renderCharts(); renderCorrelations(); renderGrid();
-  renderMonthProgress(); renderToday(); renderWeeklyTasks(); renderPlannedActualChart(); renderAllTimeSection();
+  renderMonthProgress(); renderWeeklyTasks(); renderPlannedActualChart(); renderAllTimeSection();
 }
 
 // ============ UPDATE SYSTEM ============
@@ -1627,9 +1467,12 @@ document.getElementById('terms-modal').addEventListener('click', function(e){
     this.style.display = 'none';
 });
 
-// ============================================
-// DEBUG THEME CYCLER
-// ============================================
+
+
+
+// // ============================================
+// // DEBUG THEME CYCLER
+// // ============================================
 // const debugOverrides = [
 //   { selector: '.habit-del-btn', name: 'habit-del-btn' },
 //   { selector: '.habit-list-row', name: 'habit-list-row' },

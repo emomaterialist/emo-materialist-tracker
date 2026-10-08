@@ -123,7 +123,7 @@
         <option value="Productivity">Productivity</option>
         <option value="Self-care">Self-care</option>
         <option value="Finance">Finance</option>
-        <option value="Skincare">Skincare</option>
+        <option value="Social">Social</option>
         <option value="__custom__">+ Add new category…</option>
       </select>
       <div id="custom-cat-row" style="display:none;margin-top:6px;gap:6px;flex-direction:column;align-items:stretch;flex:1;">
@@ -183,7 +183,7 @@
     <div id="update-msg" class="auth-msg" style="margin-top:6px;"></div>
   </div>
   <div class="settings-section">
-    <p class="settings-label">❤️ Support This App & See updates through Ko-fi</p>
+    <p class="settings-label">❤️ Support This App</p>
     <p class="cell-subtitle">Love the tracker? Thanks <3!</p>
     <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script><script type='text/javascript'>kofiwidget2.init('Support me on Ko-fi', '#72a4f2', 'R4Q3248OQQ');kofiwidget2.draw();</script>
   </div>
@@ -221,31 +221,12 @@
   </div>
   <div class="tracker">
     <table class="layout">
-      
       <tr>
-        <!-- NEW BOX START -->
-      <tr>
-        <td class="cell-outer" colspan="3">
-          <div class="cell-border">
-            <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Today's required habits</span><span class="title-dots"><span></span><span></span><span></span></span></div>
-            <div class="cell-body today-body" id="today-box">
-              <div class="today-head">
-                <div><span class="today-dow" id="today-dow"></span><span class="today-full" id="today-date"></span></div>
-                <div class="today-count"><strong id="today-done">0</strong> / <span id="today-total">0</span> done</div>
-              </div>
-              <div class="today-bar"><div class="today-bar-fill" id="today-bar-fill" style="width:0%"></div></div>
-              <div class="today-list" id="today-list"></div>
-            </div>
-          </div>
-        </td>
-      </tr>
-      <!-- NEW BOX END -->
         <td class="cell-outer top-habits-cell">
           <div class="cell-border">
             <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Top habits this month</span><span class="title-dots"><span></span><span></span><span></span></span></div>
             <div class="cell-body"><div id="top-habits" class="stack-sm"></div></div>
           </div>
-                
         </td>
         <td class="cell-outer charts-cell">
           <div class="cell-border">
