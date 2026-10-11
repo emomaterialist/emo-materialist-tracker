@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Emo Materialist Habit Tracker</title>
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="stylesheet" href="style.css">
@@ -98,6 +99,27 @@
     </label>
   </div>
   <div class="settings-section">
+    <p class="settings-label">XP Mode <span style="font-size:10px;font-weight:400;opacity:0.7;">Rank tasks, earn XP</span></p>
+    <label class="toggle-label">
+      <input type="checkbox" id="xp-mode-toggle" onchange="toggleXpMode(this.checked)">
+      <span class="toggle-slider"></span>
+    </label>
+  </div>
+  <div class="settings-section">
+    <p class="settings-label">Show optional habits <span style="font-size:10px;font-weight:400;opacity:0.7;">In Today's box</span></p>
+    <label class="toggle-label">
+      <input type="checkbox" id="show-optional-toggle" onchange="toggleShowOptional(this.checked)">
+      <span class="toggle-slider"></span>
+    </label>
+  </div>
+    <div class="settings-section">
+    <p class="settings-label">Hard habits optional <span style="font-size:10px;font-weight:400;opacity:0.7;">Missed hard habits don't count against you</span></p>
+    <label class="toggle-label">
+      <input type="checkbox" id="hard-optional-toggle" onchange="toggleHardOptional(this.checked)">
+      <span class="toggle-slider"></span>
+    </label>
+  </div>
+  <div class="settings-section">
     <p class="settings-label">Add a Habit</p>
     <div class="field-group"><label>Name</label><input type="text" id="habit-name" placeholder="e.g. Workout - Glutes"></div>
     <div class="field-group">
@@ -189,9 +211,12 @@
   </div>
 </div>
 
-<div style="position:fixed;top:14px;left:14px;z-index:1000;display:flex;flex-direction:column;gap:6px;">
+<div id="quick-buttons" class="quick-buttons" style="position:fixed;top:14px;left:14px;z-index:1000;display:flex;flex-direction:column;gap:6px;">
   <button class="settings-toggle-btn" onclick="toggleSettings()" title="Settings" style="position:static;">⚙</button>
   <button class="settings-toggle-btn" onclick="toggleHistoryPage()" title="History" style="position:static;width:36px;height:36px;font-size:14px;">📋</button>
+  <button class="settings-toggle-btn" onclick="toggleSleepPage()" title="Sleep tracker" style="position:static;width:36px;height:36px;font-size:14px;">🌙</button>
+  <button class="settings-toggle-btn" onclick="toggleMoodPage()" title="Mood tracker" style="position:static;width:36px;height:36px;font-size:14px;">🍄</button>
+  <button class="settings-toggle-btn" onclick="toggleMoneyPage()" title="Money tracker" style="position:static;width:36px;height:36px;font-size:14px;">💰</button>
   <button class="settings-toggle-btn" onclick="exportToCSV()" title="Export CSV" style="position:static;width:36px;height:36px;font-size:14px;">⬇</button>
 </div>
 
@@ -211,8 +236,157 @@
   </div>
 </div>
 
+<div id="sleep-page" class="sleep-page" style="display:none;">
+  <div class="sleep-wrap">
+    <div class="sleep-head">
+      <span class="sleep-title">Sleep tracker</span>
+      <button class="settings-btn sleep-close" onclick="toggleSleepPage()">✕ Close</button>
+    </div>
+    <div class="sleep-grid">
+      <div>
+        <div class="cell-border">
+          <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Log a night</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+          <div class="cell-body">
+            <div class="sleep-row3">
+              <div><p class="sleep-label">Night of</p><input type="date" id="sleep-date" class="sleep-input"></div>
+              <div><p class="sleep-label">Bed time</p><input type="time" id="sleep-bed" class="sleep-input" value="23:00"></div>
+              <div><p class="sleep-label">Wake time</p><input type="time" id="sleep-wake" class="sleep-input" value="07:00"></div>
+            </div>
+            <p class="sleep-label">Sleep quality</p>
+            <div id="sleep-quality" class="sleep-q"></div>
+            <p class="sleep-label">Notes (dreams, woke up at 3am, etc.)</p>
+            <textarea id="sleep-notes" class="sleep-input sleep-notes" placeholder="Optional..."></textarea>
+            <div class="sleep-checks">
+              <label><input type="checkbox" id="sleep-meds"> Took sleep meds/melatonin</label>
+              <label><input type="checkbox" id="sleep-screen"> Screen before bed</label>
+              <label><input type="checkbox" id="sleep-caffeine"> Caffeine after 3pm</label>
+            </div>
+            <button class="settings-btn" onclick="submitSleepLog()">Log sleep ✓</button>
+            <p id="sleep-msg" class="sleep-msg"></p>
+          </div>
+        </div>
+        <div class="cell-border">
+          <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Recent nights</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+          <div class="cell-body"><div id="sleep-history"></div></div>
+        </div>
+      </div>
+      <div>
+        <div class="cell-border">
+          <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Avg hours</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+          <div class="cell-body"><div class="sleep-tile"><div id="sleep-avg" class="sleep-big sleep-avg">0h</div><div class="sleep-sub">last 7 logged nights</div></div></div>
+        </div>
+        <div class="cell-border">
+          <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Goal hit</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+          <div class="cell-body"><div class="sleep-tile"><div id="sleep-hit" class="sleep-big sleep-hit">0%</div><div class="sleep-sub">nights at or over goal</div></div></div>
+        </div>
+        <div class="cell-border">
+          <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Sleep goal</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+          <div class="cell-body sleep-goal-row">Target <input type="number" id="sleep-goal" class="sleep-input sleep-goal-input" value="8" min="4" max="12" step="0.5" oninput="onSleepGoalChange(this.value)"> hrs/night</div>
+        </div>
+        <div class="cell-border">
+          <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Sleep tips</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+          <div class="cell-body sleep-tips">
+            <p>• Waking at the same time daily matters more than bedtime.</p>
+            <p>• Bright screens late at night can push sleep later.</p>
+            <p>• Caffeine can stay in your system for many hours.</p>
+            <p>• Exercise earlier in the day tends to help sleep.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="mood-page" class="sleep-page" style="display:none;">
+  <div class="sleep-wrap">
+    <div class="sleep-head">
+      <span class="sleep-title">Mood tracker</span>
+      <button class="settings-btn sleep-close" onclick="toggleMoodPage()">✕ Close</button>
+    </div>
+    <div class="mood-month-row">
+      <button class="settings-btn mood-nav" onclick="moodShiftMonth(-1)" title="Previous month">◀</button>
+      <span id="mood-month" class="mood-month"></span>
+      <button class="settings-btn mood-nav" onclick="moodShiftMonth(1)" title="Next month">▶</button>
+    </div>
+    <div class="cell-border">
+      <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Pick a mood, then tap a day</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+      <div class="cell-body"><div id="mood-brush" class="mood-brush"></div><p class="mood-note">Tap a day again with the same mood to clear it.</p></div>
+    </div>
+    <div class="cell-border">
+      <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Mood chart</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+      <div class="cell-body">
+        <div id="mood-styles" class="mood-styles"></div>
+        <div id="mood-chart" class="mood-chart"></div>
+        <div id="mood-stats" class="mood-stats"></div>
+        <p id="mood-msg" class="sleep-msg error"></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="money-page" class="sleep-page" style="display:none;">
+  <div class="sleep-wrap">
+    <div class="sleep-head">
+      <span class="sleep-title">Money tracker</span>
+      <button class="settings-btn sleep-close" onclick="toggleMoneyPage()">✕ Close</button>
+    </div>
+    <div class="money-tiles">
+      <div class="sleep-tile"><div class="money-tile-label">Income (this month)</div><div id="money-inc" class="sleep-big money-in">$0.00</div></div>
+      <div class="sleep-tile"><div class="money-tile-label">Expenses (this month)</div><div id="money-exp" class="sleep-big money-out">$0.00</div></div>
+      <div class="sleep-tile"><div class="money-tile-label">Net (this month)</div><div id="money-net" class="sleep-big money-net">$0.00</div></div>
+    </div>
+    <div class="cell-border">
+      <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Add an entry</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+      <div class="cell-body">
+        <div class="money-kind">
+          <button type="button" id="money-kind-exp" class="sleep-q-btn on" onclick="setMoneyKind('expense')">− Expense</button>
+          <button type="button" id="money-kind-inc" class="sleep-q-btn" onclick="setMoneyKind('income')">+ Income</button>
+        </div>
+        <div class="money-row1">
+          <div><p class="sleep-label">Item</p><input type="text" id="money-item" class="sleep-input" placeholder="e.g. cafe"></div>
+          <div><p class="sleep-label">Amount ($)</p><input type="number" id="money-amount" class="sleep-input" min="0" step="0.01" placeholder="0.00"></div>
+          <div><p class="sleep-label">Date</p><input type="date" id="money-date" class="sleep-input"></div>
+        </div>
+        <div class="money-row2">
+          <div>
+            <p class="sleep-label">Category</p>
+            <select id="money-cat" class="sleep-input" onchange="onMoneySelect('cat')"></select>
+            <div id="money-cat-new" class="money-new-row" style="display:none;"><input type="text" class="sleep-input" placeholder="New category name"><button type="button" class="settings-btn" onclick="addMoneyCustom('cat')">Add</button></div>
+          </div>
+          <div>
+            <p class="sleep-label">Account</p>
+            <select id="money-acc" class="sleep-input" onchange="onMoneySelect('acc')"></select>
+            <div id="money-acc-new" class="money-new-row" style="display:none;"><input type="text" class="sleep-input" placeholder="New account name"><button type="button" class="settings-btn" onclick="addMoneyCustom('acc')">Add</button></div>
+          </div>
+          <button type="button" class="settings-btn money-add" onclick="submitMoney()">Add ✓</button>
+        </div>
+        <p id="money-msg" class="sleep-msg"></p>
+      </div>
+    </div>
+    <div class="cell-border">
+      <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Import bank transactions</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+      <div class="cell-body">
+        <div class="money-import-top">
+          <label class="settings-btn money-file-btn">⬆ Choose a .csv file<input type="file" id="money-import-file" accept=".csv,text/csv" onchange="onImportFile(this)" hidden></label>
+          <label class="sleep-checks money-flip"><input type="checkbox" id="money-import-flip"> My bank shows spending as positive numbers</label>
+        </div>
+        <p class="mood-note">Download your transactions from your bank's website as a CSV file. It needs a Date, a Description, and an Amount (or Debit/Credit) column.</p>
+        <p id="money-import-status" class="money-import-status"></p>
+        <div id="money-import-review"></div>
+      </div>
+    </div>
+    <div class="cell-border">
+      <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Income &amp; expenses</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+      <div class="cell-body">
+        <div id="money-views" class="mood-styles"></div>
+        <div id="money-out" class="money-out-box"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="tracker-screen" style="display:none;">
-  <div class="cell-border" style="margin:10px 14px 0;border-radius:var(--radius-outer);">
+  <div class="cell-border tracker-title" style="margin:10px 14px 0;border-radius:var(--radius-outer);">
     <div class="title-bar" style="justify-content:center;">
       <span class="title-glyph"></span>
       <span id="current-month-label" class="title-text" style="font-size:15px;letter-spacing:3px;"></span>
@@ -221,9 +395,88 @@
   </div>
   <div class="tracker">
     <table class="layout">
-      
+
       <tr>
-        <!-- NEW BOX START -->
+        <td class="cell-outer" colspan="3">
+          <div class="dash-band">
+<div class="cell-border dash-summary">
+<div class="title-bar"><span class="title-glyph"></span><span class="title-text">Summary</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+<div class="cell-body"><div id="summary-donut" class="summary-donut sum-cell"></div><div id="summary-donut-year" class="summary-donut sum-cell"></div></div>
+</div>
+<div class="cell-border dash-weeks">
+<div class="title-bar"><span class="title-glyph"></span><span class="title-text">Weeks</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+<div class="cell-body"><div id="donut-row" class="donut-row"></div>
+<div id="week-bars" class="week-bars"></div></div>
+</div>
+            <div class="cell-border dash-star">
+<div class="title-bar"><span class="title-glyph"></span><span class="title-text">Category star map</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+<div class="cell-body star-body">
+  <svg id="star-map" class="star-map" viewBox="0 0 340 320" role="img" aria-label="Category completion star map"></svg>
+  <div id="star-toggles" class="star-toggles"></div>
+  <p id="star-note" class="star-note"></p>
+</div>
+</div>
+<div class="cell-border dash-progress">
+              <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Month progress</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+              <div class="cell-body">
+                <div class="dash-prog-row">
+                  <div class="xp-col xp-side">
+                    <div class="xp-mini">
+                      <p class="xp-tile-label">Level</p>
+                      <div class="xp-mini-top"><div class="xp-tile-num xp-level" id="xp-level">1</div>
+                        <div class="xp-mini-info"><div class="xp-progress-num" id="xp-progress-num">0 / 100</div>
+                        <div class="today-bar"><div class="today-bar-fill" id="xp-bar-fill" style="width:0%"></div></div></div></div>
+                      <p class="xp-note" id="xp-note" aria-live="polite"></p>
+                    </div>
+                    <div class="xp-mini">
+                      <p class="xp-tile-label">Total XP</p>
+                      <div class="xp-tile-num xp-total" id="xp-total">0</div>
+                      <p class="xp-line"><strong id="xp-next">100</strong> to next level</p>
+                    </div>
+                  </div>
+                  <div class="dash-prog-mid"><div id="month-progress-panel" style="display:flex;flex-direction:column;gap:10px;"></div></div>
+                  <div class="xp-col xp-side">
+                    <div class="xp-mini">
+                      <p class="xp-tile-label">Quests</p>
+                      <div class="xp-tile-num" id="xp-quests">0</div><div class="xp-tile-sub" id="xp-quests-of"></div>
+                    </div>
+                    <div class="xp-mini">
+                      <p class="xp-tile-label">Streak</p>
+                      <div class="xp-tile-num" id="xp-streak">0</div><div class="xp-tile-sub">day streak</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="xp-side xp-stats-strip">
+                  <p class="xp-tile-label">Stats</p>
+                  <div id="xp-stats-list" class="xp-stats-grid"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </td>
+      </tr>
+      <tr id="xp-rank-row" style="display:none;">
+        <td class="cell-outer" colspan="3">
+          <div class="cell-border">
+            <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Rank your tasks</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+            <div class="cell-body xp-rank-body" id="xp-rank-body"></div>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td class="cell-outer" colspan="3">
+          <div class="dash-charts">
+<div class="cell-border dash-bar">
+<div class="title-bar"><span class="title-glyph"></span><span class="title-text">Daily habit count</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+<div class="cell-body"><div class="chart-wrap"><canvas id="barChart"></canvas></div></div>
+</div>
+<div class="cell-border dash-cat">
+<div class="title-bar"><span class="title-glyph"></span><span class="title-text">Habit count by category</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+<div class="cell-body"><div class="chart-wrap"><canvas id="catChart"></canvas></div></div>
+</div>
+          </div>
+        </td>
+      </tr>
       <tr>
         <td class="cell-outer" colspan="3">
           <div class="cell-border">
@@ -239,49 +492,38 @@
           </div>
         </td>
       </tr>
-      <!-- NEW BOX END -->
-        <td class="cell-outer top-habits-cell">
-          <div class="cell-border">
-            <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Top habits this month</span><span class="title-dots"><span></span><span></span><span></span></span></div>
-            <div class="cell-body"><div id="top-habits" class="stack-sm"></div></div>
-          </div>
-                
-        </td>
-        <td class="cell-outer charts-cell">
-          <div class="cell-border">
-            <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Daily trend</span><span class="title-dots"><span></span><span></span><span></span></span></div>
-            <div class="cell-body">
-              <p class="cell-subtitle">Habits completed per day (trend)</p>
-              <div class="chart-wrap"><canvas id="lineChart"></canvas></div>
-              <div id="donut-row" class="donut-row"></div>
-              <p class="cell-subtitle">Habits completed per day (bar)</p>
-              <div class="chart-wrap"><canvas id="barChart"></canvas></div>
-            </div>
-          </div>
-        </td>
-        <td class="cell-outer correlations-cell">
-          <div class="cell-border">
-            <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Habit correlations</span><span class="title-dots"><span></span><span></span><span></span></span></div>
-            <div class="cell-body"><div id="correlations" class="stack-md"></div></div>
-          </div>
+      <tr>
+        <td class="cell-outer" colspan="3">
+<div class="cell-border">
+<div class="title-bar"><span class="title-glyph"></span><span class="title-text">Daily trend</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+<div class="cell-body"><div class="chart-wrap"><canvas id="lineChart"></canvas></div></div>
+</div>
         </td>
       </tr>
       <tr>
         <td class="cell-outer" colspan="3">
           <div class="cell-border">
             <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Daily checklist &amp; monthly progress</span><span class="title-dots"><span></span><span></span><span></span></span></div>
-            <div class="cell-body grid-cell"><table id="grid-table" class="checkbox-grid"></table></div>
+            <div class="cell-body grid-cell"><div id="grid-tabs" class="grid-tabs"></div><table id="grid-table" class="checkbox-grid"></table></div>
           </div>
         </td>
       </tr>
       <tr>
-        <td class="cell-outer">
-          <div class="cell-border">
-            <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Month progress</span><span class="title-dots"><span></span><span></span><span></span></span></div>
-            <div class="cell-body" id="month-progress-panel" style="display:flex;flex-direction:column;gap:10px;justify-content:center;padding:10px;"></div>
+        <td class="cell-outer" colspan="3">
+          <div class="pair-row">
+            <div class="cell-border">
+            <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Top habits this month</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+            <div class="cell-body"><div id="top-habits" class="stack-sm"></div></div>
+          </div>
+            <div class="cell-border">
+            <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Habit correlations</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+            <div class="cell-body"><div id="correlations" class="stack-md"></div></div>
+          </div>
           </div>
         </td>
-        <td class="cell-outer weekly-tasks-cell">
+      </tr>
+      <tr>
+        <td class="cell-outer weekly-tasks-cell" colspan="2">
           <div class="cell-border">
             <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Weekly planned tasks</span><span class="title-dots"><span></span><span></span><span></span></span></div>
             <div class="cell-body cell-body-flush"><div id="weekly-tasks" class="weekly-tasks-grid"></div></div>
@@ -322,14 +564,23 @@
       </tr>
       <tr>
         <td class="cell-outer" colspan="3">
-          <div class="cell-border">
-            <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Actual vs intended completions</span><span class="title-dots"><span></span><span></span><span></span></span></div>
-            <div class="cell-body">
-              <div style="display:flex;gap:16px;margin-bottom:8px;font-size:11px;color:var(--c-text-muted);">
-                <span><span style="display:inline-block;width:12px;height:2px;background:var(--c-pink);vertical-align:middle;margin-right:4px;"></span>Actual completed</span>
-                <span><span style="display:inline-block;width:12px;height:12px;background:var(--c-purple);opacity:0.2;vertical-align:middle;margin-right:4px;border-radius:1px;border:1px dashed var(--c-purple);"></span>Intended (required)</span>
+          <div class="pair-row equal">
+            <div class="cell-border">
+              <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Actual vs intended completions</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+              <div class="cell-body">
+                <div style="display:flex;gap:16px;margin-bottom:8px;font-size:11px;color:var(--c-text-muted);">
+                  <span><span style="display:inline-block;width:12px;height:2px;background:var(--c-pink);vertical-align:middle;margin-right:4px;"></span>Actual completed</span>
+                  <span><span style="display:inline-block;width:12px;height:12px;background:var(--c-purple);opacity:0.2;vertical-align:middle;margin-right:4px;border-radius:1px;border:1px dashed var(--c-purple);"></span>Intended (required)</span>
+                </div>
+                <div class="chart-wrap" style="height:200px;"><canvas id="actualVsIntendedChart"></canvas></div>
               </div>
-              <div class="chart-wrap" style="height:200px;"><canvas id="actualVsIntendedChart"></canvas></div>
+            </div>
+            <div class="cell-border">
+              <div class="title-bar"><span class="title-glyph"></span><span class="title-text">XP growth</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+              <div class="cell-body">
+                <p class="cell-subtitle">Habit XP so far, as a % of today's XP</p>
+                <div class="chart-wrap" style="height:200px;"><canvas id="xpGrowthChart"></canvas></div>
+              </div>
             </div>
           </div>
         </td>
@@ -351,6 +602,17 @@
           <div class="cell-border">
             <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Habit age 🌱</span><span class="title-dots"><span></span><span></span><span></span></span></div>
             <div class="cell-body"><div id="habit-age-container" class="stack-sm"></div></div>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td class="cell-outer" colspan="3">
+          <div class="cell-border">
+            <div class="title-bar"><span class="title-glyph"></span><span class="title-text">XP speed and acceleration</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+            <div class="cell-body">
+              <p class="cell-subtitle">XP' = XP gained per day. XP" = how much XP' changes from one day to the next.</p>
+              <div class="chart-wrap" style="height:240px;"><canvas id="xpDerivChart"></canvas></div>
+            </div>
           </div>
         </td>
       </tr>

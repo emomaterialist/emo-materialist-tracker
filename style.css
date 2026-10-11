@@ -307,8 +307,8 @@ body {
 }
 
 .tracker {
-  max-width: 1150px;
-  margin: 0 auto;
+  max-width: none;   /* full width of the screen. Put a number back (e.g. 1150px) to narrow it */
+  margin: 0;
 }
 
 .layout {
@@ -735,8 +735,405 @@ button.settings-btn:active { transform: translateY(0); }
 .today-name { flex: 1; min-width: 0; }
 .today-tag { flex: none; font-size: 10px; letter-spacing: 0.5px; color: var(--c-text-muted); }
 .today-empty { margin: 0; padding: 14px; text-align: center; font-size: 12px; color: var(--c-text-muted); }
+.today-item.optional { border-style: dashed; }
+.today-sub { grid-column: 1 / -1; margin: 4px 0 0; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--c-text-muted); }
+
+/* ===== XP MODE ===== */
+.xp-tag { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 16px; height: 16px; margin-left: 6px; border: 1.5px solid var(--c-dark); border-radius: 4px; font-size: 9px; font-weight: 700; line-height: 1; cursor: pointer; user-select: none; color: var(--c-dark); background: var(--c-body-bg); }
+.xp-tag:hover { transform: translate(-1px, -1px); }
+.xp-tag.xp-unranked { border-style: dashed; color: var(--c-text-muted); }
+.xp-tag.xp-easy   { background: #b8f0c8; color: #2b1b4a; }
+.xp-tag.xp-medium { background: #ffe8a3; color: #2b1b4a; }
+.xp-tag.xp-hard   { background: #ff9fb8; color: #2b1b4a; }
+.task-row .xp-tag { margin-left: 0; }
+.xp-rank-body { display: flex; flex-direction: column; gap: 8px; }
+.xp-rank-note { margin: 0; font-size: 11px; color: var(--c-text-muted); }
+.xp-rank-group { margin: 4px 0 0; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--c-text); }
+.xp-rank-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 6px; }
+.xp-rank-item { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border: 2px solid var(--c-dark); border-radius: var(--radius-sm, 4px); background: var(--c-body-bg); font-size: 12px; color: var(--c-text); }
+.xp-rank-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xp-rank-btn { flex: none; padding: 3px 7px; border: 2px solid var(--c-dark); border-radius: 4px; background: var(--c-body-bg); color: var(--c-text); font-family: inherit; font-size: 10px; font-weight: 700; cursor: pointer; }
+.xp-rank-btn:hover { background: var(--c-pink); color: var(--c-dark); }
+
+/* ===== XP MODE: level, stats, quests ===== */
+.xp-stack { display: flex; flex-direction: column; gap: 14px; }
+.xp-body { display: flex; flex-direction: column; gap: 8px; }
+.xp-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 4px; }
+.xp-pair-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-content: start; }
+.xp-tile { padding: 8px 10px; border: 2px solid var(--c-dark); border-radius: var(--radius-sm, 4px); background: var(--c-body-bg-alt); text-align: center; }
+.xp-tile-label { margin: 0 0 4px; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--c-text-muted); }
+.xp-tile-num { font-size: 28px; font-weight: 700; line-height: 1.15; color: var(--c-text); }
+.xp-tile-num.xp-level { color: var(--c-orange); }
+.xp-tile-num.xp-total { color: var(--c-pink); }
+.xp-tile-num.xp-next { color: var(--c-purple); }
+.xp-tile-sub { margin-top: 2px; font-size: 10px; color: var(--c-text-muted); }
+.xp-progress-head { display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px; }
+.xp-progress-num { font-size: 11px; color: var(--c-text-muted); }
+.xp-note { margin: 0; min-height: 14px; font-size: 11px; font-weight: 700; color: var(--c-pink); }
+.xp-stat-row { display: grid; grid-template-columns: 110px 64px 1fr; gap: 10px; align-items: center; margin-bottom: 8px; font-size: 12px; color: var(--c-text); }
+.xp-stat-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xp-stat-val { font-weight: 700; color: var(--c-purple); }
+.xp-stat-bar { height: 8px; overflow: hidden; border: 2px solid var(--c-dark); border-radius: var(--radius-sm, 4px); background: var(--c-body-bg); box-sizing: content-box; }
+
+/* ===== Top habits + Habit correlations, side by side under the monthly checklist ===== */
+.pair-row { display: flex; align-items: flex-start; gap: 14px; }
+.pair-row > .cell-border { flex: 1 1 0; min-width: 0; }
+@media (max-width: 700px) {
+  .pair-row { flex-direction: column; align-items: stretch; }
+}
 
 
+
+
+/* ===== One-page dashboard layout ===== */
+.dash-band { display: flex; align-items: stretch; gap: 14px; }
+.dash-band > .cell-border { min-width: 0; }
+.dash-summary { flex: 0 0 190px; }
+.dash-weeks { flex: 0 0 auto; }
+.dash-star { flex: 0 0 290px; }
+.dash-progress { flex: 1 1 0; min-width: 420px; }
+.dash-band > .cell-border { display: flex; flex-direction: column; height: auto; }
+.dash-band > .cell-border > .cell-body { flex: 1 1 auto; }
+.dash-weeks .donut-row svg { width: 74px; height: 74px; }
+.donut-week-text { font-family: inherit; }
+.star-body { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.star-map { width: 100%; max-width: 290px; height: auto; flex: 1 1 auto; }
+.star-toggles { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; }
+.star-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 7px; border: 2px solid var(--c-dark); border-radius: var(--radius-sm, 4px); background: var(--c-body-bg); color: var(--c-text); font-size: 11px; cursor: pointer; user-select: none; }
+.star-chip input { margin: 0; accent-color: var(--c-pink); }
+.star-chip.on { background: var(--c-body-bg-alt); font-weight: 700; }
+.star-note { margin: 0; min-height: 14px; font-size: 11px; color: var(--c-text-muted); text-align: center; }
+.dash-weeks .donut-row { flex-wrap: nowrap; gap: 6px; }
+.dash-weeks .donut-row > div { min-width: 0 !important; }
+.dash-prog-row { display: flex; align-items: stretch; gap: 10px; }
+.dash-prog-mid { flex: 1 1 0; min-width: 0; align-self: center; }
+.xp-col { flex: 0 0 120px; display: flex; flex-direction: column; gap: 8px; }
+.xp-col .xp-mini { flex: 1 1 auto; }
+.xp-stats-strip { margin-top: 10px; }
+.xp-stats-strip .xp-tile-label { margin: 0 0 4px; }
+.dash-weeks .donut-row { display: flex; flex-wrap: wrap; justify-content: space-around; gap: 8px; margin: 0; }
+.dash-weeks .cell-body, .dash-summary .cell-body { height: 100%; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
+.summary-donut { text-align: center; }
+.summary-donut p { margin: 4px 0 0; font-size: 11px; color: var(--c-text-muted); }
+.dash-charts { display: flex; align-items: flex-start; gap: 14px; }
+.dash-charts > .cell-border { min-width: 0; }
+.dash-bar { flex: 1.45 1 0; }
+.dash-cat { flex: 1 1 0; }
+.dash-charts .chart-wrap { margin-bottom: 0; }
+.xp-strip { display: flex; align-items: stretch; gap: 12px; }
+.xp-strip .xp-tile { flex: 0 0 110px; display: flex; flex-direction: column; justify-content: center; }
+.xp-strip .xp-tile-num { font-size: 26px; }
+.xp-strip-bar { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+.xp-line { margin: 0; font-size: 11px; color: var(--c-text-muted); }
+.xp-line strong { color: var(--c-text); }
+.xp-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); column-gap: 18px; }
+.xp-stats-grid .xp-stat-row { margin-bottom: 4px; }
+.xp-mini { flex: 1 1 0; min-width: 0; padding: 8px 10px; border: 2px solid var(--c-dark); border-radius: var(--radius-sm, 4px); background: var(--c-body-bg-alt); }
+.xp-mini .xp-tile-label { margin: 0 0 6px; }
+.xp-mini-top { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.xp-mini-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.xp-mini .xp-tile-num { font-size: 24px; }
+.today-list { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px; }
+.today-item { padding: 5px 8px; gap: 8px; font-size: 11px; }
+@media (max-width: 1100px) {
+  .dash-band { flex-wrap: wrap; }
+  .dash-star { flex: 1 1 260px; }
+  .dash-progress { min-width: 0; flex: 1 1 100%; }
+  .dash-summary { flex: 1 1 160px; }
+  .dash-weeks { flex: 3 1 300px; }
+  .dash-progress { flex: 1 1 100%; }
+}
+@media (max-width: 900px) {
+  .dash-prog-row { flex-wrap: wrap; }
+  .dash-prog-mid { flex: 1 1 100%; order: -1; }
+  .xp-col { flex: 1 1 140px; }
+  .dash-charts { flex-direction: column; }
+  .dash-charts > .cell-border { width: 100%; flex: none; }
+}
+@media (max-width: 700px) {
+  .layout, .layout tbody { display: block; width: 100% !important; }
+  .dash-band { flex-direction: column; }
+  .dash-summary, .dash-weeks, .dash-progress { flex: none; }
+  .xp-strip { flex-wrap: wrap; }
+  .xp-strip-bar { flex: 1 1 100%; order: 5; }
+  .xp-strip .xp-tile { flex: 1 1 90px; }
+}
+
+/* ===== Phone layout (screens 700px wide and under) ===== */
+@media (max-width: 700px) {
+  body { padding: 10px 8px; }
+  .tracker-title { margin: 56px 0 0 !important; }
+  .tracker { overflow-x: hidden; }
+  .settings-panel { width: min(320px, 88vw); left: -100vw; }
+  .quick-buttons { top: auto !important; bottom: 10px; left: 50% !important; transform: translateX(-50%); flex-direction: row !important; }
+  .quick-buttons .settings-toggle-btn { width: 36px !important; height: 36px !important; font-size: 14px !important; }
+  .dash-band { flex-direction: column; gap: 12px; }
+  .dash-summary, .dash-weeks, .dash-star, .dash-progress { flex: none; width: 100%; min-width: 0; }
+  .dash-weeks .donut-row { justify-content: space-between; flex-wrap: wrap; }
+  .dash-weeks .donut-row svg { width: 58px; height: 58px; }
+  .star-map { max-width: 280px; }
+  .dash-prog-row { flex-direction: column; }
+  .dash-prog-mid { order: -1; }
+  .xp-col { flex: 1 1 100%; flex-direction: row; }
+  .xp-col .xp-mini { flex: 1 1 0; }
+  .xp-strip { flex-direction: column; }
+  .xp-strip .xp-tile { flex: none; }
+  .dash-charts { flex-direction: column; gap: 12px; }
+  .dash-charts > .cell-border { width: 100%; }
+  .today-list { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .today-item { min-height: 48px; padding: 8px; font-size: 12px; }
+  .today-box { width: 22px; height: 22px; }
+  .today-box::after { width: 11px; height: 6px; }
+  .today-tag { font-size: 9px; }
+  .xp-stats-grid { grid-template-columns: 1fr; }
+  .xp-stat-row { grid-template-columns: 96px 60px 1fr; }
+  .xp-rank-btn { padding: 8px 10px; font-size: 12px; min-height: 36px; }
+  .xp-rank-list { grid-template-columns: 1fr; }
+  .xp-rank-item { flex-wrap: wrap; }
+  .xp-rank-name { flex: 1 1 100%; white-space: normal; }
+  .weekly-tasks-grid { grid-template-columns: 1fr 1fr; }
+  .weekly-tasks-cell { display: block; }
+  .tracker .cell-body { overflow-x: auto; }
+  .tracker .cell-body:has(> #grid-table), .grid-cell { overflow-x: auto; }
+  .chart-wrap { height: 200px; }
+  .chart-wrap-tall { height: 220px; }
+  .pair-row { flex-direction: column; }
+  .pair-row > .cell-border { width: 100%; }
+  .title-bar { padding: 6px 8px; }
+  .title-text { font-size: 12px; }
+}
+@media (max-width: 380px) {
+  .today-list { grid-template-columns: 1fr; }
+  .dash-weeks .donut-row svg { width: 50px; height: 50px; }
+}
+
+/* ===== Side-by-side boxes that share one height ===== */
+.pair-row.equal { align-items: stretch; }
+.pair-row.equal > .cell-border { display: flex; flex-direction: column; height: auto; }
+.pair-row.equal > .cell-border > .cell-body { flex: 1 1 auto; }
+
+/* ===== Weekly donuts and completion bars (same grid, so they line up) ===== */
+.dash-weeks .donut-row, .dash-weeks .week-bars { display: grid; gap: 6px; justify-items: center; margin: 0; overflow: visible; }
+.dash-weeks .week-bars { margin-top: 10px; }
+.dash-weeks .donut-row > div, .week-bar-item { min-width: 0; width: 100%; flex: none; text-align: center; }
+.dash-weeks .donut-row svg { width: 100%; max-width: 74px; height: auto; display: block; margin: 0 auto; }
+.dash-weeks { min-width: min(400px, 100%); }
+.dash-weeks .cell-body { flex-direction: column; }
+.dash-weeks .donut-row, .dash-weeks .week-bars { width: 100%; }
+.week-bar-label, .week-bar-pct { white-space: nowrap; }
+.week-bar-track { height: 110px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+.week-bar-pct { font-size: 12px; font-weight: 700; margin-bottom: 4px; color: var(--c-text); }
+.week-bar-fill { width: 60%; border-radius: 4px 4px 0 0; }
+.week-bar-label { font-size: 11px; color: var(--c-text-muted); margin-top: 4px; }
+
+/* ===== Summary: month and year rings ===== */
+.dash-summary { container-type: size; }
+.dash-summary .cell-body { display: grid; height: 100%; box-sizing: border-box; padding: 10px; gap: 8px; grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; align-items: center; justify-items: center; }
+@container (orientation: landscape) {
+  .dash-summary .cell-body { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; }
+  .summary-donut svg { width: min(40cqw, 60cqh); }
+}
+.sum-cell { width: 100%; min-width: 0; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.sum-cell .sum-label { margin: 0 0 4px; font-size: 12px; font-weight: 600; color: var(--c-text); white-space: nowrap; }
+.summary-donut svg { width: min(70cqw, 30cqh); height: auto; display: block; }
+.summary-donut p { white-space: nowrap; }
+@media (max-width: 700px) {
+  .dash-band > .dash-summary { height: 180px; }
+}
+
+
+/* ===== Medium-wide screens (1080-1450px): Month progress gets its own full-width row ===== */
+@media (min-width: 1080px) and (max-width: 1450px) {
+  .dash-band { flex-wrap: wrap; }
+  .dash-weeks { flex: 1 1 auto; }
+  .dash-progress { flex: 1 1 100%; min-width: 0; }
+}
+
+/* ===== Checklist tabs: All / Easy / Medium / Hard ===== */
+.grid-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.grid-tab { padding: 4px 10px; border: 2px solid var(--c-dark); border-radius: var(--radius-sm); background: var(--c-body-bg); color: var(--c-text); font-family: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
+.grid-tab:hover { border-color: var(--c-pink); }
+.grid-tab.on { background: var(--c-pink); color: var(--c-dark); }
+.grid-tab-n { margin-left: 4px; font-weight: 400; opacity: 0.75; }
+.grid-empty { padding: 12px; font-size: 12px; color: var(--c-text-muted); }
+
+
+/* ===== Sleep tracker page (layout only; colors come from the theme variables) ===== */
+.sleep-page { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; z-index: 998; overflow-y: auto; padding: 60px 24px 24px; box-sizing: border-box;
+  background: radial-gradient(circle, var(--c-grid-dot) 1px, transparent 1px), linear-gradient(180deg, var(--c-page-bg-1) 0%, var(--c-page-bg-2) 100%); /* page background: same dots + gradient as the main page */
+  background-size: 16px 16px, 100% 100%; }
+.sleep-wrap { max-width: 900px; margin: 0 auto; }
+.sleep-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.sleep-title { font-size: 20px; font-weight: 700; color: var(--c-text); /* page heading text */ }
+.sleep-close { width: auto; padding: 5px 12px; }
+.sleep-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.sleep-grid .cell-border { height: auto; margin-bottom: 14px; }
+.sleep-row3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
+.sleep-label { margin: 0 0 4px; font-size: 11px; font-weight: 700; color: var(--c-text); /* small labels above each field */ }
+.sleep-input { width: 100%; padding: 6px 8px; font-family: inherit; font-size: 13px; box-sizing: border-box;
+  border: 2px solid var(--c-pink); /* field outline */
+  border-radius: var(--radius-sm);
+  background: var(--c-body-bg); /* field background */
+  color: var(--c-text); /* typed text */ }
+.sleep-notes { height: 56px; resize: vertical; }
+.sleep-q { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin-bottom: 10px; }
+.sleep-q-btn { padding: 6px 2px; font-family: inherit; font-size: 11px; cursor: pointer;
+  border: 2px solid var(--c-dark); /* quality button outline */
+  border-radius: var(--radius-sm);
+  background: var(--c-body-bg); /* quality button background */
+  color: var(--c-text); /* quality button text */ }
+.sleep-q-btn.on { font-weight: 700;
+  background: var(--c-pink); /* selected quality button background */
+  color: var(--c-dark); /* selected quality button text */ }
+.sleep-checks { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 8px 0 10px; font-size: 12px; color: var(--c-text); /* checkbox labels */ }
+.sleep-checks input { accent-color: var(--c-pink); /* checkbox tick color */ }
+.sleep-msg { min-height: 15px; margin: 6px 0 0; font-size: 12px; }
+.sleep-msg.error { color: #CC0000; /* error message text (red) */ }
+.sleep-msg.ok { color: var(--c-text-muted); /* "Saved" message text */ }
+.sleep-tile { padding: 8px; text-align: center;
+  border: 2px solid var(--c-dark); /* stat tile outline */
+  border-radius: var(--radius-sm);
+  background: var(--c-body-bg-alt); /* stat tile background */ }
+.sleep-big { font-size: 28px; font-weight: 700; }
+.sleep-avg { color: var(--c-pink); /* Avg hours number */ }
+.sleep-hit { color: var(--c-purple); /* Goal hit % number */ }
+.sleep-sub { font-size: 11px; color: var(--c-text-muted); /* small grey text under the stat numbers */ }
+.sleep-goal-row { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--c-text); /* "Target ... hrs/night" text */ }
+.sleep-goal-input { width: 70px; }
+.sleep-tips p { margin: 0 0 5px; font-size: 12px; line-height: 1.45; color: var(--c-text); /* tip text */ }
+.sleep-night { display: grid; grid-template-columns: 62px minmax(0, 1fr) 48px 22px; gap: 8px; align-items: center; margin-bottom: 8px; font-size: 12px; color: var(--c-text); /* date and hours text */ }
+.sleep-hours { text-align: right; font-weight: 700; }
+.sleep-bar { height: 12px; overflow: hidden;
+  border: 2px solid var(--c-dark); /* hours bar outline */
+  border-radius: var(--radius-sm);
+  background: var(--c-body-bg-alt); /* empty part of the hours bar */ }
+.sleep-bar i { display: block; height: 100%; }
+.sleep-bar i.met { background: var(--c-purple); /* bar fill: night met the goal */ }
+.sleep-bar i.under { background: var(--c-pink); /* bar fill: night under the goal */ }
+.sleep-meta { grid-column: 2 / 4; margin-top: -4px; font-size: 11px; color: var(--c-text-muted); /* quality, tags and notes under each night */ }
+.sleep-del { width: 20px; height: 18px; padding: 0; font-size: 11px; cursor: pointer;
+  border: 1px solid var(--c-dark); /* delete button outline */
+  border-radius: var(--radius-sm);
+  background: var(--c-body-bg); /* delete button background */
+  color: var(--c-text); /* delete button "x" */ }
+.sleep-legend { display: flex; gap: 12px; margin-top: 4px; font-size: 11px; color: var(--c-text-muted); /* legend text */ }
+.sleep-legend span i { display: inline-block; width: 10px; height: 10px; margin-right: 4px; vertical-align: -1px; }
+.sleep-empty { margin: 0; font-size: 12px; color: var(--c-text-muted); /* "No nights logged yet" */ }
+@media (max-width: 700px) {
+  .sleep-page { padding: 56px 10px 70px; }
+  .sleep-grid { grid-template-columns: 1fr; gap: 0; }
+  .sleep-row3 { grid-template-columns: 1fr 1fr; }
+  .sleep-q-btn { padding: 10px 2px; }
+}
+
+/* ===== Mood tracker page (reuses the sleep page frame; colors come from theme variables) ===== */
+body { --mood-paper: var(--c-body-bg); /* empty (not logged) day fill + chart background */ --mood-ink: var(--c-text); /* outlines and day numbers in the mood chart */ }
+#mood-page .cell-border { height: auto; margin-bottom: 14px; }
+.mood-month-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 14px; }
+.mood-month { min-width: 170px; text-align: center; font-size: 15px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--c-text); /* month name between the arrows */ }
+.mood-nav { width: auto; padding: 4px 10px; }
+.mood-brush { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+.mood-brush-btn { display: flex; align-items: center; justify-content: center; gap: 5px; }
+.mood-swatch { display: inline-block; width: 12px; height: 12px; flex: none; margin-right: 3px; vertical-align: -1px;
+  border: 1px solid var(--c-dark); /* outline around each mood color square */ }
+.mood-note { margin: 6px 0 0; font-size: 11px; color: var(--c-text-muted); /* small hint text */ }
+.mood-styles { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+.mood-styles .sleep-q-btn { padding: 6px 10px; }
+.mood-chart { padding: 8px; display: flex; flex-direction: column; align-items: center;
+  border: 2px solid var(--c-dark); /* chart frame */
+  border-radius: var(--radius-sm);
+  background: var(--mood-paper); /* chart background (matches empty days) */ }
+.mood-svg { width: 100%; height: auto; display: block; }
+.mood-svg-wheel { max-width: 340px; }
+.mood-svg [data-d] { cursor: pointer; }
+.mood-svg text { font-family: inherit; }
+.mood-pixels { display: grid; grid-template-columns: repeat(7, minmax(0, 46px)); gap: 4px; justify-content: center; }
+.mood-pixel-head { text-align: center; font-size: 11px; font-weight: 700; color: var(--mood-ink); /* M T W T F S S headings */ }
+.mood-pixel { aspect-ratio: 1; padding: 0; border: 2px solid; border-radius: var(--radius-sm); font-family: inherit; font-size: 11px; cursor: pointer; }
+.mood-bars { display: grid; gap: 2px; width: 100%; height: 150px; align-items: end; }
+.mood-bar { padding: 0; border: 1px solid; border-radius: 0; cursor: pointer; align-self: end; }
+.mood-bar-days { display: grid; gap: 2px; width: 100%; font-size: 9px; text-align: center; color: var(--mood-ink); /* day numbers under the bars */ }
+.mood-stats { margin-top: 8px; font-size: 12px; color: var(--c-text); /* "x/31 days logged" line */ }
+.mood-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+@media (max-width: 700px) {
+  .mood-brush { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .mood-pixels { grid-template-columns: repeat(7, minmax(0, 1fr)); width: 100%; }
+}
+
+/* ===== Money tracker page (reuses the sleep page frame; colors come from theme variables) ===== */
+body { --money-in: #008A3E; /* income amounts (green) */ --money-out: #CC0055; /* expense amounts and negative net (red-pink) */ }
+#money-page .cell-border { height: auto; margin-bottom: 14px; }
+.money-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.money-tile-label { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--c-text); /* tile headings */ }
+.money-tiles .sleep-big { font-size: 22px; }
+.money-in { color: var(--money-in); /* income numbers */ }
+.money-out { color: var(--money-out); /* expense numbers */ }
+.money-net { color: var(--c-purple); /* net number when you are not in the red */ }
+.money-kind { display: flex; gap: 4px; margin-bottom: 10px; }
+.money-kind .sleep-q-btn { padding: 6px 12px; }
+.money-row1 { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1.4fr); gap: 10px; margin-bottom: 10px; }
+.money-row2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 10px; align-items: end; }
+.money-add { width: auto; padding: 7px 16px; }
+.money-new-row { display: flex; gap: 6px; margin-top: 6px; }
+.money-new-row .settings-btn { width: auto; padding: 4px 10px; }
+.money-out-box { overflow-x: auto;
+  border: 2px solid var(--c-dark); /* table frame */
+  border-radius: var(--radius-sm);
+  background: var(--c-body-bg); /* table background */ }
+.money-pad { padding: 10px; }
+.money-table { width: 100%; border-collapse: collapse; font-size: 12px; color: var(--c-text); /* table text */ }
+.money-table th { text-align: left; padding: 5px 8px; font-size: 11px; white-space: nowrap;
+  border-bottom: 2px solid var(--c-dark); /* line under the table headings */ }
+.money-table td { padding: 5px 8px; white-space: nowrap;
+  border-bottom: 1px solid var(--c-body-bg-alt); /* faint line between rows */ }
+.money-table .money-num { text-align: right; }
+.money-total td { font-weight: 700; border-bottom: none; }
+.money-sub { margin: 0 0 6px; font-size: 12px; font-weight: 700; color: var(--c-text); /* "Where your money went" headings */ }
+.money-sub + .money-bar-row, .money-pad .money-sub:not(:first-child) { margin-top: 12px; }
+.money-bar-row { display: grid; grid-template-columns: 130px minmax(0, 1fr) 100px; gap: 8px; align-items: center; margin-bottom: 6px; font-size: 12px; color: var(--c-text); /* category name and amount */ }
+.money-bar-row .money-num { text-align: right; }
+.money-bar-out { background: var(--c-pink); /* bar fill: spending per category */ }
+.money-bar-in { background: var(--money-bar-in, var(--c-purple)); /* bar fill: income per category */ }
+@media (max-width: 700px) {
+  .money-tiles { grid-template-columns: 1fr; gap: 8px; }
+  .money-row1 { grid-template-columns: 1fr 1fr; }
+  .money-row1 > div:first-child { grid-column: 1 / -1; }
+  .money-row2 { grid-template-columns: 1fr; }
+  .money-add { width: 100%; }
+  .money-bar-row { grid-template-columns: 90px minmax(0, 1fr) 84px; }
+}
+
+/* ===== Bank import (inside the Money tracker) ===== */
+.money-import-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
+.money-file-btn { display: inline-block; width: auto; padding: 7px 14px; cursor: pointer; }
+.money-flip { margin: 0; }
+.money-import-status { margin: 6px 0 0; font-size: 12px; font-weight: 700; color: var(--c-text); /* "file name: 15 transactions" line */ }
+.money-import-count { display: flex; justify-content: space-between; margin: 12px 0 6px; font-size: 12px; color: var(--c-text); /* "3 of 15 / 12 left" */ }
+.money-import-progress { margin-bottom: 10px; }
+.money-import-card { padding: 10px; margin-bottom: 10px;
+  border: 2px solid var(--c-dark); /* transaction card outline */
+  border-radius: var(--radius-sm);
+  background: var(--c-body-bg-alt); /* transaction card background */ }
+.money-import-desc { margin: 2px 0; font-size: 14px; font-weight: 700; color: var(--c-text); /* bank description text */ word-break: break-word; }
+.money-import-amt { font-size: 18px; font-weight: 700; }
+.money-import-amt span { font-size: 11px; font-weight: 400; }
+.money-import-match { text-transform: uppercase; }
+.money-import-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; margin: 10px 0; }
+.money-import-sim { padding: 8px; margin-bottom: 10px; font-size: 12px; line-height: 1.5; color: var(--c-text); /* list of similar transactions */
+  border: 2px dashed var(--c-purple); /* dashed outline around the similar list */
+  border-radius: var(--radius-sm);
+  background: var(--c-body-bg); /* similar list background */ }
+.money-import-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.money-import-btns .settings-btn { width: auto; padding: 7px 14px; }
+.money-import-btns .sleep-q-btn { padding: 7px 14px; }
+.money-import-done { margin: 12px 0 0; font-size: 13px; font-weight: 700; color: var(--c-text); /* "All sorted!" message */ }
+.money-mark { padding: 0 1px;
+  background: #FFF36B; /* highlight behind matched words (yellow) */
+  color: #000000; /* matched word text (black) */ }
+@media (max-width: 700px) {
+  .money-import-grid { grid-template-columns: 1fr; }
+  .money-file-btn { width: 100%; text-align: center; }
+}
 
 /* =============================================
    THEME DEFINITIONS
@@ -888,6 +1285,8 @@ body[data-theme="basic"] {
 
 /* ---- THEME 4: Vaporwave 2 (Neon Alt) ---- */
 body[data-theme="vaporwave2"] {
+  --money-in: #5CFFB0;  /* money tracker: income amounts (bright, readable on dark) */
+  --money-out: #FF7AB8; /* money tracker: expense amounts (bright, readable on dark) */
   --c-dark: #0A050F;
   --c-pink: #00F0FF;
   --c-purple: #FF2E92;
@@ -979,6 +1378,34 @@ body[data-theme="retro95"] .settings-toggle-btn { border: 2px solid; border-colo
 body[data-theme="retro95"] .week-col-header { background: linear-gradient(90deg,#FF2E92,#9933FF); color: #FFF; }
 body[data-theme="retro95"] #version-text { color: #000 !important; }
 body[data-theme="retro95"] .donut-label { color: #000000 !important; }
+/* Retro 95: sleep tracker page */
+body[data-theme="retro95"] .sleep-title { color: #FFFFFF; /* page heading text (white) */ text-shadow: 2px 2px 0 #000; /* heading drop shadow (black) */ }
+body[data-theme="retro95"] .sleep-input { border: 2px solid; border-color: #808080 #DFDFDF #DFDFDF #808080; /* sunken field edges: dark top-left, light bottom-right */ box-shadow: inset 1px 1px 0 #000; /* inner black line on the sunken edge */ background: #FFFFFF; /* field background (white) */ color: #000000; /* typed text (black) */ }
+body[data-theme="retro95"] .sleep-q-btn { border: 2px solid; border-color: #DFDFDF #808080 #808080 #DFDFDF; /* raised button edges: light top-left, dark bottom-right */ box-shadow: inset 1px 1px 0 #FFF; /* white highlight inside the raised edge */ background: #C0C0C0; /* button background (Win95 gray) */ color: #000000; /* button text (black) */ }
+body[data-theme="retro95"] .sleep-q-btn.on { border-color: #808080 #DFDFDF #DFDFDF #808080; /* pressed-in edges */ box-shadow: inset 1px 1px 0 #000; /* inner black line when pressed */ background: #DFDFDF; /* pressed button background (light gray) */ color: #9933FF; /* pressed button text (purple) */ }
+body[data-theme="retro95"] .sleep-tile { border: 2px solid; border-color: #808080 #DFDFDF #DFDFDF #808080; /* sunken tile edges */ background: #DFDFDF; /* stat tile background (light gray) */ }
+body[data-theme="retro95"] .sleep-bar { border: 2px solid; border-color: #808080 #DFDFDF #DFDFDF #808080; /* sunken bar edges */ background: #FFFFFF; /* empty part of the hours bar (white) */ }
+body[data-theme="retro95"] .sleep-del { border: 2px solid; border-color: #DFDFDF #808080 #808080 #DFDFDF; /* raised delete button edges */ background: #C0C0C0; /* delete button background (gray) */ color: #000000; /* delete "x" (black) */ }
+body[data-theme="retro95"] .sleep-close { width: auto; /* keep Close button narrow */ }
+/* Retro 95: mood tracker page */
+body[data-theme="retro95"] {
+  --mood-paper: #FFFFFF; /* empty days + chart background (white paper) */
+  --mood-ink: #000000;   /* chart outlines and day numbers (black) */
+  --mood-1: #39FF14;     /* Rad (green) */
+  --mood-2: #00F0FF;     /* Good (cyan) */
+  --mood-3: #9933FF;     /* Meh (purple) */
+  --mood-4: #FF6600;     /* Low (orange) */
+  --mood-5: #FF2E92;     /* Awful (pink) */
+}
+body[data-theme="retro95"] .mood-chart { border: 2px solid; border-color: #808080 #DFDFDF #DFDFDF #808080; /* sunken chart frame */ box-shadow: inset 1px 1px 0 #000; /* inner black line of the sunken frame */ }
+body[data-theme="retro95"] .mood-month { color: #FFFFFF; /* month name (white on the pink/purple page) */ text-shadow: 2px 2px 0 #000; /* month name shadow (black) */ }
+body[data-theme="retro95"] .mood-swatch { border-color: #000000; /* mood color square outline (black) */ }
+/* Retro 95: money tracker page */
+body[data-theme="retro95"] .money-out-box { border: 2px solid; border-color: #808080 #DFDFDF #DFDFDF #808080; /* sunken table frame */ box-shadow: inset 1px 1px 0 #000; /* inner black line of the frame */ background: #FFFFFF; /* table background (white) */ }
+body[data-theme="retro95"] .money-table td { border-bottom-color: #C0C0C0; /* line between rows (gray) */ }
+body[data-theme="retro95"] .money-table th { border-bottom-color: #000000; /* line under headings (black) */ }
+body[data-theme="retro95"] .money-import-card { border: 2px solid; border-color: #808080 #DFDFDF #DFDFDF #808080; /* sunken card edges */ background: #FFFFFF; /* transaction card background (white) */ }
+body[data-theme="retro95"] .money-import-sim { border-color: #9933FF; /* dashed outline (purple) */ background: #F4ECFF; /* similar list background (pale lavender) */ }
 
 /* ---- THEME 6: Gothic ---- */
 body[data-theme="gothic"] {
@@ -1039,6 +1466,8 @@ body[data-theme="gothic"] .settings-section .cell-subtitle { color: #FFB3B3 !imp
 
 /* ---- THEME 7: Tron ---- */
 body[data-theme="tron"] {
+  --money-in: #00FF88;  /* money tracker: income amounts (bright, readable on dark) */
+  --money-out: #FF5C9A; /* money tracker: expense amounts (bright, readable on dark) */
   --c-dark: #000000;
   --c-pink: #00FFFF;
   --c-purple: #FF00FF;
@@ -1351,6 +1780,8 @@ body[data-theme="experimental"] #habit-list .habit-list-row > span > span {color
 
 /* ---- THEME 12: V4P3 (Vaporwave 4 - Synthwave/Neon) ---- */
 body[data-theme="v4p3"] {
+  --money-in: #00FF00;  /* money tracker: income amounts (bright, readable on dark) */
+  --money-out: #FFB3E6; /* money tracker: expense amounts (bright, readable on dark) */
   /* Primary accents - magenta & purple */
   --c-pink: #FF00FF;
   --c-purple: #9933FF;
@@ -1540,3 +1971,11 @@ body[data-theme="dark-romantic"] .field-group label { color: #E8D9D9; }
 body[data-theme="dark-romantic"] .day-toggle { color: #D1946B !important; }
 body[data-theme="dark-romantic"] .donut-label { color: #E8D9D9 !important; }
 body[data-theme="dark-romantic"] .settings-section .cell-subtitle { color: #A8A8B8 !important; }
+/* Dark Romantic: sleep tracker page */
+body[data-theme="dark-romantic"] .sleep-hit { color: #C9A0DC; /* Goal hit % number (light lavender, readable on the dark tile) */ }
+body[data-theme="dark-romantic"] .sleep-bar i.met { background: #C9A0DC; /* bar fill: night met the goal (light lavender) */ }
+body[data-theme="dark-romantic"] .sleep-legend span:first-child i { background: #C9A0DC !important; /* "met goal" legend square (matches the bar) */ }
+/* Dark Romantic: money tracker page */
+body[data-theme="dark-romantic"] { --money-in: #7FD8A6; /* income amounts (soft green, readable on dark) */ --money-out: #FF8FB1; /* expense amounts (soft pink, readable on dark) */ --money-bar-in: #C9A0DC; /* income bars (light lavender) */ }
+body[data-theme="dark-romantic"] .money-net { color: #C9A0DC; /* net number (light lavender) */ }
+body[data-theme="dark-romantic"] .money-import-sim { border-color: #C9A0DC; /* dashed outline around the similar list (light lavender) */ }
