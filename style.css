@@ -1076,6 +1076,7 @@ body { --mood-paper: var(--c-body-bg); /* empty (not logged) day fill + chart ba
 .mood-bar { padding: 0; border: 1px solid; border-radius: 0; cursor: pointer; align-self: end; }
 .mood-bar-days { display: grid; gap: 2px; width: 100%; font-size: 9px; text-align: center; color: var(--mood-ink); /* day numbers under the bars */ }
 .mood-stats { margin-top: 8px; font-size: 12px; color: var(--c-text); /* "x/31 days logged" line */ }
+.mood-line-wrap { position: relative; height: 220px; }
 .mood-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
 @media (max-width: 700px) {
   .mood-brush { grid-template-columns: repeat(3, minmax(0, 1fr)); }

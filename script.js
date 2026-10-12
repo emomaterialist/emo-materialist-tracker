@@ -2935,6 +2935,41 @@ function renderMood() {
   MOOD_NAMES.forEach(function (name, i) { stats += '<span><span class="mood-swatch" style="background:' + moodColors[i] + '"></span>' + name + ' ' + cnt[i] + '</span>'; });
   stats += '<span><span class="mood-swatch" style="background:' + moodPaper + '"></span>not logged</span></div>';
   document.getElementById('mood-stats').innerHTML = stats;
+  renderMoodLine();
+}
+
+// "Mood over the month": one dot per day in that day's mood color, Rad at the top and Awful at the bottom,
+// joined by a line. Days you skipped are left out (the line is dashed across them).
+var moodLineChart = null;
+function renderMoodLine() {
+  var canvas = document.getElementById('moodLineChart'); if (!canvas || typeof Chart === 'undefined') return;
+  var n = moodDays(), labels = [], vals = [], cols = [];
+  for (var d = 1; d <= n; d++) {
+    var m = moodData[moodIso(d)];
+    labels.push(d);
+    vals.push(m === undefined ? null : 4 - m);          // Rad (0) -> 4 at the top, Awful (4) -> 0 at the bottom
+    cols.push(m === undefined ? 'transparent' : moodColors[m]);
+  }
+  var ink = getThemeColor('--c-text') || '#333', muted = getThemeColor('--c-text-muted') || '#888';
+  if (moodLineChart) moodLineChart.destroy();
+  moodLineChart = new Chart(canvas, {
+    type: 'line',
+    data: { labels: labels, datasets: [{ data: vals, spanGaps: true, tension: 0.25, borderColor: muted, borderWidth: 2,
+      segment: { borderDash: function (c) { return (c.p0.skip || c.p1.skip || c.p1DataIndex - c.p0DataIndex > 1) ? [4, 4] : undefined; } },
+      pointRadius: 6, pointHoverRadius: 8, pointBackgroundColor: cols, pointBorderColor: ink, pointBorderWidth: 1.5 }] },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: {
+        title: function (c) { var mn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return mn[moodMonth - 1] + ' ' + c[0].label; },
+        label: function (c) { return MOOD_NAMES[4 - c.raw]; } } } },
+      scales: {
+        x: { ticks: { color: muted, font: { size: 10 }, autoSkip: true, maxRotation: 0 }, grid: { display: false }, title: { display: true, text: 'Day of month', color: muted, font: { size: 10 } } },
+        y: { min: -0.4, max: 4.4, ticks: { stepSize: 1, color: ink, font: { size: 11 }, callback: function (v) { return Number.isInteger(v) && v >= 0 && v <= 4 ? MOOD_NAMES[4 - v] : ''; } }, grid: { color: hexToRgba(muted, 0.2) } }
+      } }
+  });
+  var got = vals.filter(function (v) { return v !== null; }), note = document.getElementById('mood-line-note');
+  if (!got.length) { note.textContent = 'Pick a mood and tap a day above to start your line.'; return; }
+  var avg = got.reduce(function (a, b) { return a + b; }, 0) / got.length;
+  note.textContent = 'Average mood this month: ' + MOOD_NAMES[4 - Math.round(avg)] + ' · ' + got.length + ' of ' + n + ' days logged. Hover a dot to see the day.';
 }
 
 // ---- Chart styles. Each returns HTML/SVG; every day shape carries data-d="day number". ----
