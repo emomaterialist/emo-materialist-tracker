@@ -470,6 +470,7 @@ body {
   border-collapse: separate;
   border-spacing: 3px;
   font-size: 11px;
+  margin: 0 auto;   /* keeps the checklist centered in its box; when the screen is too narrow it starts at the left and scrolls */
 }
 .checkbox-grid th {
   font-weight: 600;
@@ -950,7 +951,7 @@ button.settings-btn:active { transform: translateY(0); }
 }
 
 /* ===== Checklist tabs: All / Easy / Medium / Hard ===== */
-.grid-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.grid-tabs { display: flex; flex-wrap: wrap; justify-content: center; /* tabs centered above the checklist */ gap: 6px; margin: 0 0 10px; }
 .grid-tab { padding: 4px 10px; border: 2px solid var(--c-dark); border-radius: var(--radius-sm); background: var(--c-body-bg); color: var(--c-text); font-family: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
 .grid-tab:hover { border-color: var(--c-pink); }
 .grid-tab.on { background: var(--c-pink); color: var(--c-dark); }
