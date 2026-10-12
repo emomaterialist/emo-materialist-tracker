@@ -970,6 +970,34 @@ function renderGrid() {
     ec.colSpan=DAYS_IN_MONTH+2; ec.className='grid-empty'; ec.textContent='No habits with this rank yet.';
     er.appendChild(ec); table.appendChild(er);
   }
+  renderGridLegend();
+}
+
+// Key next to the checklist: real sample boxes drawn the same way as the grid, so they always match the theme.
+function renderGridLegend() {
+  var el=document.getElementById('grid-legend'); if(!el)return;
+  var todayWeek=0; (function(){ var now=new Date(); if(now.getFullYear()===currentYear&&now.getMonth()+1===currentMonth) todayWeek=Math.min(4,Math.floor((now.getDate()-1)/7)); })();
+  var w=todayWeek, base=weekColors[w]||'#8C5FD9';
+  var items=[
+    {label:'To do: scheduled, not done yet', make:function(b){ b.dataset.required='true'; applyBoxVisual(b,0,1,w,false); }},
+    {label:'Done', make:function(b){ b.dataset.required='true'; applyBoxVisual(b,1,1,w,false); }},
+    {label:'Partly done (e.g. 1 of 2 times)', make:function(b){ b.dataset.required='true'; applyBoxVisual(b,1,2,w,false); }},
+    {label:'Flexible: optional, do it when you can', make:function(b){ b.dataset.required='false'; applyBoxVisual(b,0,1,w,true); }},
+    {label:'Flexible, done', make:function(b){ b.dataset.required='false'; applyBoxVisual(b,1,1,w,true); }},
+    {label:'Rest day: not scheduled (tap for a bonus)', make:function(b){ b.dataset.required='false'; applyBoxVisual(b,0,1,w,true); b.style.opacity='0.3'; }},
+    {label:'Bonus: done on a rest day', make:function(b){ b.dataset.required='false'; b.style.display='flex'; b.style.alignItems='center'; b.style.justifyContent='center';
+      b.style.background=base; b.style.color=weekTextColors[w]||'#fff'; b.textContent='\u2713'; b.style.fontSize='11px'; b.style.fontWeight='700'; b.style.border='1.5px dashed '+base; }}
+  ];
+  el.innerHTML='<p class="grid-legend-title">Key</p>';
+  items.forEach(function(it){
+    var row=document.createElement('div'); row.className='grid-legend-row';
+    var box=document.createElement('div'); box.className='day-box grid-legend-box';
+    applyCheckboxThemeStyle(box, false); it.make(box); box.removeAttribute('data-tip');
+    var lab=document.createElement('span'); lab.textContent=it.label;
+    row.appendChild(box); row.appendChild(lab); el.appendChild(row);
+  });
+  var tip=document.createElement('p'); tip.className='grid-legend-tip'; tip.textContent='Tap a box to add a tick. Right-click a box to take one tick away.';
+  el.appendChild(tip);
 }
 
 function applyCheckboxThemeStyle(box, isFlexible) {
