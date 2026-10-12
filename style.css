@@ -2237,6 +2237,8 @@ body[data-theme="pixel-pink"] .cell-body { background: #FFE0EC; /* box inside (p
 body[data-theme="pixel-pink"] .settings-panel { background: #FFB3D1; /* settings panel (pink) */ border-right: 4px solid #3D0A24; }
 body[data-theme="pixel-pink"] .settings-header, body[data-theme="pixel-pink"] .settings-close, body[data-theme="pixel-pink"] .settings-value, body[data-theme="pixel-pink"] .habit-list-row { color: #3D0A24; /* settings text (plum) */ }
 body[data-theme="pixel-pink"] .settings-label { color: #3D0A24; font-family: "Press Start 2P", monospace; font-size: 9px; /* settings headings (plum pixel) */ }
+body[data-theme="pixel-pink"] .settings-label { line-height: 1.8; /* room between wrapped lines so the pixel font doesn't overlap */ }
+body[data-theme="pixel-pink"] .settings-label span { font-family: "Pixelify Sans", "Roboto Mono", monospace; font-size: 11px !important; letter-spacing: 0; /* grey hint text after each heading (easier-to-read pixel font) */ }
 body[data-theme="pixel-pink"] .settings-btn, body[data-theme="pixel-pink"] .auth-btn, body[data-theme="pixel-pink"] .update-btn, body[data-theme="pixel-pink"] .settings-toggle-btn { background: #FF3D8B; /* buttons (hot pink) */ color: #FFFFFF; /* button text (white) */ border: 3px solid #3D0A24; box-shadow: 3px 3px 0 #3D0A24; /* hard shadow (plum) */ }
 body[data-theme="pixel-pink"] .settings-select, body[data-theme="pixel-pink"] .field-group input { background: #FFFFFF; color: #3D0A24; border: 3px solid #3D0A24; }
 body[data-theme="pixel-pink"] .week-col-header { color: #3D0A24; border-bottom: 3px solid #3D0A24; }
@@ -2431,3 +2433,54 @@ body[data-theme="goth-noir"] .settings-section .cell-subtitle { color: #9A9A9A !
 body[data-theme="goth-noir"] .cell-subtitle { color: #9A9A9A; }
 body[data-theme="goth-noir"] .top-habit-row { color: #EDEDED; }
 body[data-theme="goth-noir"] .top-habit-count { color: #9A9A9A; }
+
+
+/* ---- THEME: Sage & Linen 🌿 (linen cream, soft sage green, brushed brass, Cormorant + Lora serif) ---- */
+body[data-theme="sage-linen"] {
+  --c-dark: #2F3A2C;          /* outlines, shadows, dark text (deep forest) */
+  --c-pink: #7D8F6E;          /* main accent: lines, charts, inner borders (sage) */
+  --c-purple: #B9A36B;        /* second accent: bars, goal colors (brushed brass) */
+  --c-orange: #B9A36B;        /* gradient end on buttons (brass) */
+  --c-body-bg: #F8F6EE;       /* box insides (linen) */
+  --c-body-bg-alt: #ECEEE3;   /* tiles and cards (pale sage linen) */
+  --c-text: #2F3A2C;          /* main text (deep forest) */
+  --c-text-muted: #6E7A63;    /* small/secondary text (moss grey) */
+  --c-page-bg-1: #EEF0E6;     /* page background top (pale sage) */
+  --c-page-bg-2: #DFE3D3;     /* page background bottom (soft sage) */
+  --c-grid-dot: rgba(74,90,66,0.25); /* page dots (faint forest) */
+  --c-font: "Lora", Georgia, serif;
+  --radius-outer: 3px;
+  --radius-inner: 2px;
+  --radius-sm: 2px;
+  --week-1-bg: #7D8F6E;       /* week 1 (sage) */
+  --week-2-bg: #B9A36B;       /* week 2 (brass) */
+  --week-3-bg: #A3B18A;       /* week 3 (light sage) */
+  --week-4-bg: #8FA39A;       /* week 4 (eucalyptus) */
+  --week-5-bg: #C7B08A;       /* week 5 (wheat) */
+  --week-1-text: #F8F6EE;     /* check marks on week 1 boxes (linen, on sage) */
+  --week-2-text: #2F3A2C; --week-3-text: #2F3A2C; --week-4-text: #2F3A2C; --week-5-text: #2F3A2C; /* check marks on weeks 2-5 (deep forest) */
+  --week-donut-text: #2F3A2C; /* "Wk 1" and % inside the week donuts (deep forest) */
+  --donut-label-color: #6E7A63;
+  --checkbox-required-empty: '◇';
+  --checkbox-required-done: '✓';
+  --checkbox-flexible-empty: '?';
+  --day-toggle-color: #7D8F6E;
+  --mood-paper: #FFFFFF;      /* mood chart paper + empty days (white) */
+  --money-in: #4F7A4A;        /* income amounts (leaf green) */
+  --money-out: #A0453A;       /* expense amounts (terracotta red) */
+  --shop-gold: #9A7B2F;       /* gold amounts (antique brass) */
+}
+body[data-theme="sage-linen"] .title-bar { background: linear-gradient(90deg, #7D8F6E 0%, #B9A36B 100%); /* title bar (sage to brass) */ border: none; border-bottom: 1px solid #2F3A2C; }
+body[data-theme="sage-linen"] .title-text { font-family: "Cormorant Garamond", Georgia, serif !important; font-size: 19px !important; font-weight: 700 !important; text-transform: none !important; letter-spacing: 0.5px !important; color: #F6F3EA !important; /* box titles (linen white) */ }
+body[data-theme="sage-linen"] .title-glyph { background: #F6F3EA; /* title diamond (linen) */ }
+body[data-theme="sage-linen"] .title-dots span { background: #F6F3EA; /* title dots (linen) */ }
+body[data-theme="sage-linen"] .cell-body { border: none; }
+body[data-theme="sage-linen"] .settings-panel { background: linear-gradient(180deg, #2F3A2C 0%, #3E4B39 100%); /* settings panel (deep forest) */ border-right: 3px solid #B9A36B; /* panel edge (brass) */ }
+body[data-theme="sage-linen"] .settings-header, body[data-theme="sage-linen"] .settings-close, body[data-theme="sage-linen"] .settings-value, body[data-theme="sage-linen"] .habit-list-row, body[data-theme="sage-linen"] .habit-list-row span, body[data-theme="sage-linen"] .field-group label { color: #F6F3EA !important; /* settings text (linen) */ }
+body[data-theme="sage-linen"] .settings-label { color: #D9C99A; /* settings headings (light brass) */ }
+body[data-theme="sage-linen"] .settings-section .cell-subtitle { color: #C9D3B8 !important; /* small settings notes (pale sage) */ }
+body[data-theme="sage-linen"] #version-text { color: #C9D3B8 !important; }
+body[data-theme="sage-linen"] .settings-btn, body[data-theme="sage-linen"] .auth-btn, body[data-theme="sage-linen"] .update-btn, body[data-theme="sage-linen"] .settings-toggle-btn { background: linear-gradient(90deg, #7D8F6E, #B9A36B); /* buttons (sage to brass) */ color: #F8F6EE; /* button text (linen) */ border: 1px solid #2F3A2C; box-shadow: 2px 2px 0 #2F3A2C; }
+body[data-theme="sage-linen"] .sleep-title { font-family: "Cormorant Garamond", Georgia, serif; font-size: 30px; color: #2F3A2C; /* page headings (deep forest) */ }
+body[data-theme="sage-linen"] .sleep-q-btn.on { background: #7D8F6E; /* selected button (sage) */ color: #F8F6EE; /* selected text (linen) */ }
+body[data-theme="sage-linen"] .donut-label { color: #6E7A63 !important; }
