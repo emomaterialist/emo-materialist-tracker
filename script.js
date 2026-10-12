@@ -295,6 +295,7 @@ function refreshCharts() {
   renderTopHabits(); renderDonuts(); renderCharts(); renderMonthProgress();
   renderToday();
   renderXpStats();
+  renderActualVsIntended();   // keep "Actual vs intended" in step with every tick (it wasn't redrawn before)
   var label = document.getElementById('last-updated');
   if (label) { var now=new Date(); label.textContent='Updated '+now.getHours()+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0'); }
 }
@@ -693,11 +694,11 @@ function renderStarMap(){
   var sel=loadStarSelection(names);
   var CX=170, CY=160, R=98;
   var ink=getThemeColor('--c-text'), muted=getThemeColor('--c-text-muted'), accent=getThemeColor('--c-pink');
-  var grid=hexToRgba(muted,0.35);
+  var grid=hexToRgba(muted,0.7);   // pentagon grid lines (was 0.35, too faint)
   function pt(k,f){var a=-Math.PI/2+k*2*Math.PI/STAR_MAX; return [CX+Math.cos(a)*R*f, CY+Math.sin(a)*R*f];}
   function ring(f){var p=[];for(var k=0;k<STAR_MAX;k++){var q=pt(k,f);p.push(q[0].toFixed(1)+','+q[1].toFixed(1));}return p.join(' ');}
   var g='';
-  [0.25,0.5,0.75,1].forEach(function(f){g+='<polygon points="'+ring(f)+'" fill="none" stroke="'+grid+'" stroke-width="1"/>';});
+  [0.25,0.5,0.75,1].forEach(function(f){g+='<polygon points="'+ring(f)+'" fill="none" stroke="'+grid+'" stroke-width="'+(f===1?1.6:1.1)+'"/>';});   // outer pentagon a little thicker
   for(var k=0;k<STAR_MAX;k++){var e=pt(k,1);g+='<line x1="'+CX+'" y1="'+CY+'" x2="'+e[0].toFixed(1)+'" y2="'+e[1].toFixed(1)+'" stroke="'+grid+'" stroke-width="1"/>';}
   var pts=[];
   sel.forEach(function(name,k){
@@ -710,7 +711,28 @@ function renderStarMap(){
   });
   if(sel.length>=3){g+='<polygon points="'+pts.join(' ')+'" fill="'+hexToRgba(accent,0.25)+'" stroke="'+accent+'" stroke-width="2"/>';}
   pts.forEach(function(p){var xy=p.split(',');g+='<circle cx="'+xy[0]+'" cy="'+xy[1]+'" r="3.5" fill="'+accent+'"/>';});
+  // Invisible, bigger circles on top of each point: hover (or tap) shows how far you are in that category
+  pts.forEach(function(p,k){var xy=p.split(',');g+='<circle class="star-hit" data-star="'+k+'" cx="'+xy[0]+'" cy="'+xy[1]+'" r="14" fill="transparent"/>';});
   svg.innerHTML=g;
+  var wrap=svg.parentNode, tip=document.getElementById('star-tip');
+  if(!tip){ tip=document.createElement('div'); tip.id='star-tip'; tip.className='star-tip'; wrap.appendChild(tip); }
+  wrap.classList.add('star-wrap'); tip.style.display='none';
+  function showTip(k,ev){
+    var name=sel[k], c=cats[name], pct=c.goal>0?Math.round(c.done/c.goal*100):0, left=Math.max(0,c.goal-c.done);
+    var esc=function(x){return String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;');};
+    tip.innerHTML='<b>'+esc(name)+': '+pct+'%</b>'+c.done+' of '+c.goal+' habits done this month<br>'+(left?left+' to go to reach the edge':'You reached the edge! 🎉');
+    var r=wrap.getBoundingClientRect(); tip.style.display='block';
+    var x=ev.clientX-r.left+12, y=ev.clientY-r.top+12;
+    if(x+tip.offsetWidth>r.width) x=Math.max(4,ev.clientX-r.left-tip.offsetWidth-12);
+    tip.style.left=x+'px'; tip.style.top=y+'px';
+  }
+  svg.querySelectorAll('.star-hit').forEach(function(h){
+    var k=+h.getAttribute('data-star');
+    h.addEventListener('mousemove',function(e){showTip(k,e);});
+    h.addEventListener('mouseleave',function(){tip.style.display='none';});
+    h.addEventListener('click',function(e){e.stopPropagation(); showTip(k,e);});
+  });
+  if(!wrap._starTipClose){ wrap._starTipClose=true; document.addEventListener('click',function(){var t=document.getElementById('star-tip'); if(t) t.style.display='none';}); }
 
   var tog=document.getElementById('star-toggles'); tog.innerHTML='';
   var note=document.getElementById('star-note'); note.textContent=sel.length<STAR_MAX?'Pick five categories for a full star.':'';
@@ -2392,7 +2414,7 @@ function renderXpDerivatives() {
   var d2 = d1.map(function (v, i) { return (i < 2 || v === null || d1[i - 1] === null) ? null : v - d1[i - 1]; });
   var axis = getThemeColor('--c-text-muted');
   var pink = getThemeColor('--c-pink');
-  var purple = getThemeColor('--c-purple');
+  var purple = getThemeColor('--xp-accel-color') || getThemeColor('--c-purple');   // a theme can set its own XP" line color
   xpDerivInstance = new Chart(el, {
     type: 'line',
     data: { labels: g.labels, datasets: [

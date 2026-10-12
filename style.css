@@ -798,6 +798,15 @@ button.settings-btn:active { transform: translateY(0); }
 .dash-weeks .donut-row svg { width: 74px; height: 74px; }
 .donut-week-text { font-family: inherit; }
 .star-body { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+/* Star map hover box */
+.star-wrap { position: relative; }
+.star-hit { cursor: pointer; }
+.star-tip { position: absolute; z-index: 5; pointer-events: none; white-space: nowrap; padding: 6px 9px; font-size: 12px; line-height: 1.45;
+  color: var(--c-text); /* hover box text */
+  background: var(--c-body-bg); /* hover box background */
+  border: 2px solid var(--c-pink); /* hover box outline */
+  border-radius: var(--radius-sm); box-shadow: 3px 3px 0 var(--c-dark); /* hover box shadow */ }
+.star-tip b { display: block; font-size: 13px; color: var(--c-pink); /* "Fitness: 45%" */ }
 .star-map { width: 100%; max-width: 290px; height: auto; flex: 1 1 auto; }
 .star-toggles { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; }
 .star-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 7px; border: 2px solid var(--c-dark); border-radius: var(--radius-sm, 4px); background: var(--c-body-bg); color: var(--c-text); font-size: 11px; cursor: pointer; user-select: none; }
@@ -1994,6 +2003,7 @@ body[data-theme="light-melon"] .donut-label { color: #6B5530 !important; }
 body[data-theme="light-melon"] .settings-section .cell-subtitle { color: #6B5530 !important; }
 /* Light Melon: sleep, mood and money pages */
 body[data-theme="light-melon"] { --mood-paper: #FFFFFF; /* mood chart paper + empty days (white) */ }
+body[data-theme="light-melon"] .xp-tile-num.xp-total { color: #C08A1E; /* Total XP number (deep melon gold, readable on cream) */ }
 body[data-theme="light-melon"] .mem-stat, body[data-theme="light-melon"] .mem-row b { color: #E0566A; /* memory stat numbers and result dates (melon red, readable on cream) */ }
 body[data-theme="light-melon"] .mem-day.sel { outline-color: #E0566A; /* selected day ring (melon red) */ }
 body[data-theme="light-melon"] .sleep-input { background: #FFFFFF; /* text boxes and dropdowns (white) */ color: #6B5530; /* typed text (brown) */ border-color: #f6e48e; /* field outline (melon yellow) */ }
@@ -2055,6 +2065,7 @@ body[data-theme="experimental"] {
 }
 
 body[data-theme="experimental"] #version-text { color: #F4E8FA !important; }
+body[data-theme="experimental"] .xp-tile-num.xp-total { color: #C08A1E; /* Total XP number (deep pineapple gold, readable on cream) */ }
 body[data-theme="experimental"] .donut-label { color: #831ceb !important; }
 body[data-theme="experimental"] .settings-section .cell-subtitle { color: #F4E8FA !important; } /*Love the Tracker? Thanks! Msg color change */
 body[data-theme="experimental"] .checkbox-grid th {  color: #1846ed; /* Days of month checkboxes color change */}
@@ -2075,7 +2086,7 @@ body[data-theme="v4p3"] {
   --c-page-bg-1: #FF8800;
   --c-page-bg-2:  #FF6600;
   /* Body backgrounds */
-  --c-body-bg: #0f02fa;
+  --c-body-bg: #2E0A78; /* fields, calendar days, empty days, tag buttons (deep violet; was a harsh pure blue #0f02fa) */
   --c-body-bg-alt: #550055;
   /* Text - bright neon green */
   --c-text: #00FF00;
@@ -2265,6 +2276,7 @@ body[data-theme="dark-romantic"] .sleep-legend span:first-child i { background: 
 body[data-theme="dark-romantic"] { --money-in: #7FD8A6; /* income amounts (soft green, readable on dark) */ --money-out: #FF8FB1; /* expense amounts (soft pink, readable on dark) */ --money-bar-in: #C9A0DC; /* income bars (light lavender) */ }
 body[data-theme="dark-romantic"] .money-net { color: #C9A0DC; /* net number (light lavender) */ }
 body[data-theme="dark-romantic"] { --shop-gold: #FFD45E; /* gold amounts (bright gold, readable on dark) */ }
+body[data-theme="dark-romantic"] { --xp-accel-color: #FF6F8E; /* XP" dashed line in "XP speed and acceleration" (bright pinkish red) */ }
 body[data-theme="dark-romantic"] .money-import-sim { border-color: #C9A0DC; /* dashed outline around the similar list (light lavender) */ }
 
 /* ---- THEME: Coquette Bows 🎀 (cream paper, baby pink, rose, double-line frames) ---- */
