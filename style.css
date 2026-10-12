@@ -1086,6 +1086,121 @@ body { --mood-paper: var(--c-body-bg); /* empty (not logged) day fill + chart ba
 /* ===== Money tracker page (reuses the sleep page frame; colors come from theme variables) ===== */
 body { --money-in: #008A3E; /* income amounts (green) */ --money-out: #CC0055; /* expense amounts and negative net (red-pink) */ }
 #money-page .cell-border { height: auto; margin-bottom: 14px; }
+/* ===== Money tracker tabs (sidebar + sections). Colors come from theme variables. ===== */
+.mt-wrap { max-width: 1100px; width: 100%; } /* full width so every tab is the same size */
+.mt-layout { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 14px; align-items: start; }
+.mt-side { position: sticky; top: 0; display: flex; flex-direction: column; gap: 3px; padding: 8px;
+  background: var(--c-body-bg); /* sidebar background */
+  border: 3px solid var(--c-dark); /* sidebar outline */
+  border-radius: var(--radius-outer); box-shadow: 4px 4px 0 var(--c-dark); /* sidebar shadow */ }
+.mt-add { width: 100%; margin-bottom: 6px; padding: 8px; font-weight: 700; border-radius: 999px; }
+.mt-nav { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 8px; font-family: inherit; font-size: 13px; text-align: left; cursor: pointer; background: none; border: none; border-radius: var(--radius-sm);
+  color: var(--c-text); /* tab names */ }
+.mt-nav:hover { background: var(--c-body-bg-alt); /* tab hover */ }
+.mt-nav.on { font-weight: 700; background: var(--c-body-bg-alt); /* selected tab background */ box-shadow: inset 3px 0 0 var(--c-pink); /* selected tab stripe */ }
+.mt-main { min-width: 0; }
+.mt-main .cell-border { height: auto; margin-bottom: 14px; }
+.mt-banner:empty { display: none; }
+.mt-hi { margin: 0; font-size: 22px; font-weight: 800; color: var(--c-text); /* tab heading */ }
+.mt-sub { margin: 2px 0 12px; font-size: 12px; color: var(--c-text-muted); /* line under the tab heading */ }
+.mt-g2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.mt-g3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+.mt-gap { margin-bottom: 14px; }
+.mt-tile { text-align: left; }
+.mt-tile .sleep-big { font-size: 24px; color: var(--c-text); /* tile numbers */ }
+.mt-tile .sleep-big.money-in { color: var(--money-in); }
+.mt-tile .sleep-big.money-out { color: var(--money-out); }
+.mt-btn { width: auto; padding: 6px 14px; }
+.mt-narrow { max-width: 280px; }
+.mt-howto p { margin: 0 0 8px; font-size: 12px; line-height: 1.5; color: var(--c-text); /* how-to text */ }
+.mt-row-end { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+.mt-row-end .mood-note { margin: 0; }
+/* Coming up / day items */
+.mt-item { display: grid; grid-template-columns: 82px 20px 10px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px 2px; font-size: 13px; color: var(--c-text);
+  border-bottom: 1px solid var(--c-body-bg-alt); /* line between items */ }
+#mt-day-items .mt-item { grid-template-columns: 20px 10px minmax(0, 1fr) auto auto 22px; }
+.mt-item.paid .mt-name { text-decoration: line-through; color: var(--c-text-muted); /* paid item name */ }
+.mt-when { font-size: 12px; color: var(--c-text-muted); /* "Tomorrow", "Oct 16" */ }
+.mt-when.late { color: var(--money-out); font-weight: 700; /* past due date */ }
+.mt-tick { width: 18px; height: 18px; padding: 0; font-size: 12px; font-weight: 800; line-height: 1; cursor: pointer; border-radius: 3px;
+  border: 2px solid var(--c-dark); /* tick box outline */
+  background: var(--c-body-bg); color: var(--c-dark); }
+.mt-tick.on { background: var(--c-pink); /* ticked box */ }
+.mt-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c-pink); /* bill / transfer dot */ }
+.mt-dot.mt-k-income { background: var(--money-in); /* income dot */ }
+.mt-dot.mt-k-note { background: var(--c-text-muted); }
+.mt-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mt-amt { font-weight: 800; white-space: nowrap; }
+.mt-rep { font-size: 11px; color: var(--c-text-muted); white-space: nowrap; }
+/* Calendar */
+.mt-cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+.mt-day { min-height: 64px; padding: 2px 3px; display: flex; flex-direction: column; align-items: stretch; gap: 2px; text-align: left; font-family: inherit; font-size: 11px; cursor: pointer; overflow: hidden;
+  color: var(--c-text); /* day number */
+  background: var(--c-body-bg); /* day cell */
+  border: 1.5px solid var(--c-text-muted); /* day outline */
+  border-radius: var(--radius-sm); }
+.mt-day.today b { text-decoration: underline; }
+.mt-day.sel { outline: 3px solid var(--c-purple); /* selected day ring */ outline-offset: 0; }
+.mt-ev { display: block; padding: 0 3px; font-size: 9px; line-height: 1.5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: 3px;
+  color: var(--c-dark); /* calendar chip text */
+  background: var(--c-body-bg-alt); /* bill chip */ }
+.mt-ev.mt-k-income { background: color-mix(in srgb, var(--money-in) 30%, var(--c-body-bg)); /* income chip (light green) */ }
+.mt-ev.mt-k-savings, .mt-ev.mt-k-debt { background: color-mix(in srgb, var(--c-pink) 30%, var(--c-body-bg)); /* transfer / debt chip (light accent) */ }
+.mt-ev.paid { opacity: 0.6; }
+.mt-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-top: 8px; }
+.mt-form > div { flex: 1 1 140px; min-width: 0; }
+.mt-form-head { margin-top: 14px; }
+.mt-form-goal > div:first-child { flex: 3 1 220px; }
+/* Goals */
+.mt-goal { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; font-size: 13px; color: var(--c-text);
+  border-bottom: 1px solid var(--c-body-bg-alt); /* line between goals */ }
+.mt-goal small { display: block; font-size: 11px; color: var(--c-text-muted); /* linked fund/debt */ }
+.mt-goal-btns { display: flex; align-items: center; gap: 6px; flex: none; }
+.mt-status { padding: 4px 10px; border-radius: 999px; }
+.mt-status.mt-s1 { background: color-mix(in srgb, var(--c-pink) 25%, var(--c-body-bg)); /* in progress */ }
+.mt-status.mt-s2 { background: color-mix(in srgb, var(--money-in) 30%, var(--c-body-bg)); /* done */ }
+/* Savings / debt / envelope progress bars */
+.mt-prog { margin-bottom: 14px; font-size: 13px; color: var(--c-text); }
+.mt-prog small { font-size: 11px; color: var(--c-text-muted); }
+.mt-prog-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.mt-prog-top span { display: flex; align-items: center; gap: 6px; }
+.mt-bar { height: 10px; margin: 5px 0 3px; overflow: hidden; border-radius: 3px;
+  border: 2px solid var(--c-dark); /* bar outline */
+  background: var(--c-body-bg); /* empty part of the bar */ }
+.mt-bar i { display: block; height: 100%; background: var(--c-pink); /* savings fill */ }
+.mt-bar i.paid { background: var(--money-in); /* debt paid-off fill */ }
+.mt-bar i.over { background: var(--money-out); /* envelope over the limit */ }
+.mt-env-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.mt-env { text-align: left; font-size: 13px; color: var(--c-text); }
+.mt-env small { font-size: 11px; color: var(--c-text-muted); }
+.mt-env.over { border-color: var(--money-out); /* envelope over the limit outline */ }
+.mt-chip { display: inline-flex; align-items: center; gap: 2px; font-size: 12px; padding: 3px 9px; }
+@media (max-width: 760px) {
+  .mt-layout { grid-template-columns: minmax(0, 1fr); }
+  .mt-side { position: static; flex-direction: row; overflow-x: auto; padding: 6px; }
+  .mt-add { width: auto; white-space: nowrap; margin: 0; }
+  .mt-nav { width: auto; white-space: nowrap; }
+  .mt-g3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mt-item { grid-template-columns: 64px 20px 10px minmax(0, 1fr) auto; }
+  .mt-day { min-height: 46px; }
+  .mt-ev { font-size: 0; height: 6px; padding: 0; } /* on phones the chips become little color bars */
+}
+/* Spending distribution donut */
+.money-dist-nav { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 4px 0 8px; }
+.money-dist-label { min-width: 190px; text-align: center; font-size: 13px; font-weight: 700; color: var(--c-text); /* "October 2026" / "Oct 6 – Oct 12, 2026" */ }
+.money-dist-start { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px; }
+.money-dist-start .sleep-label { margin: 0; }
+.money-dist-start .sleep-input { width: auto; }
+.money-dist-body { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 18px; align-items: center; }
+.money-dist-donut { position: relative; height: 200px; }
+.money-dist-total { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; font-size: 15px; color: var(--c-text); /* total in the middle of the donut */ }
+.money-dist-total span { font-size: 10px; color: var(--c-text-muted); /* "spent" */ }
+.money-dist-row { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 5px 0; font-size: 12px; color: var(--c-text); /* category rows */
+  border-bottom: 1px solid var(--c-body-bg-alt); /* line between categories */ }
+.money-dist-dot { width: 10px; height: 10px; border-radius: 50%; }
+.money-dist-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.money-dist-amt { font-weight: 700; white-space: nowrap; }
+@media (max-width: 600px) { .money-dist-body { grid-template-columns: minmax(0, 1fr); } .money-dist-donut { max-width: 220px; width: 100%; margin: 0 auto; } }
 .money-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
 .money-tile-label { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--c-text); /* tile headings */ }
 .money-tiles .sleep-big { font-size: 22px; }

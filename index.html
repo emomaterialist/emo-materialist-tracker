@@ -352,62 +352,318 @@
 </div>
 
 <div id="money-page" class="sleep-page" style="display:none;">
-  <div class="sleep-wrap">
+  <div class="sleep-wrap mt-wrap">
     <div class="sleep-head">
       <span class="sleep-title">Money tracker</span>
       <button class="settings-btn sleep-close" onclick="toggleMoneyPage()">✕ Close</button>
     </div>
+    <div class="mt-layout">
+      <nav class="mt-side" id="mt-side" aria-label="Money tracker sections"></nav>
+      <div class="mt-main">
+        <p id="mt-setup-msg" class="sleep-msg error mt-banner"></p>
+
+  <!-- ===== + TRACK SPENDING ===== -->
+  <section class="mt-tab" data-mt="add">
+    <p class="mt-hi">Track spending</p><p class="mt-sub">Add something you spent or earned.</p>
+      <div class="cell-border">
+        <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Add an entry</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+        <div class="cell-body">
+          <div class="money-kind">
+            <button type="button" id="money-kind-exp" class="sleep-q-btn on" onclick="setMoneyKind('expense')">− Expense</button>
+            <button type="button" id="money-kind-inc" class="sleep-q-btn" onclick="setMoneyKind('income')">+ Income</button>
+          </div>
+          <div class="money-row1">
+            <div><p class="sleep-label">Item</p><input type="text" id="money-item" class="sleep-input" placeholder="e.g. cafe"></div>
+            <div><p class="sleep-label">Amount</p><input type="number" id="money-amount" class="sleep-input" min="0" step="0.01" placeholder="0.00"></div>
+            <div><p class="sleep-label">Date</p><input type="date" id="money-date" class="sleep-input"></div>
+          </div>
+          <div class="money-row2">
+            <div>
+              <p class="sleep-label">Category</p>
+              <select id="money-cat" class="sleep-input" onchange="onMoneySelect('cat')"></select>
+              <div id="money-cat-new" class="money-new-row" style="display:none;"><input type="text" class="sleep-input" placeholder="New category name"><button type="button" class="settings-btn" onclick="addMoneyCustom('cat')">Add</button></div>
+            </div>
+            <div>
+              <p class="sleep-label">Account</p>
+              <select id="money-acc" class="sleep-input" onchange="onMoneySelect('acc')"></select>
+              <div id="money-acc-new" class="money-new-row" style="display:none;"><input type="text" class="sleep-input" placeholder="New account name"><button type="button" class="settings-btn" onclick="addMoneyCustom('acc')">Add</button></div>
+            </div>
+            <div>
+              <p class="sleep-label">Goes to (optional)</p>
+              <select id="money-goes" class="sleep-input"></select>
+            </div>
+            <button type="button" class="settings-btn money-add" onclick="submitMoney()">Add ✓</button>
+          </div>
+          <p id="money-msg" class="sleep-msg"></p>
+        </div>
+      </div>
+  </section>
+
+  <!-- ===== SETUP ===== -->
+  <section class="mt-tab" data-mt="setup">
+    <p class="mt-hi">Getting started</p><p class="mt-sub">A quick tour, plus your currency and bank import.</p>
+    <div class="cell-border">
+      <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Your currency</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+      <div class="cell-body">
+        <p class="mood-note" style="margin-top:0">Every amount in the money tracker will show in this currency.</p>
+        <select class="sleep-input mt-currency mt-narrow" onchange="mtSetCurrency(this.value)"><option value="USD">US Dollar — USD ($)</option><option value="EUR">Euro — EUR (€)</option><option value="GBP">British Pound — GBP (£)</option><option value="CAD">Canadian Dollar — CAD ($)</option><option value="AUD">Australian Dollar — AUD ($)</option><option value="MXN">Mexican Peso — MXN ($)</option><option value="JPY">Japanese Yen — JPY (¥)</option><option value="INR">Indian Rupee — INR (₹)</option></select>
+      </div>
+    </div>
+
+      <div class="cell-border">
+        <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Import bank transactions</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+        <div class="cell-body">
+          <div class="money-import-top">
+            <label class="settings-btn money-file-btn">⬆ Choose a .csv file<input type="file" id="money-import-file" accept=".csv,text/csv" onchange="onImportFile(this)" hidden></label>
+            <label class="sleep-checks money-flip"><input type="checkbox" id="money-import-flip"> My bank shows spending as positive numbers</label>
+          </div>
+          <p class="mood-note">Download your transactions from your bank's website as a CSV file. After you pick the file, you'll confirm which column is the date, the name and the amount.</p>
+          <div class="money-rules"><button type="button" id="money-rules-toggle" class="sleep-q-btn" onclick="toggleRules()">Your sorting rules</button> <button type="button" class="sleep-q-btn" onclick="clearMoneyRules()">🗑 Clear all rules</button> <button type="button" class="sleep-q-btn" onclick="clearAllMoney()">🗑 Delete all money entries</button><div id="money-rules-panel" class="money-rules-panel" style="display:none;"></div></div>
+          <p id="money-import-status" class="money-import-status"></p>
+          <div id="money-import-review"></div>
+        </div>
+      </div>
+    <div class="cell-border">
+      <div class="title-bar"><span class="title-glyph"></span><span class="title-text">How each tab works</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+      <div class="cell-body">
+        <div class="mt-howto">
+          <p><b>Home</b> — the whole month at a glance: income, spending, where the money goes.</p>
+          <p><b>Today</b> — your money right now: what you saved, what you owe, what's safe to spend, and what's due next.</p>
+          <p><b>Calendar</b> — tap a day to add a paycheck, bill, transfer or note. Set it to repeat and it fills in future months by itself.</p>
+          <p><b>Goals</b> — the bigger picture. Tap a goal's status to switch between not started, in progress and done.</p>
+          <p><b>Savings</b> — funds you're filling up (an emergency cushion, a trip), each with its own progress bar.</p>
+          <p><b>Debt</b> — balances you're paying down, with interest and minimum payments.</p>
+          <p><b>Envelopes</b> — a spending limit per category each month. Your spending fills them automatically.</p>
+          <p><b>+ Track spending</b> — add something you spent or earned.</p>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ===== HOME ===== -->
+  <section class="mt-tab" data-mt="home">
+    <p class="mt-hi" id="mt-home-title">This month</p><p class="mt-sub">The whole month at a glance.</p>
     <div class="money-tiles">
-      <div class="sleep-tile"><div class="money-tile-label">Income (this month)</div><div id="money-inc" class="sleep-big money-in">$0.00</div></div>
-      <div class="sleep-tile"><div class="money-tile-label">Expenses (this month)</div><div id="money-exp" class="sleep-big money-out">$0.00</div></div>
-      <div class="sleep-tile"><div class="money-tile-label">Net (this month)</div><div id="money-net" class="sleep-big money-net">$0.00</div></div>
+      <div class="sleep-tile"><div class="money-tile-label">Income</div><div id="money-inc" class="sleep-big money-in">$0.00</div></div>
+      <div class="sleep-tile"><div class="money-tile-label">Spent</div><div id="money-exp" class="sleep-big money-out">$0.00</div></div>
+      <div class="sleep-tile"><div class="money-tile-label">Left to spend</div><div id="money-net" class="sleep-big money-net">$0.00</div><div id="money-net-sub" class="sleep-sub"></div></div>
     </div>
+      <div class="cell-border">
+        <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Spending distribution</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+        <div class="cell-body">
+          <div id="money-dist-modes" class="mood-styles"></div>
+          <div class="money-dist-nav">
+            <button type="button" class="settings-btn mood-nav" onclick="moneyDistShift(-1)" title="Earlier">◀</button>
+            <span id="money-dist-label" class="money-dist-label"></span>
+            <button type="button" class="settings-btn mood-nav" onclick="moneyDistShift(1)" title="Later">▶</button>
+          </div>
+          <div id="money-dist-start-row" class="money-dist-start" style="display:none;">
+            <label class="sleep-label" for="money-dist-start">Start date</label>
+            <input type="date" id="money-dist-start" class="sleep-input" onchange="moneyDistSetStart(this.value)">
+          </div>
+          <div class="money-dist-body">
+            <div class="money-dist-donut"><canvas id="moneyDistChart"></canvas><div id="money-dist-total" class="money-dist-total"></div></div>
+            <div id="money-dist-list" class="money-dist-list"></div>
+          </div>
+        </div>
+      </div>
+      <div class="cell-border">
+        <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Income &amp; expenses</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+        <div class="cell-body">
+          <div id="money-views" class="mood-styles"></div>
+          <div id="money-out" class="money-out-box"></div>
+        </div>
+      </div>
+  </section>
+
+  <!-- ===== TODAY ===== -->
+  <section class="mt-tab" data-mt="today">
+    <p class="mt-hi">Hello!</p><p class="mt-sub">Here's the shape of your money today.</p>
     <div class="cell-border">
-      <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Add an entry</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+      <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Today at a glance</span><span class="title-dots"><span></span><span></span><span></span></span></div>
       <div class="cell-body">
-        <div class="money-kind">
-          <button type="button" id="money-kind-exp" class="sleep-q-btn on" onclick="setMoneyKind('expense')">− Expense</button>
-          <button type="button" id="money-kind-inc" class="sleep-q-btn" onclick="setMoneyKind('income')">+ Income</button>
+        <div class="mt-g2">
+          <div class="sleep-tile mt-tile"><div class="money-tile-label">Saved across every fund</div><div id="mt-saved" class="sleep-big">$0.00</div><div id="mt-saved-sub" class="sleep-sub"></div></div>
+          <div class="sleep-tile mt-tile"><div class="money-tile-label">Still owed</div><div id="mt-owed" class="sleep-big">$0.00</div><div id="mt-owed-sub" class="sleep-sub"></div></div>
         </div>
-        <div class="money-row1">
-          <div><p class="sleep-label">Item</p><input type="text" id="money-item" class="sleep-input" placeholder="e.g. cafe"></div>
-          <div><p class="sleep-label">Amount ($)</p><input type="number" id="money-amount" class="sleep-input" min="0" step="0.01" placeholder="0.00"></div>
-          <div><p class="sleep-label">Date</p><input type="date" id="money-date" class="sleep-input"></div>
+        <div class="mt-g3">
+          <div class="sleep-tile mt-tile"><div class="money-tile-label" id="mt-safe-label">Safe to spend</div><div id="mt-safe" class="sleep-big money-in">$0.00</div><div class="sleep-sub">after bills and transfers still due</div></div>
+          <div class="sleep-tile mt-tile"><div class="money-tile-label">Debt minimums due monthly</div><div id="mt-mins" class="sleep-big">$0.00</div></div>
+          <div class="sleep-tile mt-tile"><div class="money-tile-label">Goals in progress</div><div id="mt-goals-n" class="sleep-big">0</div></div>
         </div>
-        <div class="money-row2">
-          <div>
-            <p class="sleep-label">Category</p>
-            <select id="money-cat" class="sleep-input" onchange="onMoneySelect('cat')"></select>
-            <div id="money-cat-new" class="money-new-row" style="display:none;"><input type="text" class="sleep-input" placeholder="New category name"><button type="button" class="settings-btn" onclick="addMoneyCustom('cat')">Add</button></div>
-          </div>
-          <div>
-            <p class="sleep-label">Account</p>
-            <select id="money-acc" class="sleep-input" onchange="onMoneySelect('acc')"></select>
-            <div id="money-acc-new" class="money-new-row" style="display:none;"><input type="text" class="sleep-input" placeholder="New account name"><button type="button" class="settings-btn" onclick="addMoneyCustom('acc')">Add</button></div>
-          </div>
-          <button type="button" class="settings-btn money-add" onclick="submitMoney()">Add ✓</button>
-        </div>
-        <p id="money-msg" class="sleep-msg"></p>
+      </div>
+    </div>
+
+    <div class="cell-border">
+      <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Coming up</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+      <div class="cell-body">
+        <div id="mt-coming"></div>
+        <div class="mt-row-end"><span class="mood-note">Ticking one saves it as a real entry automatically.</span><button type="button" class="settings-btn mt-btn" onclick="mtGo('cal')">Open calendar</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== CALENDAR ===== -->
+  <section class="mt-tab" data-mt="cal">
+    <p class="mt-hi">Calendar</p><p class="mt-sub">Tap any day to add a paycheck, bill, transfer or note.</p>
+    <div class="cell-border">
+      <div class="title-bar"><span class="title-glyph"></span><span class="title-text" id="mt-cal-title">Calendar</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+      <div class="cell-body">
+        <div class="mem-month-row"><button type="button" class="settings-btn mood-nav" onclick="mtCalShift(-1)" title="Previous month">◀</button><span id="mt-cal-month" class="mem-month-count"></span><button type="button" class="settings-btn mood-nav" onclick="mtCalShift(1)" title="Next month">▶</button></div>
+        <div id="mt-cal" class="mt-cal"></div>
+        <p class="mood-note">✓ = paid / received. Tap a day to see or add items.</p>
       </div>
     </div>
     <div class="cell-border">
-      <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Import bank transactions</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+      <div class="title-bar"><span class="title-glyph"></span><span class="title-text" id="mt-day-title">Add to a day</span><span class="title-dots"><span></span><span></span><span></span></span></div>
       <div class="cell-body">
-        <div class="money-import-top">
-          <label class="settings-btn money-file-btn">⬆ Choose a .csv file<input type="file" id="money-import-file" accept=".csv,text/csv" onchange="onImportFile(this)" hidden></label>
-          <label class="sleep-checks money-flip"><input type="checkbox" id="money-import-flip"> My bank shows spending as positive numbers</label>
+        <div id="mt-day-items"></div>
+        <div class="mt-form">
+          <div><p class="sleep-label">Name</p><input type="text" id="mt-p-name" class="sleep-input" placeholder="e.g. Paycheck"></div>
+          <div><p class="sleep-label">Amount</p><input type="number" id="mt-p-amount" class="sleep-input" min="0" step="0.01" placeholder="0.00"></div>
+          <div><p class="sleep-label">Type</p><select id="mt-p-kind" class="sleep-input" onchange="mtFillGoesTo('mt-p-goes', this.value)"><option value="income">Income</option><option value="bill">Bill</option><option value="savings">Savings transfer</option><option value="debt">Debt payment</option><option value="note">Note</option></select></div>
+          <div><p class="sleep-label">Repeats</p><select id="mt-p-repeat" class="sleep-input"><option value="none">Never</option><option value="week">Every week</option><option value="2weeks">Every 2 weeks</option><option value="month">Every month</option><option value="year">Every year</option></select></div>
+          <div><p class="sleep-label">Goes to</p><select id="mt-p-goes" class="sleep-input"></select></div>
+          <button type="button" class="settings-btn mt-btn" onclick="mtSavePlan()">Save ✓</button>
         </div>
-        <p class="mood-note">Download your transactions from your bank's website as a CSV file. After you pick the file, you'll confirm which column is the date, the name and the amount.</p>
-        <div class="money-rules"><button type="button" id="money-rules-toggle" class="sleep-q-btn" onclick="toggleRules()">Your sorting rules</button> <button type="button" class="sleep-q-btn" onclick="clearMoneyRules()">🗑 Clear all rules</button> <button type="button" class="sleep-q-btn" onclick="clearAllMoney()">🗑 Delete all money entries</button><div id="money-rules-panel" class="money-rules-panel" style="display:none;"></div></div>
-        <p id="money-import-status" class="money-import-status"></p>
-        <div id="money-import-review"></div>
+        <p id="mt-cal-msg" class="sleep-msg"></p>
       </div>
     </div>
+  </section>
+
+  <!-- ===== GOALS ===== -->
+  <section class="mt-tab" data-mt="goals">
+    <p class="mt-hi">Goals</p><p class="mt-sub">The bigger picture. Tap a status to change it.</p>
     <div class="cell-border">
-      <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Income &amp; expenses</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+      <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Your goals</span><span class="title-dots"><span></span><span></span><span></span></span></div>
       <div class="cell-body">
-        <div id="money-views" class="mood-styles"></div>
-        <div id="money-out" class="money-out-box"></div>
+        <div id="mt-goals"></div>
+        <div class="mt-form mt-form-goal">
+          <div><p class="sleep-label">New goal</p><input type="text" id="mt-g-name" class="sleep-input" placeholder="e.g. Build a 3-month emergency fund"></div>
+          <div><p class="sleep-label">Linked to (optional)</p><select id="mt-g-link" class="sleep-input"></select></div>
+          <button type="button" class="settings-btn mt-btn" onclick="mtAddGoal()">+ Add</button>
+        </div>
+        <p id="mt-goals-msg" class="sleep-msg"></p>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ===== SAVINGS ===== -->
+  <section class="mt-tab" data-mt="sav">
+    <p class="mt-hi">Savings</p><p class="mt-sub">Funds you're filling up, each with its own progress bar.</p>
+    <div class="cell-border">
+      <div class="title-bar"><span class="title-glyph"></span><span class="title-text"><span id="mt-funds-title">Your funds</span></span><span class="title-dots"><span></span><span></span><span></span></span></div>
+      <div class="cell-body">
+        <div id="mt-funds"></div>
+        <p class="sleep-label mt-form-head">Add money to a fund</p>
+        <div class="mt-form">
+          <div><p class="sleep-label">Fund</p><select id="mt-fa-fund" class="sleep-input"></select></div>
+          <div><p class="sleep-label">Amount</p><input type="number" id="mt-fa-amount" class="sleep-input" min="0" step="0.01" placeholder="0.00"></div>
+          <div><p class="sleep-label">Date</p><input type="date" id="mt-fa-date" class="sleep-input"></div>
+          <button type="button" class="settings-btn mt-btn" onclick="mtAddToFund()">+ Add money</button>
+        </div>
+        <p class="sleep-label mt-form-head">New fund</p>
+        <div class="mt-form">
+          <div><p class="sleep-label">Name</p><input type="text" id="mt-f-name" class="sleep-input" placeholder="e.g. Emergency fund"></div>
+          <div><p class="sleep-label">Target</p><input type="number" id="mt-f-target" class="sleep-input" min="0" step="0.01" placeholder="0.00"></div>
+          <div><p class="sleep-label">Target date (optional)</p><input type="date" id="mt-f-date" class="sleep-input"></div>
+          <div><p class="sleep-label">Already saved</p><input type="number" id="mt-f-start" class="sleep-input" min="0" step="0.01" placeholder="0.00"></div>
+          <button type="button" class="settings-btn mt-btn" onclick="mtAddFund()">+ New fund</button>
+        </div>
+        <p id="mt-funds-msg" class="sleep-msg"></p>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ===== DEBT ===== -->
+  <section class="mt-tab" data-mt="debt">
+    <p class="mt-hi">Debt</p><p class="mt-sub">Balances you're paying down.</p>
+    <div class="mt-g2 mt-gap">
+      <div class="sleep-tile mt-tile"><div class="money-tile-label">Still owed</div><div id="mt-d-owed" class="sleep-big">$0.00</div></div>
+      <div class="sleep-tile mt-tile"><div class="money-tile-label">Minimums each month</div><div id="mt-d-mins" class="sleep-big">$0.00</div></div>
+    </div>
+    <div class="cell-border">
+      <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Your debts</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+      <div class="cell-body">
+        <div id="mt-debts"></div>
+        <p class="sleep-label mt-form-head">Log a payment</p>
+        <div class="mt-form">
+          <div><p class="sleep-label">Debt</p><select id="mt-dp-debt" class="sleep-input"></select></div>
+          <div><p class="sleep-label">Amount</p><input type="number" id="mt-dp-amount" class="sleep-input" min="0" step="0.01" placeholder="0.00"></div>
+          <div><p class="sleep-label">Date</p><input type="date" id="mt-dp-date" class="sleep-input"></div>
+          <button type="button" class="settings-btn mt-btn" onclick="mtPayDebt()">+ Log a payment</button>
+        </div>
+        <p class="sleep-label mt-form-head">New debt</p>
+        <div class="mt-form">
+          <div><p class="sleep-label">Name</p><input type="text" id="mt-d-name" class="sleep-input" placeholder="e.g. Credit card"></div>
+          <div><p class="sleep-label">Balance owed</p><input type="number" id="mt-d-bal" class="sleep-input" min="0" step="0.01" placeholder="0.00"></div>
+          <div><p class="sleep-label">Interest rate (%)</p><input type="number" id="mt-d-apr" class="sleep-input" min="0" step="0.01" placeholder="e.g. 22.9"></div>
+          <div><p class="sleep-label">Minimum / month</p><input type="number" id="mt-d-min" class="sleep-input" min="0" step="0.01" placeholder="0.00"></div>
+          <button type="button" class="settings-btn mt-btn" onclick="mtAddDebt()">+ New debt</button>
+        </div>
+        <p id="mt-debts-msg" class="sleep-msg"></p>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ===== ENVELOPES ===== -->
+  <section class="mt-tab" data-mt="env">
+    <p class="mt-hi">Envelopes</p><p class="mt-sub">A spending limit per category each month. Spending fills them automatically.</p>
+    <div class="cell-border">
+      <div class="title-bar"><span class="title-glyph"></span><span class="title-text"><span id="mt-env-title">Envelopes</span></span><span class="title-dots"><span></span><span></span><span></span></span></div>
+      <div class="cell-body">
+        <div id="mt-envs" class="mt-env-grid"></div>
+        <p class="sleep-label mt-form-head">New envelope</p>
+        <div class="mt-form">
+          <div><p class="sleep-label">Category</p><select id="mt-e-cat" class="sleep-input"></select></div>
+          <div><p class="sleep-label">Monthly limit</p><input type="number" id="mt-e-limit" class="sleep-input" min="0" step="0.01" placeholder="0.00"></div>
+          <button type="button" class="settings-btn mt-btn" onclick="mtAddEnvelope()">+ New envelope</button>
+        </div>
+        <p id="mt-env-msg" class="sleep-msg"></p>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ===== SETTINGS ===== -->
+  <section class="mt-tab" data-mt="set">
+    <p class="mt-hi">Settings</p><p class="mt-sub">How the money tracker works for you.</p>
+    <div class="cell-border">
+      <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Preferences</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+      <div class="cell-body">
+        <div class="mt-form mt-form-set">
+          <div><p class="sleep-label">Month starts on day</p><select id="mt-s-start" class="sleep-input" onchange="mtSetMonthStart(this.value)"></select></div>
+          <div><p class="sleep-label">Pay period start (2 weeks)</p><input type="date" id="mt-s-pay" class="sleep-input" onchange="mtSetPayStart(this.value)"></div>
+          <div><p class="sleep-label">Currency</p><select class="sleep-input mt-currency" onchange="mtSetCurrency(this.value)"><option value="USD">US Dollar — USD ($)</option><option value="EUR">Euro — EUR (€)</option><option value="GBP">British Pound — GBP (£)</option><option value="CAD">Canadian Dollar — CAD ($)</option><option value="AUD">Australian Dollar — AUD ($)</option><option value="MXN">Mexican Peso — MXN ($)</option><option value="JPY">Japanese Yen — JPY (¥)</option><option value="INR">Indian Rupee — INR (₹)</option></select></div>
+        </div>
+        <p class="mood-note">"Month starts on day" is handy if you get paid mid-month: your Home totals, envelopes and safe-to-spend will run from that day to the day before it next month.</p>
+      </div>
+    </div>
+
+    <div class="cell-border">
+      <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Your categories</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+      <div class="cell-body">
+        <div class="mood-styles"><button type="button" class="sleep-q-btn on" id="mt-cat-exp" onclick="mtCatKind('expense')">Expense</button><button type="button" class="sleep-q-btn" id="mt-cat-inc" onclick="mtCatKind('income')">Income</button></div>
+        <div id="mt-cats" class="mem-tags"></div>
+        <div class="mem-newtag"><input type="text" id="mt-cat-new" class="sleep-input" placeholder="New category"><button type="button" class="settings-btn mem-small-btn" onclick="mtAddListItem('cat')">+ Add</button></div>
+      </div>
+    </div>
+
+    <div class="cell-border">
+      <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Your accounts</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+      <div class="cell-body">
+        <div id="mt-accs" class="mem-tags"></div>
+        <div class="mem-newtag"><input type="text" id="mt-acc-new" class="sleep-input" placeholder="New account"><button type="button" class="settings-btn mem-small-btn" onclick="mtAddListItem('acc')">+ Add</button></div>
+        <p id="mt-set-msg" class="sleep-msg"></p>
+      </div>
+    </div>
+
+  </section>
+
       </div>
     </div>
   </div>

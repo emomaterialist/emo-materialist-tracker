@@ -3092,7 +3092,10 @@ function toggleMoneyPage() {
   ['sleep-page', 'history-page', 'mood-page', 'shop-page', 'memory-page'].forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
   document.getElementById('money-date').value = localISO(new Date());
   setMoneyKind(moneyKind);
-  loadMoneyLogs().then(renderMoney);
+  if (!moneyDistAnchor) moneyDistAnchor = new Date();
+  ['mt-fa-date', 'mt-dp-date'].forEach(function (id) { document.getElementById(id).value = localISO(new Date()); });
+  mtGo(mtTab);
+  Promise.all([loadMoneyLogs(), mtLoadAll()]).then(renderMoney);
 }
 
 async function loadMoneyLogs() {
@@ -3109,7 +3112,12 @@ function setMoneyMsg(text, type) {
 }
 
 function moneyEsc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
-function moneyFmt(n) { return (n < 0 ? '-' : '') + '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+// Money amounts in your chosen currency (Settings or Setup tab). Default: US dollars.
+function mtCurrency() { var m = currentUser && currentUser.user_metadata; return (m && m.money_currency) || 'USD'; }
+function moneyFmt(n) {
+  try { return new Intl.NumberFormat('en-US', { style: 'currency', currency: mtCurrency() }).format(n); }
+  catch (e) { return (n < 0 ? '-' : '') + '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+}
 function moneyDay(iso) { var p = iso.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
 function moneyMonthName(ym) { var p = ym.split('-'); return new Date(+p[0], +p[1] - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }); }
 function moneySums(list) {
@@ -3186,10 +3194,11 @@ async function submitMoney() {
   if (!date) return setMoneyMsg('Pick a date.', 'error');
   if (cat === '__custom__' || acc === '__custom__') return setMoneyMsg('Finish adding the new category or account first.', 'error');
   setMoneyMsg('Saving...', 'ok');
-  var res = await sb.from('money_logs').insert({
-    user_id: currentUser.id, kind: moneyKind, item: item, amount: Math.round(amount * 100) / 100,
-    category: cat, account: acc, log_date: date
-  });
+  var row = { user_id: currentUser.id, kind: moneyKind, item: item, amount: Math.round(amount * 100) / 100, category: cat, account: acc, log_date: date };
+  var goes = (document.getElementById('money-goes') || {}).value || '';
+  if (goes.indexOf('f:') === 0) row.fund_id = +goes.slice(2);     // money put into a savings fund
+  if (goes.indexOf('d:') === 0) row.debt_id = +goes.slice(2);     // a payment toward a debt
+  var res = await sb.from('money_logs').insert(row);
   if (res.error) return setMoneyMsg('Could not save: ' + res.error.message, 'error');
   document.getElementById('money-item').value = '';
   document.getElementById('money-amount').value = '';
@@ -3206,14 +3215,100 @@ async function deleteMoney(id) {
   renderMoney();
 }
 
+// ---- Spending distribution donut: expenses by category for a month, a week (Mon-Sun), or 2 weeks from a start date you pick ----
+var moneyDistMode = 'month', moneyDistAnchor = null, moneyDistChart = null;
+function moneyDistDate(iso) { var p = iso.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+function moneyDistRange() {
+  var a = moneyDistAnchor ? new Date(moneyDistAnchor) : new Date(); a.setHours(0, 0, 0, 0);
+  var from, to;
+  if (moneyDistMode === 'month') { var per = mtPeriod(a); from = per.from; to = per.to; }
+  else if (moneyDistMode === 'week') { from = new Date(a); from.setDate(a.getDate() - ((a.getDay() + 6) % 7)); to = new Date(from); to.setDate(from.getDate() + 6); }
+  else { from = new Date(a); to = new Date(a); to.setDate(a.getDate() + 13); }
+  return { from: from, to: to };
+}
+function moneyDistSetMode(m) {
+  moneyDistMode = m;
+  if (m === '2wk') {
+    var saved = currentUser && currentUser.user_metadata && currentUser.user_metadata.money_2wk_start;
+    if (saved) {   // keep the same 2-week cycle (e.g. your pay periods) and jump to the one that holds today
+      var s0 = moneyDistDate(saved), t = new Date(); t.setHours(0, 0, 0, 0);
+      var k = Math.floor((t - s0) / (14 * 86400000)); s0.setDate(s0.getDate() + k * 14); moneyDistAnchor = s0;
+    } else { var d = new Date(); d.setDate(d.getDate() - 13); moneyDistAnchor = d; }
+  } else moneyDistAnchor = new Date();
+  renderMoneyDist();
+}
+function moneyDistShift(step) {
+  var a = moneyDistRange().from;
+  if (moneyDistMode === 'month') a.setMonth(a.getMonth() + step);
+  else a.setDate(a.getDate() + step * (moneyDistMode === 'week' ? 7 : 14));
+  moneyDistAnchor = a; renderMoneyDist();
+}
+function moneyDistSetStart(iso) {
+  if (!iso) return;
+  moneyDistAnchor = moneyDistDate(iso);
+  mtSaveMeta({ money_2wk_start: iso });
+  renderMoneyDist();
+  var pay = document.getElementById('mt-s-pay'); if (pay) pay.value = iso;
+}
+function renderMoneyDist() {
+  var canvas = document.getElementById('moneyDistChart'); if (!canvas) return;
+  var modes = document.getElementById('money-dist-modes'); modes.innerHTML = '';
+  [['month', 'Month'], ['week', 'Week'], ['2wk', '2 weeks']].forEach(function (m) {
+    var b = document.createElement('button'); b.type = 'button';
+    b.className = 'sleep-q-btn' + (moneyDistMode === m[0] ? ' on' : ''); b.textContent = m[1];
+    b.onclick = function () { moneyDistSetMode(m[0]); };
+    modes.appendChild(b);
+  });
+  var r = moneyDistRange(), fromIso = localISO(r.from), toIso = localISO(r.to);
+  var short = function (d) { return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); };
+  document.getElementById('money-dist-label').textContent = moneyDistMode === 'month'
+    ? mtPeriodLabel(r)
+    : short(r.from) + ' – ' + short(r.to) + ', ' + r.to.getFullYear();
+  document.getElementById('money-dist-start-row').style.display = moneyDistMode === '2wk' ? '' : 'none';
+  if (moneyDistMode === '2wk') document.getElementById('money-dist-start').value = fromIso;
+
+  var by = {}, total = 0;
+  moneyLogs.forEach(function (x) {
+    if (x.kind !== 'expense' || x.fund_id || x.log_date < fromIso || x.log_date > toIso) return;   // savings transfers aren't spending
+    var c = x.category || 'Other', a = Math.abs(Number(x.amount)) || 0;
+    by[c] = (by[c] || 0) + a; total += a;
+  });
+  var cats = Object.keys(by).sort(function (a, b) { return by[b] - by[a]; });
+  var colors = cats.map(function (c, i) { return colorForHabitIndex(i); });   // the theme's bar-graph colors
+  var paper = getThemeColor('--c-body-bg') || '#fff', empty = getThemeColor('--c-body-bg-alt') || '#eee';
+  if (moneyDistChart) moneyDistChart.destroy();
+  moneyDistChart = new Chart(canvas, {
+    type: 'doughnut',
+    data: { labels: cats.length ? cats : ['No spending'], datasets: [{ data: cats.length ? cats.map(function (c) { return Math.round(by[c] * 100) / 100; }) : [1],
+      backgroundColor: cats.length ? colors : [empty], borderColor: paper, borderWidth: 2 }] },
+    options: { responsive: true, maintainAspectRatio: false, cutout: '64%',
+      plugins: { legend: { display: false }, tooltip: { enabled: cats.length > 0, callbacks: { label: function (c) { return c.label + ': ' + moneyFmt(c.raw) + ' · ' + Math.round(c.raw / total * 100) + '%'; } } } } }
+  });
+  document.getElementById('money-dist-total').innerHTML = '<b>' + moneyFmt(total) + '</b><span>spent</span>';
+  var h = '';
+  cats.forEach(function (c, i) {
+    var pct = total ? by[c] / total * 100 : 0;
+    h += '<div class="money-dist-row"><span class="money-dist-dot" style="background:' + colors[i] + '"></span><span class="money-dist-name">' + moneyEsc(c) + '</span><span class="money-dist-amt">' + moneyFmt(by[c]) + ' · ' + (pct > 0 && pct < 1 ? '<1' : Math.round(pct)) + '%</span></div>';
+  });
+  document.getElementById('money-dist-list').innerHTML = h || '<p class="sleep-empty">No spending in this period.</p>';
+}
+
 function renderMoney() {
-  var ym = localISO(new Date()).slice(0, 7);
-  var m = moneySums(moneyLogs.filter(function (r) { return r.log_date.slice(0, 7) === ym; }));
+  var per = mtPeriod(new Date()), pf = localISO(per.from), pt = localISO(per.to), m = { inc: 0, exp: 0, sav: 0 };
+  moneyLogs.forEach(function (r) {
+    if (r.log_date < pf || r.log_date > pt) return;
+    if (r.kind === 'income') m.inc += r.amount; else if (r.fund_id) m.sav += r.amount; else m.exp += r.amount;
+  });
+  var left = m.inc - m.exp - m.sav;
+  renderMoneyDist();
+  document.getElementById('mt-home-title').textContent = mtPeriodLabel(per);
   document.getElementById('money-inc').textContent = moneyFmt(m.inc);
   document.getElementById('money-exp').textContent = moneyFmt(m.exp);
   var net = document.getElementById('money-net');
-  net.textContent = moneyFmt(m.net);
-  net.className = 'sleep-big ' + (m.net < 0 ? 'money-out' : 'money-net');
+  net.textContent = moneyFmt(left);
+  net.className = 'sleep-big ' + (left < 0 ? 'money-out' : 'money-net');
+  document.getElementById('money-net-sub').textContent = m.sav ? 'after ' + moneyFmt(m.sav) + ' moved to savings' : '';
+  mtRenderAll();
 
   var tabs = document.getElementById('money-views'); tabs.innerHTML = '';
   MONEY_VIEWS.forEach(function (v) {
@@ -4276,4 +4371,415 @@ function renderMemList() {
   var box = document.getElementById('mem-list');
   box.innerHTML = h;
   box.querySelectorAll('[data-mem-go]').forEach(function (b) { b.onclick = function () { memSelectDay(b.getAttribute('data-mem-go')); document.getElementById('memory-page').scrollTo({ top: 0, behavior: 'smooth' }); }; });
+}
+
+
+// ============================================
+// MONEY TRACKER TABS: Setup, Home, Today, Calendar, Goals, Savings, Debt, Envelopes, Settings
+// New Supabase tables: money_plans (calendar items), money_funds, money_debts, money_goals, money_envelopes.
+// money_logs got 4 new columns: plan_id + due_date (which calendar item a tick paid),
+// fund_id (money put into a savings fund) and debt_id (a payment toward a debt).
+// ============================================
+var MT_TABS = [['setup', 'Setup', '⚙️'], ['home', 'Home', '🏠'], ['today', 'Today', '☀️'], ['cal', 'Calendar', '📅'], ['goals', 'Goals', '🎯'],
+  ['sav', 'Savings', '🐷'], ['debt', 'Debt', '💳'], ['env', 'Envelopes', '✉️'], ['set', 'Settings', '🔧']];
+var MT_KIND_NAMES = { income: 'Income', bill: 'Bill', savings: 'Savings transfer', debt: 'Debt payment', note: 'Note' };
+var MT_KIND_CATS = { income: 'Salary', bill: 'Bills', savings: 'Savings', debt: 'Credit' };
+var MT_GOAL_STATUS = ['Not started', 'In progress', 'Done ✓'];
+var mtTab = (function () { try { return localStorage.getItem('moneyTab') || 'today'; } catch (e) { return 'today'; } })();
+var mtPlans = [], mtFunds = [], mtDebts = [], mtGoals = [], mtEnvs = [], mtMissing = [];
+var mtCalY = new Date().getFullYear(), mtCalM = new Date().getMonth(), mtCalSel = localISO(new Date()), mtCatSel = 'expense';
+
+// ---- Small helpers ----
+function mtMeta(k) { var m = currentUser && currentUser.user_metadata; return m ? m[k] : undefined; }
+function mtSaveMeta(obj) {
+  currentUser.user_metadata = currentUser.user_metadata || {};
+  Object.keys(obj).forEach(function (k) { currentUser.user_metadata[k] = obj[k]; });
+  return sb.auth.updateUser({ data: obj }).then(function (r) { if (r && r.data && r.data.user) currentUser = r.data.user; });
+}
+function mtDate(iso) { var p = iso.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+function mtDaysIn(y, m) { return new Date(y, m + 1, 0).getDate(); }
+function mtShort(iso) { return mtDate(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+function mtMsg(id, t, type) { var el = document.getElementById(id); if (el) { el.textContent = t; el.className = 'sleep-msg ' + (type || 'ok'); } }
+function mtNum(id) { return parseFloat(document.getElementById(id).value); }
+function mtStartDay() { var s = +mtMeta('money_month_start'); return s >= 1 && s <= 28 ? s : 1; }
+
+// Your "month": from your start day to the day before it next month (normally the 1st to the last day).
+function mtPeriod(ref) {
+  var S = mtStartDay(), d = new Date(ref); d.setHours(0, 0, 0, 0);
+  var from = new Date(d.getFullYear(), d.getMonth(), Math.min(S, mtDaysIn(d.getFullYear(), d.getMonth())));
+  if (d < from) from = new Date(d.getFullYear(), d.getMonth() - 1, Math.min(S, mtDaysIn(d.getFullYear(), d.getMonth() - 1)));
+  var to = new Date(from.getFullYear(), from.getMonth() + 1, Math.min(S, mtDaysIn(from.getFullYear(), from.getMonth() + 1)));
+  to.setDate(to.getDate() - 1);
+  return { from: from, to: to };
+}
+function mtPeriodLabel(p) {
+  if (mtStartDay() === 1) return p.from.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  return mtShort(localISO(p.from)) + ' – ' + mtShort(localISO(p.to)) + ', ' + p.to.getFullYear();
+}
+
+// ---- Loading ----
+async function mtLoadAll() {
+  if (!currentUser) return;
+  mtMissing = [];
+  async function get(table, order) {
+    var r = await sb.from(table).select('*').eq('user_id', currentUser.id).order(order || 'id', { ascending: true });
+    if (r.error) { mtMissing.push(table); return []; }
+    return (r.data || []).map(function (x) {
+      ['amount', 'target', 'start_amount', 'start_balance', 'apr', 'min_payment', 'monthly_limit'].forEach(function (k) { if (x[k] != null) x[k] = Number(x[k]); });
+      return x;
+    });
+  }
+  var res = await Promise.all([get('money_plans'), get('money_funds'), get('money_debts'), get('money_goals'), get('money_envelopes')]);
+  mtPlans = res[0]; mtFunds = res[1]; mtDebts = res[2]; mtGoals = res[3]; mtEnvs = res[4];
+}
+
+// ---- Tabs ----
+function mtGo(tab) {
+  if (tab !== 'add' && !MT_TABS.some(function (t) { return t[0] === tab; })) tab = 'today';
+  mtTab = tab;
+  try { localStorage.setItem('moneyTab', tab); } catch (e) {}
+  document.querySelectorAll('#money-page .mt-tab').forEach(function (sec) { sec.style.display = sec.getAttribute('data-mt') === tab ? '' : 'none'; });
+  var side = document.getElementById('mt-side'), h = '<button type="button" class="settings-btn mt-add' + (tab === 'add' ? ' on' : '') + '" data-mt-go="add">+ Track spending</button>';
+  MT_TABS.forEach(function (t) { h += '<button type="button" class="mt-nav' + (tab === t[0] ? ' on' : '') + '" data-mt-go="' + t[0] + '"><span aria-hidden="true">' + t[2] + '</span>' + t[1] + '</button>'; });
+  side.innerHTML = h;
+  side.querySelectorAll('[data-mt-go]').forEach(function (b) { b.onclick = function () { mtGo(b.getAttribute('data-mt-go')); }; });
+  if (tab === 'home' && typeof moneyDistChart !== 'undefined' && moneyDistChart) setTimeout(function () { moneyDistChart.resize(); }, 0);
+  var pg = document.getElementById('money-page'); if (pg && pg.scrollTop > 120) pg.scrollTo({ top: 0 });
+}
+
+// ---- Totals ----
+function mtFundSaved(f) { return (f.start_amount || 0) + moneyLogs.reduce(function (a, r) { return a + (r.fund_id == f.id ? r.amount : 0); }, 0); }
+function mtDebtLeft(d) { return Math.max(0, (d.start_balance || 0) - moneyLogs.reduce(function (a, r) { return a + (r.debt_id == d.id ? r.amount : 0); }, 0)); }
+function mtPaidLog(planId, iso) { return moneyLogs.find(function (r) { return r.plan_id == planId && r.due_date === iso; }); }
+
+// Every date a calendar item lands on between two dates (handles repeats).
+function mtOccurrences(p, fromIso, toIso) {
+  var out = [], start = mtDate(p.start_date), from = mtDate(fromIso), to = mtDate(toIso), d;
+  if (!p.repeat || p.repeat === 'none') { if (p.start_date >= fromIso && p.start_date <= toIso) out.push(p.start_date); return out; }
+  if (p.repeat === 'week' || p.repeat === '2weeks') {
+    var step = p.repeat === 'week' ? 7 : 14, k = Math.max(0, Math.ceil((from - start) / (step * 86400000)));
+    for (d = new Date(start); ; k++) { d = new Date(start); d.setDate(start.getDate() + k * step); if (d > to) break; if (d >= from) out.push(localISO(d)); }
+    return out;
+  }
+  var months = p.repeat === 'year' ? 12 : 1, i = Math.max(0, Math.floor(((from.getFullYear() - start.getFullYear()) * 12 + from.getMonth() - start.getMonth()) / months) - 1);
+  for (; ; i++) {
+    var y = start.getFullYear(), m = start.getMonth() + i * months;
+    d = new Date(y, m, Math.min(start.getDate(), mtDaysIn(y, m)));
+    if (d > to) break;
+    if (d >= from && d >= start) out.push(localISO(d));
+  }
+  return out;
+}
+function mtAllOccurrences(fromIso, toIso) {
+  var list = [];
+  mtPlans.forEach(function (p) { mtOccurrences(p, fromIso, toIso).forEach(function (iso) { list.push({ plan: p, iso: iso, paid: !!mtPaidLog(p.id, iso) }); }); });
+  return list.sort(function (a, b) { return a.iso < b.iso ? -1 : a.iso > b.iso ? 1 : (a.plan.kind === 'income' ? -1 : 1); });
+}
+
+// ---- Render everything (called by renderMoney after any change) ----
+function mtRenderAll() {
+  var miss = document.getElementById('mt-setup-msg');
+  if (miss) miss.textContent = mtMissing.length ? 'To turn on Calendar, Goals, Savings, Debt and Envelopes, run the new SQL in Supabase (missing: ' + mtMissing.join(', ') + ').' : '';
+  document.querySelectorAll('.mt-currency').forEach(function (sel) { sel.value = mtCurrency(); });
+  mtFillGoesTo('money-goes', 'any');
+  mtRenderToday(); mtRenderCal(); mtRenderGoals(); mtRenderFunds(); mtRenderDebts(); mtRenderEnvs(); mtRenderSettings();
+}
+
+// "Goes to" dropdowns: funds for savings transfers, debts for debt payments, or both for a normal entry.
+function mtFillGoesTo(id, kind) {
+  var sel = document.getElementById(id); if (!sel) return;
+  var keep = sel.value, h = '<option value="">—</option>';
+  if (kind === 'savings' || kind === 'any') mtFunds.forEach(function (f) { h += '<option value="f:' + f.id + '">🐷 ' + moneyEsc(f.name) + '</option>'; });
+  if (kind === 'debt' || kind === 'any') mtDebts.forEach(function (d) { h += '<option value="d:' + d.id + '">💳 ' + moneyEsc(d.name) + '</option>'; });
+  sel.innerHTML = h; sel.value = keep; if (sel.value !== keep) sel.value = '';
+  sel.disabled = (kind === 'income' || kind === 'bill' || kind === 'note');
+}
+
+// ---- TODAY ----
+function mtRenderToday() {
+  var saved = 0, target = 0, owed = 0, mins = 0;
+  mtFunds.forEach(function (f) { saved += mtFundSaved(f); target += f.target || 0; });
+  mtDebts.forEach(function (d) { owed += mtDebtLeft(d); mins += d.min_payment || 0; });
+  document.getElementById('mt-saved').textContent = moneyFmt(saved);
+  document.getElementById('mt-saved-sub').textContent = mtFunds.length ? 'across ' + mtFunds.length + ' fund' + (mtFunds.length > 1 ? 's' : '') + (target ? ', toward ' + moneyFmt(target) : '') : 'add a fund in Savings';
+  document.getElementById('mt-owed').textContent = moneyFmt(owed);
+  document.getElementById('mt-owed-sub').textContent = mtDebts.length ? 'across ' + mtDebts.length + ' debt' + (mtDebts.length > 1 ? 's' : '') : 'add a debt in Debt';
+  document.getElementById('mt-mins').textContent = moneyFmt(mins);
+  document.getElementById('mt-goals-n').textContent = mtGoals.filter(function (g) { return g.status === 1; }).length;
+  // Safe to spend = income (received + still expected) - spending so far - bills/transfers still due this month
+  var per = mtPeriod(new Date()), pf = localISO(per.from), pt = localISO(per.to), safe = 0;
+  moneyLogs.forEach(function (r) { if (r.log_date >= pf && r.log_date <= pt) safe += r.kind === 'income' ? r.amount : -r.amount; });
+  mtAllOccurrences(pf, pt).forEach(function (o) { if (o.paid || o.plan.kind === 'note') return; safe += o.plan.kind === 'income' ? o.plan.amount : -o.plan.amount; });
+  document.getElementById('mt-safe-label').textContent = (mtStartDay() === 1 ? per.from.toLocaleDateString('en-US', { month: 'long' }) : "This month's") + ' safe to spend';
+  var se = document.getElementById('mt-safe'); se.textContent = moneyFmt(safe); se.className = 'sleep-big ' + (safe < 0 ? 'money-out' : 'money-in');
+  // Coming up: anything not yet paid from the last week, plus the next 30 days
+  var today = localISO(new Date()), back = new Date(); back.setDate(back.getDate() - 7);
+  var ahead = new Date(); ahead.setDate(ahead.getDate() + 30), tom = new Date(); tom.setDate(tom.getDate() + 1);
+  var list = mtAllOccurrences(localISO(back), localISO(ahead)).filter(function (o) { return o.iso >= today || (!o.paid && o.plan.kind !== 'note'); }).slice(0, 8);
+  var el = document.getElementById('mt-coming');
+  if (!list.length) { el.innerHTML = '<p class="sleep-empty">Nothing coming up. Add paychecks and bills in the Calendar tab.</p>'; return; }
+  el.innerHTML = list.map(mtItemRow).join('');
+  mtWireItems(el);
+}
+function mtItemRow(o, showDate) {
+  var p = o.plan, today = localISO(new Date()), t = new Date(); t.setDate(t.getDate() + 1);
+  var when = o.iso === today ? 'Today' : o.iso === localISO(t) ? 'Tomorrow' : mtShort(o.iso);
+  if (o.iso < today && !o.paid) when += ' · late';
+  var inc = p.kind === 'income', note = p.kind === 'note';
+  return '<div class="mt-item' + (o.paid ? ' paid' : '') + '">' +
+    (showDate === false ? '' : '<span class="mt-when' + (o.iso < today && !o.paid ? ' late' : '') + '">' + when + '</span>') +
+    (note ? '<span></span>' : '<button type="button" class="mt-tick' + (o.paid ? ' on' : '') + '" data-mt-tick="' + p.id + '|' + o.iso + '" title="' + (o.paid ? 'Undo' : (inc ? 'Mark received' : 'Mark paid')) + '">' + (o.paid ? '✓' : '') + '</button>') +
+    '<span class="mt-dot mt-k-' + p.kind + '"></span><span class="mt-name">' + moneyEsc(p.name) + (note ? '' : '') + '</span>' +
+    '<span class="mt-amt' + (inc ? ' money-in' : '') + '">' + (note ? '' : (inc ? '+' : '') + moneyFmt(p.amount)) + '</span></div>';
+}
+function mtWireItems(el) {
+  el.querySelectorAll('[data-mt-tick]').forEach(function (b) { b.onclick = function () { var x = b.getAttribute('data-mt-tick').split('|'); mtTogglePaid(+x[0], x[1]); }; });
+  el.querySelectorAll('[data-mt-delplan]').forEach(function (b) { b.onclick = function () { mtDeletePlan(+b.getAttribute('data-mt-delplan')); }; });
+}
+// Ticking saves a real money entry (so it shows in Home, envelopes, funds and debts). Unticking removes it.
+async function mtTogglePaid(planId, iso) {
+  var p = mtPlans.find(function (x) { return x.id == planId; }); if (!p) return;
+  var log = mtPaidLog(planId, iso), res;
+  if (log) res = await sb.from('money_logs').delete().eq('id', log.id);
+  else {
+    var row = { user_id: currentUser.id, kind: p.kind === 'income' ? 'income' : 'expense', item: p.name, amount: p.amount,
+      category: p.category || MT_KIND_CATS[p.kind] || 'Other', account: moneyAccountList()[0] || 'Personal', log_date: iso, plan_id: p.id, due_date: iso };
+    if (p.fund_id) row.fund_id = p.fund_id;
+    if (p.debt_id) row.debt_id = p.debt_id;
+    res = await sb.from('money_logs').insert(row);
+  }
+  if (res.error) { alert('Could not save: ' + res.error.message); return; }
+  await loadMoneyLogs(); renderMoney();
+}
+
+// ---- CALENDAR ----
+function mtCalShift(step) { mtCalM += step; if (mtCalM < 0) { mtCalM = 11; mtCalY--; } if (mtCalM > 11) { mtCalM = 0; mtCalY++; } mtRenderCal(); }
+function mtRenderCal() {
+  var first = new Date(mtCalY, mtCalM, 1), days = mtDaysIn(mtCalY, mtCalM), lead = (first.getDay() + 6) % 7, today = localISO(new Date());
+  var name = first.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  document.getElementById('mt-cal-title').textContent = name;
+  var occ = mtAllOccurrences(localISO(first), localISO(new Date(mtCalY, mtCalM, days))), by = {};
+  occ.forEach(function (o) { (by[o.iso] = by[o.iso] || []).push(o); });
+  var inc = 0, out = 0; occ.forEach(function (o) { if (o.plan.kind === 'income') inc += o.plan.amount; else if (o.plan.kind !== 'note') out += o.plan.amount; });
+  document.getElementById('mt-cal-month').textContent = 'Planned: +' + moneyFmt(inc) + ' in · ' + moneyFmt(out) + ' out';
+  var h = ['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(function (x) { return '<div class="mem-cal-head">' + x + '</div>'; }).join('');
+  for (var i = 0; i < lead; i++) h += '<div></div>';
+  for (var d = 1; d <= days; d++) {
+    var iso = localISO(new Date(mtCalY, mtCalM, d));
+    h += '<button type="button" class="mt-day' + (iso === today ? ' today' : '') + (iso === mtCalSel ? ' sel' : '') + '" data-mt-day="' + iso + '"><b>' + d + '</b>';
+    (by[iso] || []).forEach(function (o) { h += '<span class="mt-ev mt-k-' + o.plan.kind + (o.paid ? ' paid' : '') + '">' + (o.paid ? '✓ ' : '') + moneyEsc(o.plan.name) + (o.plan.kind === 'note' ? '' : ' ' + (o.plan.kind === 'income' ? '+' : '') + moneyFmt(o.plan.amount)) + '</span>'; });
+    h += '</button>';
+  }
+  var cal = document.getElementById('mt-cal'); cal.innerHTML = h;
+  cal.querySelectorAll('[data-mt-day]').forEach(function (b) { b.onclick = function () { mtCalSel = b.getAttribute('data-mt-day'); mtRenderCal(); }; });
+  // The selected day: its items + the add form
+  document.getElementById('mt-day-title').textContent = 'Add to ' + mtDate(mtCalSel).toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric' });
+  var mine = mtAllOccurrences(mtCalSel, mtCalSel), box = document.getElementById('mt-day-items');
+  box.innerHTML = mine.length ? mine.map(function (o) {
+    return mtItemRow(o, false).replace(/<\/div>$/, '<span class="mt-rep">' + MT_KIND_NAMES[o.plan.kind] + ' · ' + ({ none: 'once', week: 'every week', '2weeks': 'every 2 weeks', month: 'every month', year: 'every year' }[o.plan.repeat] || 'once') + '</span><button type="button" class="sleep-del" data-mt-delplan="' + o.plan.id + '" title="Delete this item">✕</button></div>');
+  }).join('') : '';
+  mtWireItems(box);
+  mtFillGoesTo('mt-p-goes', document.getElementById('mt-p-kind').value);
+}
+async function mtSavePlan() {
+  var name = document.getElementById('mt-p-name').value.trim(), amount = mtNum('mt-p-amount'), kind = document.getElementById('mt-p-kind').value;
+  if (!name) return mtMsg('mt-cal-msg', 'Give it a name.', 'error');
+  if (kind !== 'note' && !(amount > 0)) return mtMsg('mt-cal-msg', 'Enter an amount above 0.', 'error');
+  var goes = document.getElementById('mt-p-goes').value || '';
+  var row = { user_id: currentUser.id, name: name, amount: kind === 'note' ? 0 : Math.round(amount * 100) / 100, kind: kind, start_date: mtCalSel, repeat: document.getElementById('mt-p-repeat').value,
+    fund_id: goes.indexOf('f:') === 0 ? +goes.slice(2) : null, debt_id: goes.indexOf('d:') === 0 ? +goes.slice(2) : null };
+  var r = await sb.from('money_plans').insert(row);
+  if (r.error) return mtMsg('mt-cal-msg', 'Could not save: ' + r.error.message, 'error');
+  document.getElementById('mt-p-name').value = ''; document.getElementById('mt-p-amount').value = '';
+  mtMsg('mt-cal-msg', 'Saved "' + name + '".');
+  await mtLoadAll(); renderMoney();
+}
+async function mtDeletePlan(id) {
+  var p = mtPlans.find(function (x) { return x.id == id; }); if (!p) return;
+  if (!confirm('Delete "' + p.name + '"' + (p.repeat && p.repeat !== 'none' ? ' and all its repeats' : '') + '?\n\nAnything you already ticked stays in your money history.')) return;
+  var r = await sb.from('money_plans').delete().eq('id', id);
+  if (r.error) return mtMsg('mt-cal-msg', 'Could not delete: ' + r.error.message, 'error');
+  await mtLoadAll(); renderMoney();
+}
+
+// ---- GOALS ----
+function mtLinkOptions(sel) {
+  var keep = sel.value, h = '<option value="">—</option>';
+  mtFunds.forEach(function (f) { h += '<option value="f:' + f.id + '">🐷 ' + moneyEsc(f.name) + '</option>'; });
+  mtDebts.forEach(function (d) { h += '<option value="d:' + d.id + '">💳 ' + moneyEsc(d.name) + '</option>'; });
+  sel.innerHTML = h; sel.value = keep; if (sel.value !== keep) sel.value = '';
+}
+function mtRenderGoals() {
+  mtLinkOptions(document.getElementById('mt-g-link'));
+  var h = '';
+  mtGoals.forEach(function (g) {
+    var link = '';
+    var f = g.fund_id && mtFunds.find(function (x) { return x.id == g.fund_id; }), d = g.debt_id && mtDebts.find(function (x) { return x.id == g.debt_id; });
+    if (f) link = '🐷 ' + moneyEsc(f.name) + ' · ' + (f.target ? Math.round(mtFundSaved(f) / f.target * 100) : 0) + '% saved';
+    if (d) link = '💳 ' + moneyEsc(d.name) + ' · ' + (d.start_balance ? Math.round((1 - mtDebtLeft(d) / d.start_balance) * 100) : 0) + '% paid off';
+    h += '<div class="mt-goal"><span><b>' + moneyEsc(g.name) + '</b>' + (link ? '<small>' + link + '</small>' : '') + '</span>' +
+      '<span class="mt-goal-btns"><button type="button" class="sleep-q-btn mt-status mt-s' + (g.status || 0) + '" data-mt-status="' + g.id + '">' + MT_GOAL_STATUS[g.status || 0] + '</button>' +
+      '<button type="button" class="sleep-del" data-mt-delgoal="' + g.id + '" title="Delete goal">✕</button></span></div>';
+  });
+  var el = document.getElementById('mt-goals');
+  el.innerHTML = h || '<p class="sleep-empty">No goals yet. Add your first one below.</p>';
+  el.querySelectorAll('[data-mt-status]').forEach(function (b) { b.onclick = function () { mtCycleGoal(+b.getAttribute('data-mt-status')); }; });
+  el.querySelectorAll('[data-mt-delgoal]').forEach(function (b) { b.onclick = function () { mtDelete('money_goals', +b.getAttribute('data-mt-delgoal'), 'this goal', 'mt-goals-msg'); }; });
+}
+async function mtCycleGoal(id) {
+  var g = mtGoals.find(function (x) { return x.id == id; }); if (!g) return;
+  var next = ((g.status || 0) + 1) % 3, r = await sb.from('money_goals').update({ status: next }).eq('id', id);
+  if (r.error) return mtMsg('mt-goals-msg', 'Could not save: ' + r.error.message, 'error');
+  g.status = next; mtRenderGoals(); mtRenderToday();
+}
+async function mtAddGoal() {
+  var name = document.getElementById('mt-g-name').value.trim(), link = document.getElementById('mt-g-link').value || '';
+  if (!name) return mtMsg('mt-goals-msg', 'Type a goal first.', 'error');
+  var r = await sb.from('money_goals').insert({ user_id: currentUser.id, name: name, status: 0,
+    fund_id: link.indexOf('f:') === 0 ? +link.slice(2) : null, debt_id: link.indexOf('d:') === 0 ? +link.slice(2) : null });
+  if (r.error) return mtMsg('mt-goals-msg', 'Could not save: ' + r.error.message, 'error');
+  document.getElementById('mt-g-name').value = ''; mtMsg('mt-goals-msg', 'Goal added.');
+  await mtLoadAll(); renderMoney();
+}
+async function mtDelete(table, id, what, msgId) {
+  if (!confirm('Delete ' + what + '?')) return;
+  var r = await sb.from(table).delete().eq('id', id);
+  if (r.error) return mtMsg(msgId, 'Could not delete: ' + r.error.message, 'error');
+  await mtLoadAll(); renderMoney();
+}
+
+// ---- SAVINGS ----
+function mtBar(pct, cls) { return '<div class="mt-bar"><i class="' + (cls || '') + '" style="width:' + Math.max(0, Math.min(100, pct)) + '%"></i></div>'; }
+function mtRenderFunds() {
+  var total = 0, h = '';
+  mtFunds.forEach(function (f) {
+    var s = mtFundSaved(f), pct = f.target ? Math.round(s / f.target * 100) : 0; total += s;
+    h += '<div class="mt-prog"><div class="mt-prog-top"><b>' + moneyEsc(f.name) + '</b><span>' + moneyFmt(s) + (f.target ? ' of ' + moneyFmt(f.target) : '') +
+      ' <button type="button" class="sleep-del" data-mt-delfund="' + f.id + '" title="Delete fund">✕</button></span></div>' + mtBar(pct) +
+      '<small>' + pct + '% · ' + (f.target_date ? 'by ' + mtDate(f.target_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'No date') + (f.target && s < f.target ? ' · ' + moneyFmt(f.target - s) + ' to go' : (f.target ? ' · reached! 🎉' : '')) + '</small></div>';
+  });
+  document.getElementById('mt-funds-title').textContent = 'Your funds · ' + moneyFmt(total) + ' saved';
+  var el = document.getElementById('mt-funds');
+  el.innerHTML = h || '<p class="sleep-empty">No funds yet. Make one below (an emergency cushion, a trip...).</p>';
+  el.querySelectorAll('[data-mt-delfund]').forEach(function (b) { b.onclick = function () { mtDelete('money_funds', +b.getAttribute('data-mt-delfund'), 'this fund (money you added stays in your history)', 'mt-funds-msg'); }; });
+  var sel = document.getElementById('mt-fa-fund'), keep = sel.value;
+  sel.innerHTML = mtFunds.map(function (f) { return '<option value="' + f.id + '">' + moneyEsc(f.name) + '</option>'; }).join('') || '<option value="">Make a fund first</option>';
+  if (keep) sel.value = keep;
+}
+async function mtAddFund() {
+  var name = document.getElementById('mt-f-name').value.trim(), target = mtNum('mt-f-target'), start = mtNum('mt-f-start') || 0;
+  if (!name) return mtMsg('mt-funds-msg', 'Give the fund a name.', 'error');
+  var r = await sb.from('money_funds').insert({ user_id: currentUser.id, name: name, target: target > 0 ? target : 0, target_date: document.getElementById('mt-f-date').value || null, start_amount: start });
+  if (r.error) return mtMsg('mt-funds-msg', 'Could not save: ' + r.error.message, 'error');
+  ['mt-f-name', 'mt-f-target', 'mt-f-date', 'mt-f-start'].forEach(function (id) { document.getElementById(id).value = ''; });
+  mtMsg('mt-funds-msg', 'Fund added.'); await mtLoadAll(); renderMoney();
+}
+async function mtAddToFund() {
+  var id = +document.getElementById('mt-fa-fund').value, amount = mtNum('mt-fa-amount'), date = document.getElementById('mt-fa-date').value;
+  var f = mtFunds.find(function (x) { return x.id == id; });
+  if (!f) return mtMsg('mt-funds-msg', 'Make a fund first.', 'error');
+  if (!(amount > 0)) return mtMsg('mt-funds-msg', 'Enter an amount above 0.', 'error');
+  var r = await sb.from('money_logs').insert({ user_id: currentUser.id, kind: 'expense', item: 'To ' + f.name, amount: Math.round(amount * 100) / 100, category: 'Savings', account: moneyAccountList()[0] || 'Personal', log_date: date || localISO(new Date()), fund_id: f.id });
+  if (r.error) return mtMsg('mt-funds-msg', 'Could not save: ' + r.error.message, 'error');
+  document.getElementById('mt-fa-amount').value = ''; mtMsg('mt-funds-msg', 'Added ' + moneyFmt(amount) + ' to ' + f.name + '.');
+  await loadMoneyLogs(); renderMoney();
+}
+
+// ---- DEBT ----
+function mtRenderDebts() {
+  var owed = 0, mins = 0, h = '';
+  mtDebts.forEach(function (d) {
+    var left = mtDebtLeft(d), pct = d.start_balance ? Math.round((1 - left / d.start_balance) * 100) : 0; owed += left; mins += d.min_payment || 0;
+    h += '<div class="mt-prog"><div class="mt-prog-top"><b>' + moneyEsc(d.name) + '</b><span>' + moneyFmt(left) + ' left <button type="button" class="sleep-del" data-mt-deldebt="' + d.id + '" title="Delete debt">✕</button></span></div>' + mtBar(pct, 'paid') +
+      '<small>' + pct + '% paid off' + (d.apr ? ' · ' + d.apr + '% interest' : '') + (d.min_payment ? ' · minimum ' + moneyFmt(d.min_payment) + '/mo' : '') + (left === 0 && d.start_balance ? ' · paid off! 🎉' : '') + '</small></div>';
+  });
+  document.getElementById('mt-d-owed').textContent = moneyFmt(owed);
+  document.getElementById('mt-d-mins').textContent = moneyFmt(mins);
+  var el = document.getElementById('mt-debts');
+  el.innerHTML = h || '<p class="sleep-empty">No debts added. Lucky you! (Or add one below.)</p>';
+  el.querySelectorAll('[data-mt-deldebt]').forEach(function (b) { b.onclick = function () { mtDelete('money_debts', +b.getAttribute('data-mt-deldebt'), 'this debt (payments stay in your history)', 'mt-debts-msg'); }; });
+  var sel = document.getElementById('mt-dp-debt'), keep = sel.value;
+  sel.innerHTML = mtDebts.map(function (d) { return '<option value="' + d.id + '">' + moneyEsc(d.name) + '</option>'; }).join('') || '<option value="">Add a debt first</option>';
+  if (keep) sel.value = keep;
+}
+async function mtAddDebt() {
+  var name = document.getElementById('mt-d-name').value.trim(), bal = mtNum('mt-d-bal');
+  if (!name) return mtMsg('mt-debts-msg', 'Give the debt a name.', 'error');
+  if (!(bal > 0)) return mtMsg('mt-debts-msg', 'Enter the balance you owe.', 'error');
+  var r = await sb.from('money_debts').insert({ user_id: currentUser.id, name: name, start_balance: bal, apr: mtNum('mt-d-apr') || 0, min_payment: mtNum('mt-d-min') || 0 });
+  if (r.error) return mtMsg('mt-debts-msg', 'Could not save: ' + r.error.message, 'error');
+  ['mt-d-name', 'mt-d-bal', 'mt-d-apr', 'mt-d-min'].forEach(function (id) { document.getElementById(id).value = ''; });
+  mtMsg('mt-debts-msg', 'Debt added.'); await mtLoadAll(); renderMoney();
+}
+async function mtPayDebt() {
+  var id = +document.getElementById('mt-dp-debt').value, amount = mtNum('mt-dp-amount'), date = document.getElementById('mt-dp-date').value;
+  var d = mtDebts.find(function (x) { return x.id == id; });
+  if (!d) return mtMsg('mt-debts-msg', 'Add a debt first.', 'error');
+  if (!(amount > 0)) return mtMsg('mt-debts-msg', 'Enter an amount above 0.', 'error');
+  var r = await sb.from('money_logs').insert({ user_id: currentUser.id, kind: 'expense', item: d.name + ' payment', amount: Math.round(amount * 100) / 100, category: 'Credit', account: moneyAccountList()[0] || 'Personal', log_date: date || localISO(new Date()), debt_id: d.id });
+  if (r.error) return mtMsg('mt-debts-msg', 'Could not save: ' + r.error.message, 'error');
+  document.getElementById('mt-dp-amount').value = ''; mtMsg('mt-debts-msg', 'Logged ' + moneyFmt(amount) + ' toward ' + d.name + '.');
+  await loadMoneyLogs(); renderMoney();
+}
+
+// ---- ENVELOPES ----
+function mtRenderEnvs() {
+  var per = mtPeriod(new Date()), pf = localISO(per.from), pt = localISO(per.to), spent = {};
+  moneyLogs.forEach(function (r) { if (r.kind === 'expense' && !r.fund_id && r.log_date >= pf && r.log_date <= pt) spent[r.category] = (spent[r.category] || 0) + r.amount; });
+  document.getElementById('mt-env-title').textContent = mtPeriodLabel(per) + ' envelopes';
+  var h = '';
+  mtEnvs.forEach(function (e) {
+    var s = spent[e.category] || 0, lim = e.monthly_limit || 0, over = s > lim, pct = lim ? s / lim * 100 : 0;
+    h += '<div class="sleep-tile mt-env' + (over ? ' over' : '') + '"><div class="mt-prog-top"><b>✉️ ' + moneyEsc(e.category) + '</b><button type="button" class="sleep-del" data-mt-delenv="' + e.id + '" title="Delete envelope">✕</button></div>' + mtBar(pct, over ? 'over' : '') +
+      '<small>' + moneyFmt(s) + ' of ' + moneyFmt(lim) + (over ? ' · ' + moneyFmt(s - lim) + ' over!' : ' · ' + moneyFmt(lim - s) + ' left') + '</small></div>';
+  });
+  var el = document.getElementById('mt-envs');
+  el.innerHTML = h || '<p class="sleep-empty">No envelopes yet. Pick a category and a monthly limit below.</p>';
+  el.querySelectorAll('[data-mt-delenv]').forEach(function (b) { b.onclick = function () { mtDelete('money_envelopes', +b.getAttribute('data-mt-delenv'), 'this envelope', 'mt-env-msg'); }; });
+  var used = mtEnvs.map(function (e) { return e.category; });
+  document.getElementById('mt-e-cat').innerHTML = moneyCategoryList('expense').filter(function (c) { return used.indexOf(c) < 0; }).map(function (c) { return '<option>' + moneyEsc(c) + '</option>'; }).join('');
+}
+async function mtAddEnvelope() {
+  var cat = document.getElementById('mt-e-cat').value, lim = mtNum('mt-e-limit');
+  if (!cat) return mtMsg('mt-env-msg', 'Every category already has an envelope.', 'error');
+  if (!(lim > 0)) return mtMsg('mt-env-msg', 'Enter a monthly limit above 0.', 'error');
+  var r = await sb.from('money_envelopes').insert({ user_id: currentUser.id, category: cat, monthly_limit: lim });
+  if (r.error) return mtMsg('mt-env-msg', 'Could not save: ' + r.error.message, 'error');
+  document.getElementById('mt-e-limit').value = ''; mtMsg('mt-env-msg', 'Envelope added.');
+  await mtLoadAll(); renderMoney();
+}
+
+// ---- SETTINGS / SETUP ----
+function mtSetCurrency(c) { mtSaveMeta({ money_currency: c }); renderMoney(); }
+function mtSetMonthStart(v) { mtSaveMeta({ money_month_start: +v }); renderMoney(); mtMsg('mt-set-msg', 'Your month now starts on day ' + v + '.'); }
+function mtSetPayStart(iso) { if (!iso) return; moneyDistSetStart(iso); mtMsg('mt-set-msg', 'Pay period start saved.'); }
+function mtCatKind(k) { mtCatSel = k; mtRenderSettings(); }
+function mtRenderSettings() {
+  var st = document.getElementById('mt-s-start');
+  if (!st.options.length) { var h = ''; for (var i = 1; i <= 28; i++) h += '<option value="' + i + '">' + i + '</option>'; st.innerHTML = h; }
+  st.value = String(mtStartDay());
+  var pay = mtMeta('money_2wk_start'); if (pay) document.getElementById('mt-s-pay').value = pay;
+  document.getElementById('mt-cat-exp').className = 'sleep-q-btn' + (mtCatSel === 'expense' ? ' on' : '');
+  document.getElementById('mt-cat-inc').className = 'sleep-q-btn' + (mtCatSel === 'income' ? ' on' : '');
+  function chips(list, custom, key, boxId) {
+    var box = document.getElementById(boxId);
+    box.innerHTML = list.map(function (c) {
+      var mine = custom.indexOf(c) > -1;
+      return '<span class="mem-chip mt-chip">' + moneyEsc(c) + (mine ? '<button type="button" class="mem-tag-x" data-mt-rm="' + moneyEsc(c) + '" title="Remove">×</button>' : '') + '</span>';
+    }).join('');
+    box.querySelectorAll('[data-mt-rm]').forEach(function (b) { b.onclick = function () {
+      var v = b.getAttribute('data-mt-rm'), o = {}; o[key] = moneyMeta(key).filter(function (x) { return x !== v; });
+      mtSaveMeta(o).then(function () { refreshMoneySelects(); mtRenderSettings(); });
+    }; });
+  }
+  chips(moneyCategoryList(mtCatSel), moneyMeta('money_cats_' + mtCatSel), 'money_cats_' + mtCatSel, 'mt-cats');
+  chips(moneyAccountList(), moneyMeta('money_accounts'), 'money_accounts', 'mt-accs');
+}
+function mtAddListItem(which) {
+  var inp = document.getElementById(which === 'cat' ? 'mt-cat-new' : 'mt-acc-new'), v = inp.value.trim();
+  if (!v) return;
+  var key = which === 'cat' ? 'money_cats_' + mtCatSel : 'money_accounts', list = which === 'cat' ? moneyCategoryList(mtCatSel) : moneyAccountList();
+  if (list.some(function (x) { return x.toLowerCase() === v.toLowerCase(); })) return mtMsg('mt-set-msg', 'You already have that one.', 'error');
+  var o = {}; o[key] = moneyMeta(key).concat([v]);
+  mtSaveMeta(o).then(function () { inp.value = ''; refreshMoneySelects(); mtRenderSettings(); mtMsg('mt-set-msg', 'Added "' + v + '".'); });
 }
