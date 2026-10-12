@@ -1255,6 +1255,8 @@ body { --shop-gold: #B8860B; /* gold amounts (dark gold, readable on light backg
 .gold-row b { white-space: nowrap; color: var(--shop-gold); /* gold amount per row */ }
 .gold-total { border-bottom: none; border-top: 2px solid var(--c-dark); /* line above Earned / Balance totals */ font-weight: 700; }
 @media (hover: none) { .gold-hint { font-size: 0; } .gold-hint::after { content: 'ⓘ tap to see where it came from'; font-size: 10px; } }
+.shop-history-tile { grid-column: 1 / -1; /* full width under the two tiles */ min-width: 0; }
+.shop-history-chart { position: relative; height: 130px; margin-top: 4px; }
 .shop-gold { color: var(--shop-gold); /* gold amounts */ font-weight: 700; }
 .shop-rate-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; margin-top: 4px; font-size: 12px; color: var(--c-text); /* earning rules text */ }
 .shop-msg { min-height: 16px; margin: 0 0 8px; font-size: 12px; font-weight: 700; color: var(--c-text); /* "Bought ..." / error message */ }
@@ -1280,7 +1282,7 @@ body { --shop-gold: #B8860B; /* gold amounts (dark gold, readable on light backg
 .shop-undo { margin-left: 4px; }
 .shop-hist-sum { margin: 8px 0 0; font-size: 12px; font-weight: 700; color: var(--c-text); /* "Spent this month" line */ }
 @media (max-width: 700px) {
-  .shop-top { grid-template-columns: 1fr; }
+  .shop-top { grid-template-columns: minmax(0, 1fr); /* minmax keeps the gold chart from stretching the page on phones */ }
   .shop-add-row { grid-template-columns: 1fr 1fr; }
   .shop-add-row > div:first-child { grid-column: 1 / -1; }
   .shop-add-btn { grid-column: 1 / -1; width: 100%; }

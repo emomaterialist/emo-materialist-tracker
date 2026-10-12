@@ -3807,6 +3807,8 @@ function setShopMsg(t) { var el = document.getElementById('shop-msg'); if (el) e
 function computeGold() {
   var start = goldStartDate(), today = localISO(new Date()), earned = 0;
   var byHabit = [], tasks = { count: 0, gold: 0 }, streaks = 0;   // breakdown for the hover box
+  var dayEarn = {};   // gold earned on each date (for the "Gold over time" chart)
+  function addDay(iso, g) { if (iso > today) iso = today; if (iso < start) iso = start; dayEarn[iso] = (dayEarn[iso] || 0) + g; }
   // 1) Habits: gold per completion, capped at what was required that day (extra ticks earn nothing).
   RAW_HABITS.forEach(function (h) {
     var per = GOLD_VALUES[h.difficulty] || GOLD_UNRANKED, hid = String(h.id), logs = allTimeLogs[hid] || {}, cnt = 0;
@@ -3814,7 +3816,8 @@ function computeGold() {
       if (iso < start || iso > today) return;
       var n = logs[iso] || 0; if (n <= 0) return;
       var p = iso.split('-'), req = habitRequiredOn(h, +p[0], +p[1], +p[2]);
-      cnt += Math.min(n, req > 0 ? req : 1);
+      var c = Math.min(n, req > 0 ? req : 1);
+      cnt += c; addDay(iso, c * per);
     });
     earned += cnt * per;
     if (cnt) byHabit.push({ name: (h.icon ? h.icon + ' ' : '') + h.name, count: cnt, per: per, gold: cnt * per });
@@ -3824,7 +3827,7 @@ function computeGold() {
   shopTaskRows.forEach(function (r) {
     var wk = localISO(new Date(r.year, r.month - 1, 1 + r.week_number * 7));
     var gv = GOLD_VALUES[r.difficulty] || 0;
-    if (wk >= start && gv) { earned += gv; tasks.count++; tasks.gold += gv; }
+    if (wk >= start && gv) { earned += gv; tasks.count++; tasks.gold += gv; addDay(wk, gv); }
   });
   // 3) Perfect days (+5) and every 7 perfect days in a row (+20).
   var p0 = start.split('-'), d = new Date(+p0[0], +p0[1] - 1, +p0[2]), end = new Date(), run = 0, perfect = 0;
@@ -3839,11 +3842,48 @@ function computeGold() {
       if (((allTimeLogs[String(h.id)] || {})[iso] || 0) < r) met = false;
     });
     if (!need) continue;
-    if (met) { perfect++; earned += GOLD_PERFECT_DAY; run++; if (run % 7 === 0) { earned += GOLD_STREAK_7; streaks++; } }
+    if (met) { perfect++; earned += GOLD_PERFECT_DAY; addDay(iso, GOLD_PERFECT_DAY); run++; if (run % 7 === 0) { earned += GOLD_STREAK_7; streaks++; addDay(iso, GOLD_STREAK_7); } }
     else if (iso !== today) run = 0;
   }
   var spent = shopPurchases.reduce(function (a, p) { return a + Number(p.price); }, 0);
-  return { start: start, earned: earned, spent: spent, balance: earned - spent, perfect: perfect, byHabit: byHabit, tasks: tasks, streaks: streaks };
+  var daySpend = {};
+  shopPurchases.forEach(function (p) {
+    var iso = p.bought_at ? localISO(new Date(p.bought_at)) : today;
+    if (iso < start) iso = start; if (iso > today) iso = today;
+    daySpend[iso] = (daySpend[iso] || 0) + Number(p.price);
+  });
+  return { start: start, earned: earned, spent: spent, balance: earned - spent, perfect: perfect, byHabit: byHabit, tasks: tasks, streaks: streaks, dayEarn: dayEarn, daySpend: daySpend };
+}
+
+// "Gold over time" line: starts at 0 on your first day; each point is your balance at the END of that day
+// (gold earned that day minus anything you bought that day), so the next day starts where the last one ended.
+var goldHistoryChart = null;
+function renderGoldHistory(g) {
+  var canvas = document.getElementById('goldHistoryChart'); if (!canvas || typeof Chart === 'undefined') return;
+  var p = g.start.split('-'), d = new Date(+p[0], +p[1] - 1, +p[2]), end = new Date(); end.setHours(0, 0, 0, 0);
+  var labels = ['Start'], vals = [0], info = [''], bal = 0;
+  for (; d <= end; d.setDate(d.getDate() + 1)) {
+    var iso = localISO(d), e = g.dayEarn[iso] || 0, s = g.daySpend[iso] || 0;
+    bal += e - s;
+    labels.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+    vals.push(bal);
+    info.push('+' + e + ' G earned' + (s ? ', −' + s + ' G spent' : ''));
+  }
+  var gold = getThemeColor('--shop-gold') || '#B8860B', muted = getThemeColor('--c-text-muted') || '#888';
+  if (goldHistoryChart) goldHistoryChart.destroy();
+  goldHistoryChart = new Chart(canvas, {
+    type: 'line',
+    data: { labels: labels, datasets: [{ data: vals, borderColor: gold, backgroundColor: hexToRgba(gold, 0.15), fill: true, tension: 0, borderWidth: 2, pointRadius: vals.length > 40 ? 0 : 3, pointBackgroundColor: gold }] },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: {
+        title: function (c) { return c[0].dataIndex === 0 ? 'Start of day 1' : 'End of ' + c[0].label; },
+        label: function (c) { return 'Balance: ' + c.raw + ' G'; },
+        afterLabel: function (c) { return info[c.dataIndex]; } } } },
+      scales: {
+        x: { ticks: { color: muted, font: { size: 10 }, autoSkip: true, maxRotation: 0 }, grid: { display: false } },
+        y: { suggestedMin: 0, ticks: { color: muted, font: { size: 10 }, precision: 0 }, grid: { color: hexToRgba(muted, 0.2) } }
+      } }
+  });
 }
 
 // Hover box on "Your gold": which habits earned what. Hover on computer, tap on phone.
@@ -3878,6 +3918,7 @@ function renderShop() {
   bal.className = 'shop-big ' + (g.balance < 0 ? 'money-out' : 'shop-gold');
   document.getElementById('shop-earned').textContent = 'Earned ' + g.earned + ' G · Spent ' + g.spent + ' G · counting since ' + shopPretty(g.start);
   renderGoldBreakdown(g);
+  renderGoldHistory(g);
 
   var h = '';
   SHOP_TIERS.forEach(function (t) {
