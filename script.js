@@ -507,7 +507,12 @@ var HABIT_COLOR_CONFIG = {
   'experimental': { mode:'curated', palette:['#f6e48e','#f8c391','#f67481','#f5ebd5','#b39977','#ffeb99','#f0d77d','#e6c999','#ffc896','#f0b88f','#f8d4a8','#ffb38f'] },
   'v4p3':     { mode:'curated', palette:['#FF00FF','#00FFFF','#FFFF00','#FF6600','#9933FF','#00FF88','#FF0055','#00CCFF','#FF99FF','#99FF00','#FF9900','#FF1493'] },
   'debug':    { mode:'curated', palette:['#A86B87','#A89860','#7A95A8','#8A9B60','#7FA8A8','#6BA876','#8B6BA8','#A87A5A','#99A876','#6BA895','#7AA0B8','#7589B8'] },
-  'dark-romantic': { mode:'curated', palette:['#D1436B','#1B5E5E','#2D5A2D','#1A4A6F','#5B2E5F','#8B5A3C','#D1946B','#A8A8B8','#E8D9D9','#C9A876','#B08D8D','#946B6B'] }
+  'dark-romantic': { mode:'curated', palette:['#D1436B','#1B5E5E','#2D5A2D','#1A4A6F','#5B2E5F','#8B5A3C','#D1946B','#A8A8B8','#E8D9D9','#C9A876','#B08D8D','#946B6B'] },
+  'coquette':     { mode:'curated', palette:['#E8A0B4','#C26A85','#D9B48F','#B79CC8','#9FC2A8','#F2B5C4','#A85A72','#E6C9A8','#CFA59B','#D98BA3','#8FA9C7','#F4C9A8'] },
+  'pixel-pink':   { mode:'curated', palette:['#FF3D8B','#9B2FAE','#00B8A9','#FFC93C','#FF7A5C','#3D0A24','#F15BB5','#6A4CFF','#FF9EC7','#00897B','#C77DFF','#E8A400'] },
+  'pixel-arcade': { mode:'curated', palette:['#FFD93D','#3EC1D3','#FF6B6B','#6BCB77','#B388FF','#FF9F45','#4D96FF','#F15BB5','#00F5D4','#FEE440','#FF5D8F','#9BF6FF'] },
+  'pastel-goth':  { mode:'curated', palette:['#FF8CCF','#C3A6FF','#8FE3CF','#FFB3E0','#9AC8FF','#E05FA8','#A07CE8','#F6D6E8','#FF6FB5','#7FD6C2','#D9B8FF','#FFC4E6'] },
+  'goth-noir':    { mode:'curated', palette:['#F2F2F2','#A6A6A6','#D0D0D0','#7A7A7A','#E3E3E3','#8E8E8E','#BBBBBB','#666666','#FFFFFF','#959595','#C8C8C8','#727272'] }
 };
 var GOLDEN_ANGLE = 137.508;
 function colorForHabitIndex(i) {
@@ -631,7 +636,7 @@ function renderDonuts() {
     monthGoal+=tp; monthDone+=td;
     var pct=tp>0?Math.round((td/tp)*100):0, offset=circ-(pct/100)*circ;
     weekPcts.push(pct);
-    var color=weekColors[w]||'#ccc', fill=weekFillColors[w]||'#eee', txt=weekTextColors[w]||'#333';
+    var color=weekColors[w]||'#ccc', fill=getThemeColor('--week-donut-track')||weekFillColors[w]||'#eee', txt=getThemeColor('--week-donut-text')||weekTextColors[w]||'#333';   // dark themes can set their own donut track/text colors
     var item=document.createElement('div'); item.style.cssText='flex:0 0 auto;text-align:center;';
     item.innerHTML='<svg width="74" height="74" viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" fill="none" stroke="'+fill+'" stroke-width="8"></circle><circle cx="32" cy="32" r="26" fill="none" stroke="'+color+'" stroke-width="8" stroke-dasharray="'+circ+' '+circ+'" stroke-dashoffset="'+offset+'" transform="rotate(-90 32 32)" stroke-linecap="round"></circle><text x="32" y="29" text-anchor="middle" font-size="9" font-weight="600" fill="'+txt+'">Wk '+(w+1)+'</text><text x="32" y="43" text-anchor="middle" font-size="13" font-weight="700" fill="'+txt+'">'+pct+'%</text></svg>';
     el.appendChild(item);
@@ -1415,9 +1420,12 @@ function renderActualVsIntended() {
       if(req>0 && done<req) {
         missedHabits.push({name: h.name, missed: req-done});
       }
-      var ratio=req>0?done/req:0;
+      // Both lines count HABITS (a habit done 2 of 2 times = 1 habit), same as the Daily trend chart.
+      // Before, "Intended" added up times (2x habit = 2) while "Actual" added up habits, so the lines didn't match.
+      // A habit done on a day it isn't required still counts as done (like Daily trend), it just isn't "intended".
+      var ratio=done/(req>0?req:1);
       dayActual+=extraCreditEnabled?ratio:Math.min(ratio,1);
-      dayIntended+=req;
+      if(req>0) dayIntended+=1;
     });
     
     dayDetails[d] = {intended: intendedHabits, completed: completedHabits, missed: missedHabits};
@@ -1428,13 +1436,27 @@ function renderActualVsIntended() {
   var pink=getThemeColor('--c-pink');
   var purple=getThemeColor('--c-purple');
   var months_short=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  
+  // Glow color: the theme's second accent, lightened 35% so it shows up bright on dark themes too
+  var glowBase=hexToRgb(purple)||{r:180,g:140,b:255};
+  function glowRgba(a){ return 'rgba('+Math.round(glowBase.r+(255-glowBase.r)*0.35)+','+Math.round(glowBase.g+(255-glowBase.g)*0.35)+','+Math.round(glowBase.b+(255-glowBase.b)*0.35)+','+a+')'; }
+
   actualVsIntendedInstance=new Chart(el,{
     type:'line',
     data:{labels:labels,datasets:[
-      {label:'Intended',data:intended,borderColor:hexToRgba(purple,0.4),backgroundColor:hexToRgba(purple,0.35),borderWidth:1.5,borderDash:[4,3],fill:true,tension:0,pointRadius:0,order:2},
-      {label:'Actual',data:actual,borderColor:pink,backgroundColor:hexToRgba(pink,0.08),borderWidth:2,fill:false,tension:0.3,pointRadius:2,pointBackgroundColor:pink,order:1}
+      {label:'Intended',data:intended,borderColor:glowRgba(1),borderWidth:1.5,borderDash:[4,3],fill:true,tension:0,pointRadius:0,order:2,
+        // Glowing gradient fill: bright at the top edge of the band, fading to clear at the bottom
+        backgroundColor:function(c){
+          var area=c.chart.chartArea; if(!area) return glowRgba(0.5);
+          var g=c.chart.ctx.createLinearGradient(0,area.top,0,area.bottom);
+          g.addColorStop(0,glowRgba(0.85)); g.addColorStop(0.45,glowRgba(0.4)); g.addColorStop(1,glowRgba(0.05));
+          return g;
+        }},
+      {label:'Actual',data:actual,borderColor:pink,backgroundColor:hexToRgba(pink,0.08),borderWidth:2,fill:false,tension:0,pointRadius:2,pointBackgroundColor:pink,order:1}
     ]},
+    // Soft glow around the Intended band (draws a blurred halo in the theme's second accent color)
+    plugins:[{id:'intendedGlow',
+      beforeDatasetDraw:function(chart,args){ if(args.index!==0)return; var ctx=chart.ctx; ctx.save(); ctx.shadowColor=glowRgba(1); ctx.shadowBlur=16; },
+      afterDatasetDraw:function(chart,args){ if(args.index!==0)return; chart.ctx.restore(); }}],
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{filter:function(item){return item.dataset.label==='Actual';},callbacks:{
       title:function(ctx){return months_short[currentMonth-1]+' '+ctx[0].label+', '+currentYear;},
       afterTitle:function(ctx){
@@ -1521,7 +1543,7 @@ function toggleHistoryPage() {
   var page=document.getElementById('history-page');
   var isShowing=page.style.display==='block';
   page.style.display=isShowing?'none':'block';
-  ['sleep-page','mood-page','money-page'].forEach(function(id){var el=document.getElementById(id); if(el)el.style.display='none';});
+  ['sleep-page','mood-page','money-page','shop-page','memory-page'].forEach(function(id){var el=document.getElementById(id); if(el)el.style.display='none';});
   if(!isShowing)renderHistoryPage();
 }
 function renderHistoryPage() {
@@ -1996,6 +2018,7 @@ function computeStreak() {
 }
 
 function renderXpStats() {
+  renderPaceChart();   // pace chart shows only when XP Mode is off
   var sides = document.querySelectorAll('.xp-side');
   if (!sides.length) return;
   for (var si = 0; si < sides.length; si++) sides[si].style.display = xpMode ? '' : 'none';
@@ -2475,7 +2498,7 @@ function toggleSleepPage() {
   var opening = page.style.display !== 'block';
   page.style.display = opening ? 'block' : 'none';
   if (!opening) return;
-  ['history-page', 'mood-page', 'money-page'].forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  ['history-page', 'mood-page', 'money-page', 'shop-page', 'memory-page'].forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
   var meta = currentUser && currentUser.user_metadata;
   sleepGoal = (meta && meta.sleep_goal) ? Number(meta.sleep_goal) : 8;
   document.getElementById('sleep-goal').value = sleepGoal;
@@ -2647,7 +2670,7 @@ function toggleMoodPage() {
   var opening = page.style.display !== 'block';
   page.style.display = opening ? 'block' : 'none';
   if (!opening) return;
-  ['sleep-page', 'history-page', 'money-page'].forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  ['sleep-page', 'history-page', 'money-page', 'shop-page', 'memory-page'].forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
   var meta = currentUser && currentUser.user_metadata;
   if (meta && meta.mood_style) moodStyle = meta.mood_style;
   moodYear = currentYear; moodMonth = currentMonth;
@@ -2879,7 +2902,7 @@ function moodGarden() {
 // so they show up on every device.
 // ============================================
 var MONEY_CATS = {
-  expense: ['Groceries / Food', 'Travel', 'Bills', 'Electronics', 'Shopping', 'Fun', 'Health', 'Credit', 'Other'],
+  expense: ['Groceries / Food', 'Travel', 'Rent', 'Bills', 'Electronics', 'Shopping', 'Fun', 'Health', 'Credit', 'Other'],
   income: ['Salary', 'Side hustle', 'Etsy sales', 'Gift', 'Refund', 'Other']
 };
 var MONEY_ACCOUNTS = ['Personal', 'Business', 'Savings', 'Cash'];
@@ -2893,7 +2916,7 @@ function toggleMoneyPage() {
   var opening = page.style.display !== 'block';
   page.style.display = opening ? 'block' : 'none';
   if (!opening) return;
-  ['sleep-page', 'history-page', 'mood-page'].forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  ['sleep-page', 'history-page', 'mood-page', 'shop-page', 'memory-page'].forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
   document.getElementById('money-date').value = localISO(new Date());
   setMoneyKind(moneyKind);
   loadMoneyLogs().then(renderMoney);
@@ -3113,27 +3136,42 @@ function impHighlight(desc, match) {
   return moneyEsc(desc).replace(/[A-Za-z0-9]+/g, function (w) { return need.indexOf(w.toUpperCase()) > -1 ? '<mark class="money-mark">' + w + '</mark>' : w; });
 }
 function impRules() { return moneyMeta('money_rules'); }
-function impRuleFor(t) {
-  return impRules().filter(function (r) { return r.kind === t.kind && impMatches(t.desc, r.match); })
-    .sort(function (a, b) { return impWords(b.match).length - impWords(a.match).length; })[0];
+// Amount check: a rule or group with "about $X ± $Y" only matches amounts in that range. No amount = any amount.
+function impAmountOk(t, amt, tol) {
+  if (amt === null || amt === undefined || amt === '' || isNaN(amt)) return true;
+  return Math.abs(Math.abs(t.amt) - Number(amt)) <= Number(tol || 0) + 0.004;
 }
-function impSaveRule(match, kind, cat, acc) {
-  var key = impWords(match).join(' ');
-  var list = impRules().filter(function (r) { return !(r.kind === kind && r.match === key); });
-  list.push({ match: key, kind: kind, cat: cat, acc: acc });
+function impRuleMatches(t, r) {
+  return (r.kind === 'any' || r.kind === t.kind) && impMatches(t.desc, r.match) && impAmountOk(t, r.amt, r.tol);
+}
+// Most specific rule wins: rules with an amount first, then rules with more words.
+function impRuleFor(t) {
+  return impRules().filter(function (r) { return impRuleMatches(t, r); })
+    .sort(function (a, b) { return ((b.amt != null) - (a.amt != null)) || (impWords(b.match).length - impWords(a.match).length); })[0];
+}
+function impPersistRules(list) {
   currentUser.user_metadata = currentUser.user_metadata || {};
   currentUser.user_metadata.money_rules = list;
   sb.auth.updateUser({ data: { money_rules: list } }).then(function (r) { if (r && r.data && r.data.user) currentUser = r.data.user; });
 }
+function impSaveRule(match, kind, cat, acc, amt, tol) {
+  var key = impWords(match).join(' ');
+  var a = (amt === '' || amt === null || isNaN(amt)) ? null : Math.round(Number(amt) * 100) / 100;
+  var tl = a === null ? null : Math.round(Number(tol || 0) * 100) / 100;
+  var list = impRules().filter(function (r) { return !(r.kind === kind && r.match === key && (r.amt == null ? null : r.amt) === a); });
+  list.push({ match: key, kind: kind, cat: cat, acc: acc, amt: a, tol: tl });
+  impPersistRules(list);
+}
 
 // ---- Reading the CSV file ----
-function impSplitLine(line) {
+function impSplitLine(line, delim) {
+  delim = delim || ',';
   var out = [], cell = '', q = false;
   for (var i = 0; i < line.length; i++) {
     var ch = line[i];
     if (q) { if (ch === '"' && line[i + 1] === '"') { cell += '"'; i++; } else if (ch === '"') q = false; else cell += ch; }
     else if (ch === '"') q = true;
-    else if (ch === ',') { out.push(cell.trim()); cell = ''; }
+    else if (ch === delim) { out.push(cell.trim()); cell = ''; }
     else cell += ch;
   }
   out.push(cell.trim());
@@ -3148,22 +3186,68 @@ function impDate(s) {
   var d = new Date(s); return isNaN(d) ? null : localISO(d);
 }
 function impNum(s) { var v = parseFloat(String(s || '').replace(/[$,\s]/g, '').replace(/^\((.*)\)$/, '-$1')); return isNaN(v) ? 0 : v; }
-function impParse(text, flip) {
-  var lines = text.replace(/^﻿/, '').split(/\r?\n/).filter(function (l) { return l.trim(); });
+// ---- Reading the file: split into a heading row + data rows. Works with commas, tabs or semicolons. ----
+function impReadTable(text) {
+  var lines = String(text).replace(/^\uFEFF/, '').split(/\r?\n/).filter(function (l) { return l.trim(); });
   if (lines.length < 2) return null;
-  var head = impSplitLine(lines.shift()).map(function (h) { return h.toLowerCase(); });
-  function col(words) { return head.findIndex(function (h) { return words.some(function (w) { return h.indexOf(w) > -1; }); }); }
-  var di = col(['date']), de = col(['description', 'desc', 'name', 'memo', 'payee', 'details']);
-  var am = col(['amount']), deb = col(['debit', 'withdrawal']), cre = col(['credit', 'deposit']);
-  if (di < 0 || de < 0 || (am < 0 && deb < 0 && cre < 0)) return null;
-  return lines.map(function (l) {
-    var c = impSplitLine(l);
-    var amt = am > -1 ? impNum(c[am]) : impNum(c[cre]) - Math.abs(impNum(c[deb]));
+  var first = lines[0], delim = ',';
+  [['\t', (first.match(/\t/g) || []).length], [';', (first.match(/;/g) || []).length]].forEach(function (d) {
+    if (d[1] > (first.match(/,/g) || []).length && d[1] > 0) delim = d[0];
+  });
+  var head = impSplitLine(lines.shift(), delim);
+  var rows = lines.map(function (l) { return impSplitLine(l, delim); });
+  return { head: head, rows: rows };
+}
+
+// How many different values a column has (a "Details" column that only says DEBIT/CREDIT has very few).
+function impVariety(rows, i) {
+  var seen = {};
+  rows.slice(0, 200).forEach(function (r) { seen[String(r[i] || '').toUpperCase()] = 1; });
+  return Object.keys(seen).length;
+}
+
+// Best guess for which column is which. Checks heading words in priority order.
+function impGuessColumns(table) {
+  var head = table.head.map(function (h) { return h.toLowerCase(); }), rows = table.rows;
+  function find(words, okFn) {
+    for (var w = 0; w < words.length; w++) for (var i = 0; i < head.length; i++)
+      if (head[i].indexOf(words[w]) > -1 && (!okFn || okFn(i))) return i;
+    return -1;
+  }
+  var manyValues = function (i) { return rows.length < 6 || impVariety(rows, i) > 3; };
+  var g = {
+    date: find(['posting date', 'transaction date', 'post date', 'date']),
+    desc: find(['description', 'payee', 'merchant', 'name', 'memo', 'details', 'desc'], manyValues),
+    amount: find(['amount']),
+    debit: find(['debit', 'withdrawal']),
+    credit: find(['credit', 'deposit'])
+  };
+  if (g.desc < 0) g.desc = find(['description', 'payee', 'merchant', 'name', 'memo', 'details', 'desc']);
+  g.mode = g.amount > -1 ? 'single' : 'split';
+  return g;
+}
+
+// Turns the table into transactions using the chosen columns.
+function impBuildRows(table, map, flip) {
+  return table.rows.map(function (c) {
+    var amt = map.mode === 'single' ? impNum(c[map.amount]) : impNum(c[map.credit]) - Math.abs(impNum(c[map.debit]));
     if (flip) amt = -amt;
-    var date = impDate(c[di]), desc = (c[de] || '').slice(0, 120);
+    var date = impDate(c[map.date]), desc = String(c[map.desc] || '').slice(0, 120);
     return { date: date, desc: desc, amt: amt, kind: amt < 0 ? 'expense' : 'income', done: false, skip: false };
   }).filter(function (t) { return t.date && t.desc && t.amt !== 0; });
 }
+
+// Kept for quick use: read + guess + build in one go.
+function impParse(text, flip) {
+  var table = impReadTable(text); if (!table) return null;
+  var g = impGuessColumns(table);
+  if (g.date < 0 || g.desc < 0 || (g.mode === 'single' ? g.amount < 0 : (g.debit < 0 && g.credit < 0))) return null;
+  return impBuildRows(table, g, flip);
+}
+
+// ---- Step 1: upload, then ask the user to confirm the columns ----
+var importTable = null, importFileName = '';
+function impHeaderKey(head) { return head.map(function (h) { return h.toLowerCase().trim(); }).join('|'); }
 
 function onImportFile(input) {
   var f = input.files && input.files[0];
@@ -3172,28 +3256,108 @@ function onImportFile(input) {
   status.textContent = 'Reading ' + f.name + '...';
   var reader = new FileReader();
   reader.onload = function () {
-    var rows = impParse(String(reader.result), document.getElementById('money-import-flip').checked);
     input.value = '';
-    if (!rows || !rows.length) { status.textContent = 'Could not find Date, Description and Amount (or Debit/Credit) columns in that file.'; document.getElementById('money-import-review').innerHTML = ''; return; }
-    // Duplicate protection: skip anything already in your Money tracker (same date, description, amount and type).
-    var have = {};
-    moneyLogs.forEach(function (r) { have[r.log_date + '|' + r.item + '|' + Number(r.amount).toFixed(2) + '|' + r.kind] = 1; });
-    importDupes = 0; importSaved = 0;
-    importTx = rows.filter(function (t) {
-      var k = t.date + '|' + t.desc + '|' + Math.abs(t.amt).toFixed(2) + '|' + t.kind;
-      if (have[k]) { importDupes++; return false; }
-      return true;
-    });
-    importCur = 0;
-    status.textContent = f.name + ': ' + rows.length + ' transactions' + (importDupes ? ', ' + importDupes + ' already in your tracker (skipped)' : '') + '.';
-    impNext();
+    var table = impReadTable(String(reader.result));
+    importTx = []; importDupes = 0;
+    if (!table || table.head.length < 2) { status.textContent = 'That file does not look like a CSV with column headings.'; document.getElementById('money-import-review').innerHTML = ''; return; }
+    importTable = table; importFileName = f.name;
+    status.textContent = f.name + ': ' + table.rows.length + ' rows. Check the columns below, then click Continue.';
+    renderColumnCheck();
   };
   reader.readAsText(f);
 }
 
+function renderColumnCheck() {
+  var t = importTable, saved = (moneyMeta('money_csv_maps_list').filter(function (m) { return m.key === impHeaderKey(t.head); })[0] || {}).map;
+  var g = saved || impGuessColumns(t);
+  function opts(chosen, allowNone) {
+    return (allowNone ? '<option value="-1">(none)</option>' : '') + t.head.map(function (h, i) {
+      return '<option value="' + i + '"' + (i === chosen ? ' selected' : '') + '>' + moneyEsc(h || ('Column ' + (i + 1))) + '</option>';
+    }).join('');
+  }
+  document.getElementById('money-import-review').innerHTML =
+    '<div class="money-colcheck">' +
+    '<p class="money-import-done">Is this right? Pick the column that holds each piece.</p>' +
+    (saved ? '<p class="mood-note">Using the setup you confirmed last time for this bank. Change anything that looks off.</p>' : '<p class="mood-note">These are the app\'s best guesses. Change any that look wrong.</p>') +
+    '<div class="money-colcheck-grid">' +
+    '<div><p class="sleep-label">Date</p><select id="col-date" class="sleep-input">' + opts(g.date) + '</select></div>' +
+    '<div><p class="sleep-label">Name / description</p><select id="col-desc" class="sleep-input">' + opts(g.desc) + '</select></div>' +
+    '<div><p class="sleep-label">Money is in</p><select id="col-mode" class="sleep-input"><option value="single"' + (g.mode === 'single' ? ' selected' : '') + '>One Amount column</option><option value="split"' + (g.mode === 'split' ? ' selected' : '') + '>Separate Debit and Credit columns</option></select></div>' +
+    '<div id="col-single-wrap"><p class="sleep-label">Amount</p><select id="col-amount" class="sleep-input">' + opts(g.amount, true) + '</select></div>' +
+    '<div id="col-debit-wrap"><p class="sleep-label">Debit (money out)</p><select id="col-debit" class="sleep-input">' + opts(g.debit, true) + '</select></div>' +
+    '<div id="col-credit-wrap"><p class="sleep-label">Credit (money in)</p><select id="col-credit" class="sleep-input">' + opts(g.credit, true) + '</select></div>' +
+    '</div><p class="sleep-label">Preview (first 3 rows)</p><div id="col-preview" class="money-out-box"></div><p id="col-warn" class="sleep-msg error"></p>' +
+    '<div class="money-import-btns"><button type="button" class="settings-btn" onclick="confirmColumns()">Looks right, continue</button><button type="button" class="sleep-q-btn" onclick="cancelImport()">Cancel</button></div></div>';
+  ['col-date', 'col-desc', 'col-mode', 'col-amount', 'col-debit', 'col-credit'].forEach(function (id) { document.getElementById(id).addEventListener('change', renderColumnPreview); });
+  document.getElementById('money-import-flip').addEventListener('change', renderColumnPreview);
+  renderColumnPreview();
+}
+
+function readColumnChoice() {
+  function v(id) { return parseInt(document.getElementById(id).value, 10); }
+  return { date: v('col-date'), desc: v('col-desc'), mode: document.getElementById('col-mode').value, amount: v('col-amount'), debit: v('col-debit'), credit: v('col-credit') };
+}
+
+function renderColumnPreview() {
+  if (!document.getElementById('col-preview')) return;
+  var m = readColumnChoice(), single = m.mode === 'single';
+  document.getElementById('col-single-wrap').style.display = single ? '' : 'none';
+  document.getElementById('col-debit-wrap').style.display = single ? 'none' : '';
+  document.getElementById('col-credit-wrap').style.display = single ? 'none' : '';
+  var flip = document.getElementById('money-import-flip').checked;
+  var h = '<table class="money-table"><tr><th>Date</th><th>Name</th><th class="money-num">Amount</th></tr>';
+  importTable.rows.slice(0, 3).forEach(function (c) {
+    var amt = single ? impNum(c[m.amount]) : impNum(c[m.credit]) - Math.abs(impNum(c[m.debit]));
+    if (flip) amt = -amt;
+    h += '<tr><td>' + moneyEsc(c[m.date] || '') + '</td><td>' + moneyEsc(c[m.desc] || '') + '</td><td class="money-num ' + (amt < 0 ? 'money-out' : 'money-in') + '">' + moneyFmt(amt) + '</td></tr>';
+  });
+  document.getElementById('col-preview').innerHTML = h + '</table>';
+  var warn = '';
+  if (m.desc === m.date || (single && m.desc === m.amount)) warn = 'The name column is the same as another column. Pick a different one.';
+  else if (importTable.rows.length > 5 && impVariety(importTable.rows, m.desc) <= 3) warn = 'Almost every row has the same name ("' + moneyEsc(importTable.rows[0][m.desc] || '') + '"). Is that really the name column?';
+  else if (single ? m.amount < 0 : (m.debit < 0 && m.credit < 0)) warn = 'Pick the column with the money amounts.';
+  document.getElementById('col-warn').innerHTML = warn;
+}
+
+function cancelImport() {
+  importTable = null; importTx = [];
+  document.getElementById('money-import-review').innerHTML = '';
+  document.getElementById('money-import-status').textContent = 'Import cancelled.';
+}
+
+function confirmColumns() {
+  var m = readColumnChoice();
+  if (m.date < 0 || m.desc < 0 || (m.mode === 'single' ? m.amount < 0 : (m.debit < 0 && m.credit < 0))) {
+    document.getElementById('col-warn').textContent = 'Pick a column for the date, the name and the amount.'; return;
+  }
+  // Remember this bank's column setup (matched by its heading line) for next time.
+  var key = impHeaderKey(importTable.head);
+  var list = moneyMeta('money_csv_maps_list').filter(function (x) { return x.key !== key; });
+  list.push({ key: key, map: m });
+  currentUser.user_metadata = currentUser.user_metadata || {};
+  currentUser.user_metadata.money_csv_maps_list = list;
+  sb.auth.updateUser({ data: { money_csv_maps_list: list } }).then(function (r) { if (r && r.data && r.data.user) currentUser = r.data.user; });
+
+  var rows = impBuildRows(importTable, m, document.getElementById('money-import-flip').checked);
+  var status = document.getElementById('money-import-status');
+  if (!rows.length) { document.getElementById('col-warn').textContent = 'No rows had a readable date, name and amount with these columns.'; return; }
+  // Duplicate protection: skip anything already in your Money tracker (same date, description, amount and type).
+  var have = {};
+  moneyLogs.forEach(function (r) { have[r.log_date + '|' + r.item + '|' + Number(r.amount).toFixed(2) + '|' + r.kind] = 1; });
+  importDupes = 0; importSaved = 0;
+  importTx = rows.filter(function (t) {
+    var k = t.date + '|' + t.desc + '|' + Math.abs(t.amt).toFixed(2) + '|' + t.kind;
+    if (have[k]) { importDupes++; return false; }
+    return true;
+  });
+  importCur = 0;
+  status.textContent = importFileName + ': ' + rows.length + ' transactions' + (importDupes ? ', ' + importDupes + ' already in your tracker (skipped)' : '') + '.';
+  impNext();
+}
+
 function impNext() { while (importCur < importTx.length && (importTx[importCur].done || importTx[importCur].skip)) importCur++; renderImport(); }
-function impSimilar(t, match) { return importTx.filter(function (o) { return o !== t && !o.done && !o.skip && o.kind === t.kind && impMatches(o.desc, match); }); }
-function impOptions(list, chosen) { return list.map(function (x) { return '<option' + (x === chosen ? ' selected' : '') + '>' + moneyEsc(x) + '</option>'; }).join(''); }
+function impSimilar(t, match, amt, tol) { return importTx.filter(function (o) { return o !== t && !o.done && !o.skip && o.kind === t.kind && impMatches(o.desc, match) && impAmountOk(o, amt, tol); }); }
+function impOptions(list, chosen) { if (chosen && list.indexOf(chosen) < 0) list = [chosen].concat(list); return list.map(function (x) { return '<option' + (x === chosen ? ' selected' : '') + '>' + moneyEsc(x) + '</option>'; }).join(''); }
 
 function renderImport() {
   var box = document.getElementById('money-import-review');
@@ -3213,20 +3377,24 @@ function renderImport() {
     '<p class="sleep-label">Group by these words (edit to make it more or less specific)</p>' +
     '<input type="text" id="imp-match" class="sleep-input money-import-match" value="' + moneyEsc(match) + '">' +
     '<p class="mood-note">A transaction matches when its description has <b>all</b> of these words (highlighted).</p>' +
-    '<div class="money-import-grid"><div><p class="sleep-label">Category' + (rule ? ' (suggested)' : '') + '</p><select id="imp-cat" class="sleep-input">' + impOptions(cats, rule && rule.cat) + '</select></div>' +
+    '<p class="sleep-label">Amount is about (optional)</p><div class="money-import-amtrow">$ <input type="number" id="imp-amt" class="sleep-input" min="0" step="0.01" placeholder="any amount" value="' + (rule && rule.amt != null ? rule.amt : '') + '"> ± $ <input type="number" id="imp-tol" class="sleep-input" min="0" step="1" value="' + (rule && rule.tol != null ? rule.tol : 25) + '"></div>' +
+    '<div class="money-import-grid"><div><p class="sleep-label">Category' + (rule ? ' (suggested)' : '') + '</p><select id="imp-cat" class="sleep-input" onchange="onImpCatSelect(this)">' + impOptions(cats, rule && rule.cat) + '<option value="__custom__">+ Add new category…</option></select><div id="imp-cat-new" class="money-new-row" style="display:none;"><input type="text" class="sleep-input" placeholder="New category name"><button type="button" class="settings-btn" onclick="addImpCustomCat()">Add</button></div></div>' +
     '<div><p class="sleep-label">Account</p><select id="imp-acc" class="sleep-input">' + impOptions(accs, rule ? rule.acc : accs[0]) + '</select></div></div>' +
     '<div id="imp-sim" class="money-import-sim"></div><div id="imp-btns" class="money-import-btns"></div>';
-  document.getElementById('imp-match').addEventListener('input', renderImportSimilar);
+  ['imp-match', 'imp-amt', 'imp-tol'].forEach(function (id) { document.getElementById(id).addEventListener('input', renderImportSimilar); });
   renderImportSimilar();
 }
 
 function renderImportSimilar() {
-  var t = importTx[importCur], match = document.getElementById('imp-match').value, sim = impSimilar(t, match);
+  var t = importTx[importCur], match = document.getElementById('imp-match').value;
+  var amt = impAmountInput(), tol = document.getElementById('imp-tol').value, sim = impSimilar(t, match, amt, tol);
+  var amtText = amt === null ? '' : ' about ' + moneyFmt(amt) + ' ± ' + moneyFmt(Number(tol || 0));
   document.getElementById('imp-desc').innerHTML = impHighlight(t.desc, match);
   var simEl = document.getElementById('imp-sim');
   if (!impWords(match).length) simEl.innerHTML = '<span class="money-out">Type at least one word to match on.</span>';
-  else if (!sim.length) simEl.innerHTML = '<span class="sleep-sub">No other transactions in this file match "' + moneyEsc(match.toUpperCase()) + '".</span>';
-  else simEl.innerHTML = '<b>' + sim.length + ' more match "' + moneyEsc(match.toUpperCase()) + '":</b>' + sim.map(function (o) {
+  else if (!impAmountOk(t, amt, tol)) simEl.innerHTML = '<span class="money-out">This transaction itself is not' + amtText + '. Widen the ± range or clear the amount.</span>';
+  else if (!sim.length) simEl.innerHTML = '<span class="sleep-sub">No other transactions in this file match "' + moneyEsc(match.toUpperCase()) + '"' + amtText + '.</span>';
+  else simEl.innerHTML = '<b>' + sim.length + ' more match "' + moneyEsc(match.toUpperCase()) + '"' + amtText + ':</b>' + sim.map(function (o) {
     return '<div>' + moneyDay(o.date) + ' · ' + impHighlight(o.desc, match) + ' · <span class="' + (o.kind === 'expense' ? 'money-out' : 'money-in') + '">' + moneyFmt(o.amt) + '</span></div>';
   }).join('');
   var btns = document.getElementById('imp-btns');
@@ -3240,9 +3408,11 @@ async function importAction(a) {
   var t = importTx[importCur];
   if (a === 'skip') { t.skip = true; importCur++; impNext(); return; }
   var match = document.getElementById('imp-match').value.trim();
-  if (!impWords(match).length) return;
+  var amt = impAmountInput(), tol = document.getElementById('imp-tol').value;
+  if (!impWords(match).length || !impAmountOk(t, amt, tol)) return;
   var cat = document.getElementById('imp-cat').value, acc = document.getElementById('imp-acc').value;
-  var group = a === 'all' ? [t].concat(impSimilar(t, match)) : [t];
+  if (cat === '__custom__') { document.getElementById('money-import-status').textContent = 'Finish adding the new category first (type a name and click Add).'; return; }
+  var group = a === 'all' ? [t].concat(impSimilar(t, match, amt, tol)) : [t];
   var rows = group.map(function (o) {
     return { user_id: currentUser.id, kind: o.kind, item: o.desc, amount: Math.round(Math.abs(o.amt) * 100) / 100, category: cat, account: acc, log_date: o.date };
   });
@@ -3255,9 +3425,641 @@ async function importAction(a) {
   }
   group.forEach(function (o) { o.done = true; });
   importSaved += group.length;
-  impSaveRule(match, t.kind, cat, acc);
+  impSaveRule(match, t.kind, cat, acc, amt, tol);
+  renderRules();
   importCur++;
   await loadMoneyLogs();
   renderMoney();
   impNext();
+}
+
+function impAmountInput() { var v = document.getElementById('imp-amt').value; return v === '' ? null : Math.abs(parseFloat(v)); }
+
+// ---- "Your sorting rules" list: see, add and delete rules without importing anything ----
+function toggleRules() {
+  var p = document.getElementById('money-rules-panel');
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+  renderRules();
+}
+function renderRules() {
+  var btn = document.getElementById('money-rules-toggle');
+  var rules = impRules();
+  if (btn) btn.textContent = 'Your sorting rules (' + rules.length + ')';
+  var p = document.getElementById('money-rules-panel');
+  if (!p || p.style.display === 'none') return;
+  var kindName = { any: 'Either', expense: 'Expense', income: 'Income' };
+  var h = rules.length ? '' : '<p class="sleep-empty">No rules yet. Add one below, or sort transactions during an import.</p>';
+  rules.forEach(function (r, i) {
+    h += '<div class="money-rule-row"><span><b>' + moneyEsc(r.match) + '</b>' + (r.amt != null ? ' · about ' + moneyFmt(r.amt) + ' ± ' + moneyFmt(r.tol || 0) : '') +
+      ' · ' + kindName[r.kind || 'any'] + ' → <b>' + moneyEsc(r.cat) + '</b> · ' + moneyEsc(r.acc) + '</span><button type="button" class="sleep-del" data-rule="' + i + '" title="Delete this rule">x</button></div>';
+  });
+  var cats = moneyUnique(moneyCategoryList('expense').concat(moneyCategoryList('income')));
+  h += '<div class="money-rule-form"><p class="sleep-label">Add a rule</p>' +
+    '<div class="money-rule-grid">' +
+    '<div><p class="sleep-label">Description has all these words</p><input type="text" id="rule-words" class="sleep-input money-import-match" placeholder="e.g. NETFLIX"></div>' +
+    '<div><p class="sleep-label">Amount about (optional)</p><div class="money-import-amtrow">$ <input type="number" id="rule-amt" class="sleep-input" min="0" step="0.01" placeholder="any"> ± $ <input type="number" id="rule-tol" class="sleep-input" min="0" step="1" value="25"></div></div>' +
+    '<div><p class="sleep-label">Money in or out</p><select id="rule-kind" class="sleep-input"><option value="any">Either</option><option value="expense">Expense</option><option value="income">Income</option></select></div>' +
+    '<div><p class="sleep-label">Category</p><select id="rule-cat" class="sleep-input">' + impOptions(cats, 'Rent') + '</select></div>' +
+    '<div><p class="sleep-label">Account</p><select id="rule-acc" class="sleep-input">' + impOptions(moneyAccountList(), 'Personal') + '</select></div>' +
+    '</div><button type="button" class="settings-btn money-rule-add" onclick="addRuleFromForm()">Add rule</button><p id="rule-msg" class="sleep-msg"></p></div>';
+  p.innerHTML = h;
+  p.querySelectorAll('[data-rule]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var list = impRules().slice(); list.splice(+b.getAttribute('data-rule'), 1);
+      impPersistRules(list); renderRules();
+    });
+  });
+}
+function addRuleFromForm() {
+  var words = document.getElementById('rule-words').value, msg = document.getElementById('rule-msg');
+  if (!impWords(words).length) { msg.className = 'sleep-msg error'; msg.textContent = 'Type at least one word.'; return; }
+  var amt = document.getElementById('rule-amt').value;
+  impSaveRule(words, document.getElementById('rule-kind').value, document.getElementById('rule-cat').value,
+    document.getElementById('rule-acc').value, amt === '' ? null : Math.abs(parseFloat(amt)), document.getElementById('rule-tol').value);
+  renderRules();
+  var m2 = document.getElementById('rule-msg'); m2.className = 'sleep-msg ok'; m2.textContent = 'Rule added.';
+}
+
+// ---- "+ Add new category…" inside the import review ----
+function onImpCatSelect(sel) {
+  var row = document.getElementById('imp-cat-new');
+  row.style.display = sel.value === '__custom__' ? 'flex' : 'none';
+  if (sel.value === '__custom__') row.querySelector('input').focus();
+}
+async function addImpCustomCat() {
+  var t = importTx[importCur];
+  var input = document.querySelector('#imp-cat-new input');
+  var val = input.value.trim();
+  if (!val) { input.focus(); return; }
+  val = val.charAt(0).toUpperCase() + val.slice(1);
+  var key = 'money_cats_' + t.kind;
+  var list = moneyUnique(moneyMeta(key).concat([val]));
+  var data = {}; data[key] = list;
+  currentUser.user_metadata = currentUser.user_metadata || {};
+  currentUser.user_metadata[key] = list;
+  var res = await sb.auth.updateUser({ data: data });
+  if (res && res.data && res.data.user) currentUser = res.data.user;
+  var sel = document.getElementById('imp-cat');
+  sel.innerHTML = impOptions(moneyCategoryList(t.kind), val) + '<option value="__custom__">+ Add new category…</option>';
+  sel.value = val;
+  input.value = '';
+  document.getElementById('imp-cat-new').style.display = 'none';
+  refreshMoneySelects();   // the "Add an entry" dropdown gets the new category too
+}
+
+// ---- Start-over buttons (Money tracker > Import box) ----
+async function clearMoneyRules() {
+  if (!confirm('Delete ALL your sorting rules and saved bank column setups?\n\nYour money entries stay.')) return;
+  currentUser.user_metadata = currentUser.user_metadata || {};
+  currentUser.user_metadata.money_rules = [];
+  currentUser.user_metadata.money_csv_maps_list = [];
+  var res = await sb.auth.updateUser({ data: { money_rules: [], money_csv_maps_list: [] } });
+  if (res && res.data && res.data.user) currentUser = res.data.user;
+  renderRules();
+  document.getElementById('money-import-status').textContent = 'All sorting rules cleared.';
+}
+async function clearAllMoney() {
+  if (!confirm('Delete EVERY entry in your Money tracker (imported and typed in)?\n\nThis cannot be undone.')) return;
+  var res = await sb.from('money_logs').delete().eq('user_id', currentUser.id);
+  if (res.error) { document.getElementById('money-import-status').textContent = 'Could not delete: ' + res.error.message; return; }
+  importTx = []; importTable = null;
+  document.getElementById('money-import-review').innerHTML = '';
+  await loadMoneyLogs();
+  renderMoney();
+  document.getElementById('money-import-status').textContent = 'All money entries deleted.';
+}
+
+// ============================================
+// PACE CHART (Month progress box, only when XP Mode is off)
+// Solid line: habits done so far. Dashed line: what you should have done by each day.
+// Uses the same rules as the "Habits done" bar, including "Hard habits optional".
+// ============================================
+var paceChartInstance = null;
+function renderPaceChart() {
+  var wrap = document.getElementById('pace-wrap'), el = document.getElementById('paceChart');
+  if (!wrap || !el) return;
+  if (paceChartInstance) { paceChartInstance.destroy(); paceChartInstance = null; }
+  wrap.style.display = xpMode ? 'none' : '';
+  if (xpMode) return;
+
+  var now = new Date(), isThisMonth = (now.getMonth() + 1 === currentMonth && now.getFullYear() === currentYear);
+  var isFuture = new Date(currentYear, currentMonth - 1, 1) > now;
+  var lastDay = isThisMonth ? now.getDate() : (isFuture ? 0 : DAYS_IN_MONTH);
+  var labels = [], done = [], pace = [], gap = [], runDone = 0, runGoal = 0, monthGoal = 0;
+
+  for (var d = 1; d <= DAYS_IN_MONTH; d++) {
+    var iso = currentYear + '-' + String(currentMonth).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    var dayGoal = 0, dayDone = 0;
+    RAW_HABITS.forEach(function (h) {
+      var req = dayRequirement(h, d);
+      if (!(req > 0)) return;
+      var got = Math.min((logsLookup[String(h.id)] && logsLookup[String(h.id)][iso]) || 0, req);
+      dayGoal += isHardOptional(h) ? got : req;   // a missed hard habit isn't required when the toggle is on
+      dayDone += got;
+    });
+    runGoal += dayGoal; monthGoal += dayGoal;
+    if (d <= lastDay) runDone += dayDone;
+    labels.push(d);
+    pace.push(runGoal);
+    done.push(d <= lastDay ? runDone : null);
+    gap.push(d <= lastDay ? runGoal : null);
+  }
+
+  var pink = getThemeColor('--c-pink'), muted = getThemeColor('--c-text-muted');
+  paceChartInstance = new Chart(el, {
+    type: 'line',
+    data: { labels: labels, datasets: [
+      { label: 'gap', data: gap, borderWidth: 0, pointRadius: 0, fill: '+1', backgroundColor: hexToRgba(pink, 0.25) },
+      { label: 'Habits done so far', data: done, borderColor: pink, backgroundColor: pink, borderWidth: 2.5, pointRadius: 2, tension: 0.15, fill: false },
+      { label: 'On-pace line', data: pace, borderColor: muted, borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0, fill: false }
+    ] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: { filter: function (i) { return i.datasetIndex > 0; }, callbacks: { label: function (c) { return c.dataset.label + ': ' + Math.round(c.parsed.y); } } }
+      },
+      scales: {
+        x: { ticks: { color: muted, font: { size: 10 }, autoSkip: true, maxRotation: 0 }, grid: { display: false } },
+        y: { beginAtZero: true, suggestedMax: Math.max(1, monthGoal), ticks: { color: muted, font: { size: 10 } }, title: { display: true, text: 'habits', color: muted, font: { size: 10 } } }
+      }
+    }
+  });
+
+  var note = document.getElementById('pace-note');
+  if (!lastDay) { note.textContent = 'This month has not started yet.'; return; }
+  var target = pace[lastDay - 1], behind = Math.round(target - runDone);
+  var daysLeft = DAYS_IN_MONTH - lastDay, remaining = Math.max(0, monthGoal - runDone);
+  if (behind > 0) note.textContent = 'Day ' + lastDay + ': ' + runDone + ' done vs ' + Math.round(target) + ' on pace, about ' + behind + ' to catch up.' + (daysLeft ? ' To finish on goal: ' + Math.ceil(remaining / daysLeft) + ' a day.' : '');
+  else note.textContent = 'Day ' + lastDay + ': ' + runDone + ' done vs ' + Math.round(target) + ' on pace. You are on track!';
+}
+
+
+// ============================================
+// REWARD SHOP (tables: "shop_items" and "shop_purchases")
+// Gold is worked out from your habit history (like XP), starting the day the shop
+// was first opened. Unchecking a habit takes its gold back. Spending is subtracted.
+// ============================================
+var GOLD_VALUES = { easy: 2, medium: 5, hard: 10 };   // gold per completion
+var GOLD_UNRANKED = 1, GOLD_PERFECT_DAY = 5, GOLD_STREAK_7 = 20;
+var SHOP_TIERS = [
+  { k: 'tiny', n: 'Tiny', lo: 15, hi: 25, takes: '1 day' },
+  { k: 'small', n: 'Small', lo: 50, hi: 80, takes: '3 days' },
+  { k: 'medium', n: 'Medium', lo: 150, hi: 250, takes: '1–2 weeks' },
+  { k: 'big', n: 'Big', lo: 500, hi: 700, takes: '~1 month' },
+  { k: 'epic', n: 'Epic', lo: 1500, hi: null, takes: '2–3 months' }
+];
+var SHOP_STARTERS = [
+  ['tiny', 'Fancy coffee', 20], ['tiny', 'Bath bomb', 15], ['tiny', '30 min guilt-free scrolling', 25],
+  ['small', 'Takeout', 70], ['small', 'New nail polish', 50], ['small', 'Movie night', 60],
+  ['medium', 'Skincare product', 200], ['medium', 'Craft supplies', 150], ['medium', 'A lazy day off', 250],
+  ['big', 'Clothing item', 600], ['big', 'Concert ticket', 700], ['big', 'Day trip', 500],
+  ['epic', 'Gadget / big purchase', 1500]
+];
+var shopItems = [], shopPurchases = [], shopTaskRows = [], shopHistFilter = 'all';
+
+function toggleShopPage() {
+  var page = document.getElementById('shop-page');
+  var opening = page.style.display !== 'block';
+  page.style.display = opening ? 'block' : 'none';
+  if (!opening) return;
+  ['sleep-page', 'history-page', 'mood-page', 'money-page', 'memory-page'].forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  fillShopTierSelect();
+  loadShop().then(renderShop);
+}
+
+// The day gold starts counting. Set once, the first time the shop is opened, and saved to your account.
+function goldStartDate() {
+  var meta = currentUser.user_metadata || {};
+  if (meta.gold_start) return meta.gold_start;
+  var today = localISO(new Date());
+  currentUser.user_metadata = meta; meta.gold_start = today;
+  sb.auth.updateUser({ data: { gold_start: today } }).then(function (r) { if (r && r.data && r.data.user) currentUser = r.data.user; });
+  return today;
+}
+
+async function loadShop() {
+  if (!currentUser) return;
+  var a = await sb.from('shop_items').select('*').eq('user_id', currentUser.id).order('price', { ascending: true });
+  if (a.error) { setShopMsg('Could not load the shop: ' + a.error.message); return; }
+  shopItems = a.data || [];
+  // First visit: stock the shop with the starter rewards (only once, even if you delete them later).
+  if (!shopItems.length && !(currentUser.user_metadata && currentUser.user_metadata.shop_seeded)) {
+    var rows = SHOP_STARTERS.map(function (s) { return { user_id: currentUser.id, tier: s[0], name: s[1], price: s[2] }; });
+    var ins = await sb.from('shop_items').insert(rows);
+    if (!ins.error) {
+      currentUser.user_metadata = currentUser.user_metadata || {}; currentUser.user_metadata.shop_seeded = true;
+      sb.auth.updateUser({ data: { shop_seeded: true } }).then(function (r) { if (r && r.data && r.data.user) currentUser = r.data.user; });
+      var again = await sb.from('shop_items').select('*').eq('user_id', currentUser.id).order('price', { ascending: true });
+      shopItems = again.data || [];
+    }
+  }
+  var b = await sb.from('shop_purchases').select('*').eq('user_id', currentUser.id).order('bought_at', { ascending: false });
+  if (b.error) { setShopMsg('Could not load purchases: ' + b.error.message); return; }
+  shopPurchases = b.data || [];
+  var c = await sb.from('weekly_tasks').select('week_number,month,year,is_checked,difficulty,task_text').eq('user_id', currentUser.id).eq('is_checked', true);
+  shopTaskRows = (c.data || []).filter(function (r) { return r.difficulty && r.task_text && r.task_text.trim(); });
+  setShopMsg('');
+}
+
+function setShopMsg(t) { var el = document.getElementById('shop-msg'); if (el) el.textContent = t; }
+
+// ---- Gold math ----
+function computeGold() {
+  var start = goldStartDate(), today = localISO(new Date()), earned = 0;
+  var byHabit = [], tasks = { count: 0, gold: 0 }, streaks = 0;   // breakdown for the hover box
+  // 1) Habits: gold per completion, capped at what was required that day (extra ticks earn nothing).
+  RAW_HABITS.forEach(function (h) {
+    var per = GOLD_VALUES[h.difficulty] || GOLD_UNRANKED, hid = String(h.id), logs = allTimeLogs[hid] || {}, cnt = 0;
+    Object.keys(logs).forEach(function (iso) {
+      if (iso < start || iso > today) return;
+      var n = logs[iso] || 0; if (n <= 0) return;
+      var p = iso.split('-'), req = habitRequiredOn(h, +p[0], +p[1], +p[2]);
+      cnt += Math.min(n, req > 0 ? req : 1);
+    });
+    earned += cnt * per;
+    if (cnt) byHabit.push({ name: (h.icon ? h.icon + ' ' : '') + h.name, count: cnt, per: per, gold: cnt * per });
+  });
+  byHabit.sort(function (a, b) { return b.gold - a.gold; });
+  // 2) Weekly tasks checked in a week that started on/after the start date.
+  shopTaskRows.forEach(function (r) {
+    var wk = localISO(new Date(r.year, r.month - 1, 1 + r.week_number * 7));
+    var gv = GOLD_VALUES[r.difficulty] || 0;
+    if (wk >= start && gv) { earned += gv; tasks.count++; tasks.gold += gv; }
+  });
+  // 3) Perfect days (+5) and every 7 perfect days in a row (+20).
+  var p0 = start.split('-'), d = new Date(+p0[0], +p0[1] - 1, +p0[2]), end = new Date(), run = 0, perfect = 0;
+  end.setHours(0, 0, 0, 0);
+  for (; d <= end; d.setDate(d.getDate() + 1)) {
+    var iso = localISO(d), need = 0, met = true;
+    RAW_HABITS.forEach(function (h) {
+      if (isHardOptional(h)) return;   // with "Hard habits optional" on, hard habits don't block a perfect day
+      var r = habitRequiredOn(h, d.getFullYear(), d.getMonth() + 1, d.getDate());
+      if (!r) return;
+      need++;
+      if (((allTimeLogs[String(h.id)] || {})[iso] || 0) < r) met = false;
+    });
+    if (!need) continue;
+    if (met) { perfect++; earned += GOLD_PERFECT_DAY; run++; if (run % 7 === 0) { earned += GOLD_STREAK_7; streaks++; } }
+    else if (iso !== today) run = 0;
+  }
+  var spent = shopPurchases.reduce(function (a, p) { return a + Number(p.price); }, 0);
+  return { start: start, earned: earned, spent: spent, balance: earned - spent, perfect: perfect, byHabit: byHabit, tasks: tasks, streaks: streaks };
+}
+
+// Hover box on "Your gold": which habits earned what. Hover on computer, tap on phone.
+function renderGoldBreakdown(g) {
+  var box = document.getElementById('gold-breakdown'); if (!box) return;
+  var row = function (label, sub, gold, cls) {
+    return '<div class="gold-row' + (cls ? ' ' + cls : '') + '"><span>' + label + (sub ? ' <small>' + sub + '</small>' : '') + '</span><b>' + gold + '</b></div>';
+  };
+  var h = '<div class="gold-bd-title">Where your gold came from</div>';
+  if (!g.byHabit.length && !g.tasks.count && !g.perfect) h += '<p class="gold-bd-empty">Nothing earned yet. Check off a habit!</p>';
+  g.byHabit.forEach(function (b) { h += row(moneyEsc(b.name), b.count + ' × ' + b.per + ' G', '+' + b.gold + ' G'); });
+  if (g.tasks.count) h += row('Weekly tasks', g.tasks.count + ' done', '+' + g.tasks.gold + ' G');
+  if (g.perfect) h += row('Perfect days', g.perfect + ' × ' + GOLD_PERFECT_DAY + ' G', '+' + g.perfect * GOLD_PERFECT_DAY + ' G');
+  if (g.streaks) h += row('7-day streak bonus', g.streaks + ' × ' + GOLD_STREAK_7 + ' G', '+' + g.streaks * GOLD_STREAK_7 + ' G');
+  h += row('Earned', '', g.earned + ' G', 'gold-total');
+  if (g.spent) h += row('Spent in shop', '', '−' + g.spent + ' G');
+  h += row('Balance', '', g.balance + ' G', 'gold-total');
+  box.innerHTML = h;
+}
+function toggleGoldBreakdown(e) {
+  if (e.target.closest('#gold-breakdown')) return;
+  document.querySelector('.shop-wallet').classList.toggle('gold-open');
+}
+
+function shopDays(p) { return Math.max(1, Math.round(p / 20)); }
+function shopPretty(iso) { return moneyDay(String(iso).slice(0, 10)); }
+
+function renderShop() {
+  var g = computeGold();
+  var bal = document.getElementById('shop-balance');
+  bal.textContent = g.balance + ' G';
+  bal.className = 'shop-big ' + (g.balance < 0 ? 'money-out' : 'shop-gold');
+  document.getElementById('shop-earned').textContent = 'Earned ' + g.earned + ' G · Spent ' + g.spent + ' G · counting since ' + shopPretty(g.start);
+  renderGoldBreakdown(g);
+
+  var h = '';
+  SHOP_TIERS.forEach(function (t) {
+    var list = shopItems.filter(function (i) { return i.tier === t.k; });
+    h += '<div class="shop-tier-head"><b>' + t.n + '</b><span>' + t.lo + (t.hi ? '–' + t.hi : '+') + ' G · takes about ' + t.takes + '</span></div><div class="shop-grid">';
+    if (!list.length) h += '<p class="sleep-empty">No rewards in this tier yet.</p>';
+    list.forEach(function (i) {
+      var ok = g.balance >= i.price, dd = shopDays(i.price);
+      h += '<div class="shop-card"><b>' + moneyEsc(i.name) + '</b><span><span class="shop-gold">' + i.price + ' G</span> <span class="sleep-sub">≈ ' + dd + ' good day' + (dd > 1 ? 's' : '') + '</span></span>' +
+        (ok ? '' : '<span class="sleep-sub">' + (i.price - g.balance) + ' G to go</span>') +
+        '<div class="shop-card-btns"><button type="button" class="settings-btn shop-buy' + (ok ? '' : ' shop-locked') + '" data-buy="' + i.id + '">' + (ok ? 'Buy' : '🔒 Buy') + '</button><button type="button" class="sleep-del" data-delitem="' + i.id + '" title="Remove from shop">x</button></div></div>';
+    });
+    h += '</div>';
+  });
+  var shop = document.getElementById('shop-list');
+  shop.innerHTML = h;
+  shop.querySelectorAll('[data-buy]').forEach(function (b) { b.addEventListener('click', function () { buyShopItem(+b.getAttribute('data-buy')); }); });
+  shop.querySelectorAll('[data-delitem]').forEach(function (b) { b.addEventListener('click', function () { deleteShopItem(+b.getAttribute('data-delitem')); }); });
+  renderShopHistory();
+}
+
+function renderShopHistory() {
+  var tabs = document.getElementById('shop-hist-tabs'); tabs.innerHTML = '';
+  var waiting = shopPurchases.filter(function (p) { return !p.redeemed; }).length;
+  [['all', 'All'], ['todo', 'Not redeemed (' + waiting + ')'], ['done', 'Redeemed']].forEach(function (t) {
+    var b = document.createElement('button'); b.type = 'button';
+    b.className = 'sleep-q-btn' + (shopHistFilter === t[0] ? ' on' : ''); b.textContent = t[1];
+    b.addEventListener('click', function () { shopHistFilter = t[0]; renderShopHistory(); });
+    tabs.appendChild(b);
+  });
+  var list = shopPurchases.filter(function (p) { return shopHistFilter === 'all' || (shopHistFilter === 'todo' ? !p.redeemed : p.redeemed); });
+  var el = document.getElementById('shop-history');
+  if (!list.length) { el.innerHTML = '<p class="sleep-empty">' + (shopPurchases.length ? 'Nothing here.' : 'No purchases yet. Treat yourself!') + '</p>'; }
+  else el.innerHTML = list.map(function (p) {
+    return '<div class="shop-hist-row"><span>' + shopPretty(p.bought_at) + ' · <b>' + moneyEsc(p.item_name) + '</b></span><span class="money-out">−' + p.price + ' G</span>' +
+      (p.redeemed
+        ? '<span class="shop-status shop-redeemed">✓ Redeemed ' + (p.redeemed_at ? shopPretty(p.redeemed_at) : '') + ' <button type="button" class="sleep-del shop-undo" data-unredeem="' + p.id + '" title="Mark as not redeemed">↺</button></span>'
+        : '<span class="shop-status"><button type="button" class="sleep-q-btn" data-redeem="' + p.id + '">Mark redeemed</button></span>') + '</div>';
+  }).join('');
+  el.querySelectorAll('[data-redeem]').forEach(function (b) { b.addEventListener('click', function () { setRedeemed(+b.getAttribute('data-redeem'), true); }); });
+  el.querySelectorAll('[data-unredeem]').forEach(function (b) { b.addEventListener('click', function () { setRedeemed(+b.getAttribute('data-unredeem'), false); }); });
+  var ym = localISO(new Date()).slice(0, 7);
+  var month = shopPurchases.filter(function (p) { return String(p.bought_at).slice(0, 7) === ym; });
+  document.getElementById('shop-hist-sum').textContent = month.length ? 'Spent this month: ' + month.reduce(function (a, p) { return a + Number(p.price); }, 0) + ' G on ' + month.length + ' treat' + (month.length > 1 ? 's' : '') + '.' : '';
+}
+
+async function buyShopItem(id) {
+  var item = shopItems.filter(function (i) { return i.id === id; })[0]; if (!item) return;
+  var g = computeGold();
+  if (g.balance < item.price) { setShopMsg('Not enough gold for "' + item.name + '" yet: you need ' + (item.price - g.balance) + ' G more.'); return; }
+  if (!confirm('Buy "' + item.name + '" for ' + item.price + ' G?')) return;
+  var res = await sb.from('shop_purchases').insert({ user_id: currentUser.id, item_name: item.name, tier: item.tier, price: item.price, redeemed: false });
+  if (res.error) { setShopMsg('Could not buy: ' + res.error.message); return; }
+  await loadShop(); renderShop();
+  setShopMsg('Bought "' + item.name + '"! It is in your purchase history, ready to redeem.');
+}
+
+async function setRedeemed(id, on) {
+  var res = await sb.from('shop_purchases').update({ redeemed: on, redeemed_at: on ? new Date().toISOString() : null }).eq('id', id);
+  if (res.error) { setShopMsg('Could not update: ' + res.error.message); return; }
+  await loadShop(); renderShop();
+}
+
+async function deleteShopItem(id) {
+  var item = shopItems.filter(function (i) { return i.id === id; })[0];
+  if (!item || !confirm('Remove "' + item.name + '" from the shop?')) return;
+  var res = await sb.from('shop_items').delete().eq('id', id);
+  if (res.error) { setShopMsg('Could not remove: ' + res.error.message); return; }
+  await loadShop(); renderShop();
+}
+
+function fillShopTierSelect() {
+  var sel = document.getElementById('shop-new-tier');
+  if (!sel.options.length) {
+    sel.innerHTML = SHOP_TIERS.map(function (t) { return '<option value="' + t.k + '">' + t.n + ' (' + t.lo + (t.hi ? '–' + t.hi : '+') + ' G)</option>'; }).join('');
+    suggestShopPrice();
+  }
+}
+function suggestShopPrice() {
+  var t = SHOP_TIERS.filter(function (x) { return x.k === document.getElementById('shop-new-tier').value; })[0];
+  document.getElementById('shop-new-price').value = t.hi ? Math.round((t.lo + t.hi) / 2 / 5) * 5 : t.lo;
+  shopPriceHint();
+}
+function shopPriceHint() {
+  var p = +document.getElementById('shop-new-price').value, dd = shopDays(p);
+  document.getElementById('shop-new-hint').textContent = p > 0 ? '≈ ' + dd + ' good day' + (dd > 1 ? 's' : '') + ' of habits (a good day ≈ 20 G)' : '';
+}
+async function addShopItem() {
+  var name = document.getElementById('shop-new-name').value.trim();
+  var price = Math.round(+document.getElementById('shop-new-price').value);
+  if (!name) return setShopMsg('Name your reward first.');
+  if (!(price > 0)) return setShopMsg('Enter a price above 0.');
+  var res = await sb.from('shop_items').insert({ user_id: currentUser.id, tier: document.getElementById('shop-new-tier').value, name: name, price: price });
+  if (res.error) return setShopMsg('Could not add: ' + res.error.message);
+  document.getElementById('shop-new-name').value = '';
+  await loadShop(); renderShop();
+  setShopMsg('Added "' + name + '" to the shop.');
+}
+
+
+// ============================================
+// MEMORY DUMP (table: "memory_logs")
+// Jot down anything noteworthy. Several notes per day are allowed.
+// Tags: a starter list plus your own (saved to your account as "memory_tags").
+// ============================================
+var MEM_DEFAULT_TAGS = ['win', 'grateful', 'work', 'family', 'friends', 'health', 'fun', 'creative', 'self-care', 'hard day'];
+var memNotes = [], memYear = new Date().getFullYear(), memMonth = new Date().getMonth() + 1;
+var memSelected = localISO(new Date()), memPicked = [], memEditId = null, memFilterTag = '';
+
+function toggleMemoryPage() {
+  var page = document.getElementById('memory-page');
+  var opening = page.style.display !== 'block';
+  page.style.display = opening ? 'block' : 'none';
+  if (!opening) return;
+  ['sleep-page', 'history-page', 'mood-page', 'money-page', 'shop-page'].forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  loadMemories().then(renderMemory);
+}
+
+async function loadMemories() {
+  if (!currentUser) return;
+  var r = await sb.from('memory_logs').select('*').eq('user_id', currentUser.id).order('log_date', { ascending: false }).order('created_at', { ascending: false });
+  if (r.error) { setMemMsg('Could not load memories: ' + r.error.message, true); return; }
+  memNotes = (r.data || []).map(function (n) { n.tags = Array.isArray(n.tags) ? n.tags : []; return n; });
+}
+
+function setMemMsg(t, isErr) { var el = document.getElementById('mem-msg'); if (!el) return; el.textContent = t; el.className = 'sleep-msg ' + (isErr ? 'error' : 'ok'); }
+function memTagList() { return moneyUnique(MEM_DEFAULT_TAGS.concat(moneyMeta('memory_tags'))); }
+function memIsCustom(t) { return MEM_DEFAULT_TAGS.indexOf(t) < 0; }
+function memByDate() { var m = {}; memNotes.forEach(function (n) { (m[n.log_date] = m[n.log_date] || []).push(n); }); return m; }
+function memPretty(iso) { var p = iso.split('-'), d = new Date(+p[0], +p[1] - 1, +p[2]); return d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' }); }
+function memShort(iso) { var p = iso.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }); }
+
+function memShiftMonth(step) {
+  memMonth += step;
+  if (memMonth < 1) { memMonth = 12; memYear--; }
+  if (memMonth > 12) { memMonth = 1; memYear++; }
+  renderMemory();
+}
+
+function renderMemory() {
+  renderMemCalendar(); renderMemStats(); renderMemDay(); renderMemTags(); renderMemList();
+}
+
+// Month calendar: Monday first, days with notes highlighted, today underlined, selected day outlined.
+function renderMemCalendar() {
+  var names = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('mem-month').textContent = names[memMonth - 1] + ' ' + memYear;
+  var by = memByDate(), days = new Date(memYear, memMonth, 0).getDate();
+  var lead = (new Date(memYear, memMonth - 1, 1).getDay() + 6) % 7, today = localISO(new Date()), logged = 0;
+  var h = ['M','T','W','T','F','S','S'].map(function (x) { return '<div class="mem-cal-head">' + x + '</div>'; }).join('');
+  for (var i = 0; i < lead; i++) h += '<div></div>';
+  for (var d = 1; d <= days; d++) {
+    var iso = memYear + '-' + String(memMonth).padStart(2, '0') + '-' + String(d).padStart(2, '0'), n = (by[iso] || []).length;
+    if (n) logged++;
+    h += '<button type="button" class="mem-day' + (n ? ' has' : '') + (iso === memSelected ? ' sel' : '') + (iso === today ? ' today' : '') + '" data-mem-day="' + iso + '" title="' + (n ? n + ' note' + (n > 1 ? 's' : '') : 'No notes') + '">' + d + (n > 1 ? '<small>' + n + '</small>' : '') + '</button>';
+  }
+  var cal = document.getElementById('mem-cal');
+  cal.innerHTML = h;
+  cal.querySelectorAll('[data-mem-day]').forEach(function (b) { b.onclick = function () { memSelectDay(b.getAttribute('data-mem-day')); }; });
+  var isCur = (memYear === new Date().getFullYear() && memMonth === new Date().getMonth() + 1);
+  document.getElementById('mem-month-count').textContent = logged + ' of ' + (isCur ? new Date().getDate() : days) + ' days logged';
+}
+
+function memSelectDay(iso) {
+  memSelected = iso; cancelMemEdit(true);
+  var p = iso.split('-'); memYear = +p[0]; memMonth = +p[1];
+  renderMemCalendar(); renderMemDay();
+}
+
+function renderMemStats() {
+  var pre = memYear + '-' + String(memMonth).padStart(2, '0');
+  document.getElementById('mem-stat-month').textContent = memNotes.filter(function (n) { return n.log_date.indexOf(pre) === 0; }).length;
+  document.getElementById('mem-stat-all').textContent = memNotes.length;
+  // Streak: days in a row with a note, counting back from today (or yesterday, if today is still empty)
+  var by = memByDate(), d = new Date(), streak = 0;
+  if (!by[localISO(d)]) d.setDate(d.getDate() - 1);
+  while (by[localISO(d)]) { streak++; d.setDate(d.getDate() - 1); }
+  document.getElementById('mem-stat-streak').textContent = streak;
+}
+
+function memTagChips(tags) { return tags.map(function (t) { return '<span class="mem-chip">' + moneyEsc(t) + '</span>'; }).join(''); }
+
+// Notes already written for the selected day, oldest first, each with Edit and delete.
+function renderMemDay() {
+  var today = localISO(new Date());
+  document.getElementById('mem-day-title').textContent = memSelected === today ? 'Today · ' + memShort(today) : memPretty(memSelected);
+  var list = (memByDate()[memSelected] || []).slice().reverse(), h = '';
+  list.forEach(function (n) {
+    var time = n.created_at ? new Date(n.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+    h += '<div class="mem-note' + (n.id === memEditId ? ' editing' : '') + '"><div class="mem-note-top"><span class="sleep-sub">' + time + '</span><span>' +
+      '<button type="button" class="settings-btn mem-small-btn" data-mem-edit="' + n.id + '">Edit</button> ' +
+      '<button type="button" class="sleep-del" data-mem-del="' + n.id + '" title="Delete note">✕</button></span></div>' +
+      '<p class="mem-note-text">' + moneyEsc(n.body) + '</p>' + (n.tags.length ? '<div>' + memTagChips(n.tags) + '</div>' : '') + '</div>';
+  });
+  var box = document.getElementById('mem-day-notes');
+  box.innerHTML = h;
+  box.querySelectorAll('[data-mem-edit]').forEach(function (b) { b.onclick = function () { startMemEdit(+b.getAttribute('data-mem-edit')); }; });
+  box.querySelectorAll('[data-mem-del]').forEach(function (b) { b.onclick = function () { deleteMemory(+b.getAttribute('data-mem-del')); }; });
+  document.getElementById('mem-write-label').textContent = memEditId ? 'Editing note' : (list.length ? 'Add another note' : 'New note');
+}
+
+// Tag buttons under the text box: tap to add/remove from this note. Your own tags have a small x to remove them from the list.
+function renderMemTags() {
+  var h = '';
+  memTagList().forEach(function (t) {
+    h += '<span class="mem-tag-wrap"><button type="button" class="sleep-q-btn mem-tag' + (memPicked.indexOf(t) > -1 ? ' on' : '') + '" data-mem-tag="' + moneyEsc(t) + '">' + moneyEsc(t) + '</button>' +
+      (memIsCustom(t) ? '<button type="button" class="mem-tag-x" data-mem-untag="' + moneyEsc(t) + '" title="Remove this tag from your list">×</button>' : '') + '</span>';
+  });
+  var box = document.getElementById('mem-tags');
+  box.innerHTML = h;
+  box.querySelectorAll('[data-mem-tag]').forEach(function (b) { b.onclick = function () {
+    var t = b.getAttribute('data-mem-tag'), i = memPicked.indexOf(t);
+    if (i > -1) memPicked.splice(i, 1); else memPicked.push(t);
+    renderMemTags();
+  }; });
+  box.querySelectorAll('[data-mem-untag]').forEach(function (b) { b.onclick = function () { removeMemTag(b.getAttribute('data-mem-untag')); }; });
+}
+
+function memWordCount() {
+  var v = document.getElementById('mem-text').value.trim();
+  document.getElementById('mem-count').textContent = (v ? v.split(/\s+/).length : 0) + ' words';
+}
+
+async function saveMemTags(list) {
+  currentUser.user_metadata = currentUser.user_metadata || {}; currentUser.user_metadata.memory_tags = list;
+  var r = await sb.auth.updateUser({ data: { memory_tags: list } });
+  if (r && r.data && r.data.user) currentUser = r.data.user;
+}
+
+async function addMemTag() {
+  var inp = document.getElementById('mem-newtag'), t = inp.value.trim().toLowerCase();
+  if (!t) return;
+  if (memTagList().some(function (x) { return x.toLowerCase() === t; })) { setMemMsg('You already have that tag.', true); return; }
+  await saveMemTags(moneyMeta('memory_tags').concat([t]));
+  inp.value = ''; memPicked.push(t); setMemMsg('Tag added.');
+  renderMemTags(); renderMemFilterTags();
+}
+
+async function removeMemTag(t) {
+  await saveMemTags(moneyMeta('memory_tags').filter(function (x) { return x !== t; }));
+  memPicked = memPicked.filter(function (x) { return x !== t; });
+  if (memFilterTag === t) memFilterTag = '';
+  setMemMsg('Removed "' + t + '" from your tag list (old notes keep it).');
+  renderMemTags(); renderMemList();
+}
+
+function startMemEdit(id) {
+  var n = memNotes.find(function (x) { return x.id === id; }); if (!n) return;
+  memEditId = id; memPicked = n.tags.slice();
+  document.getElementById('mem-text').value = n.body;
+  document.getElementById('mem-cancel').style.display = '';
+  document.getElementById('mem-save').textContent = 'Save changes ✓';
+  memWordCount(); renderMemDay(); renderMemTags();
+  document.getElementById('mem-text').focus();
+}
+
+function cancelMemEdit(quiet) {
+  memEditId = null; memPicked = [];
+  document.getElementById('mem-text').value = '';
+  document.getElementById('mem-cancel').style.display = 'none';
+  document.getElementById('mem-save').textContent = 'Save ✓';
+  memWordCount();
+  if (!quiet) { renderMemDay(); renderMemTags(); }
+  else renderMemTags();
+}
+
+async function saveMemory() {
+  var body = document.getElementById('mem-text').value.trim();
+  if (!body) { setMemMsg('Write something first.', true); return; }
+  var r;
+  if (memEditId) r = await sb.from('memory_logs').update({ body: body, tags: memPicked.slice() }).eq('id', memEditId);
+  else r = await sb.from('memory_logs').insert({ user_id: currentUser.id, log_date: memSelected, body: body, tags: memPicked.slice() });
+  if (r.error) { setMemMsg('Could not save: ' + r.error.message, true); return; }
+  setMemMsg(memEditId ? 'Changes saved.' : 'Saved.');
+  cancelMemEdit(true);
+  await loadMemories(); renderMemory();
+}
+
+async function deleteMemory(id) {
+  if (!confirm('Delete this note?')) return;
+  var r = await sb.from('memory_logs').delete().eq('id', id);
+  if (r.error) { setMemMsg('Could not delete: ' + r.error.message, true); return; }
+  if (memEditId === id) cancelMemEdit(true);
+  setMemMsg('Deleted.');
+  await loadMemories(); renderMemory();
+}
+
+// Tag filter row in the search box (only tags that are actually used somewhere).
+function renderMemFilterTags() {
+  var used = {}; memNotes.forEach(function (n) { n.tags.forEach(function (t) { used[t] = (used[t] || 0) + 1; }); });
+  var h = Object.keys(used).sort().map(function (t) {
+    return '<button type="button" class="sleep-q-btn mem-tag' + (memFilterTag === t ? ' on' : '') + '" data-mem-filter="' + moneyEsc(t) + '">' + moneyEsc(t) + ' ' + used[t] + '</button>';
+  }).join('');
+  var box = document.getElementById('mem-filter-tags');
+  box.innerHTML = h;
+  box.querySelectorAll('[data-mem-filter]').forEach(function (b) { b.onclick = function () {
+    var t = b.getAttribute('data-mem-filter'); memFilterTag = memFilterTag === t ? '' : t; renderMemList();
+  }; });
+}
+
+// With no search: this month's notes. With a word or a tag picked: matching notes from all time.
+function renderMemList() {
+  renderMemFilterTags();
+  var q = document.getElementById('mem-search').value.trim().toLowerCase(), pre = memYear + '-' + String(memMonth).padStart(2, '0');
+  var searching = !!(q || memFilterTag), names = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var list = memNotes.filter(function (n) {
+    if (!searching) return n.log_date.indexOf(pre) === 0;
+    if (memFilterTag && n.tags.indexOf(memFilterTag) < 0) return false;
+    if (q && (n.body + ' ' + n.tags.join(' ')).toLowerCase().indexOf(q) < 0) return false;
+    return true;
+  });
+  document.getElementById('mem-list-head').textContent = searching ? list.length + ' matching note' + (list.length === 1 ? '' : 's') + ' (all time)' : names[memMonth - 1] + "'s memories";
+  var h = '';
+  list.forEach(function (n) {
+    var text = moneyEsc(n.body);
+    if (q) text = text.replace(new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi'), '<mark class="mem-hit">$1</mark>');
+    h += '<button type="button" class="mem-row" data-mem-go="' + n.log_date + '"><b>' + memShort(n.log_date) + '</b> <span>' + text + '</span>' + (n.tags.length ? '<span class="mem-row-tags">' + memTagChips(n.tags) + '</span>' : '') + '</button>';
+  });
+  if (!list.length) h = '<p class="sleep-empty">' + (searching ? 'No memories match that yet.' : 'No memories this month yet. Pick a day and write one!') + '</p>';
+  var box = document.getElementById('mem-list');
+  box.innerHTML = h;
+  box.querySelectorAll('[data-mem-go]').forEach(function (b) { b.onclick = function () { memSelectDay(b.getAttribute('data-mem-go')); document.getElementById('memory-page').scrollTo({ top: 0, behavior: 'smooth' }); }; });
 }

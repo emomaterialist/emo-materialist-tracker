@@ -6,7 +6,7 @@
 <title>Emo Materialist Habit Tracker</title>
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="stylesheet" href="style.css">
-<link href="https://fonts.googleapis.com/css2?family=Monsieur+La+Doulaise&family=Sacramento&family=Roboto+Mono:wght@400;600;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Monsieur+La+Doulaise&family=Sacramento&family=Roboto+Mono:wght@400;600;700&family=Nunito:wght@400;600;700&family=Great+Vibes&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=Press+Start+2P&family=Pixelify+Sans:wght@400;600;700&family=UnifrakturMaguntia&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="script.js" defer></script>
@@ -73,6 +73,11 @@
   <option value="v4p3">V4P3 (Synthwave)</option>
   <option value="debug">Gl!tchCore</option>   
   <option value="dark-romantic">Dark Romantic 🖤</option>
+  <option value="coquette">Coquette Bows 🎀</option>
+  <option value="pixel-pink">Pink Pixel Arcade 👾</option>
+  <option value="pixel-arcade">Pixel Arcade 🕹️</option>
+  <option value="pastel-goth">Pastel Goth 🖤🎀</option>
+  <option value="goth-noir">Goth Noir 🖤🤍</option>
 </select>
   </div>
   <div class="settings-section">
@@ -85,7 +90,6 @@
         <option value="7">July</option><option value="8">August</option>
         <option value="9">September</option><option value="10">October</option>
         <option value="11">November</option><option value="12">December</option>
-        <option value="dark-romantic">Dark Romantic 🖤</option>
       </select>
       <select id="year-select" class="settings-select" style="flex:1;" onchange="changeMonth()"></select>
     </div>
@@ -217,6 +221,8 @@
   <button class="settings-toggle-btn" onclick="toggleSleepPage()" title="Sleep tracker" style="position:static;width:36px;height:36px;font-size:14px;">🌙</button>
   <button class="settings-toggle-btn" onclick="toggleMoodPage()" title="Mood tracker" style="position:static;width:36px;height:36px;font-size:14px;">🍄</button>
   <button class="settings-toggle-btn" onclick="toggleMoneyPage()" title="Money tracker" style="position:static;width:36px;height:36px;font-size:14px;">💰</button>
+  <button class="settings-toggle-btn" onclick="toggleMemoryPage()" title="Memory dump" style="position:static;width:36px;height:36px;font-size:14px;">📝</button>
+  <button class="settings-toggle-btn" onclick="toggleShopPage()" title="Reward shop" style="position:static;width:36px;height:36px;font-size:14px;">🛒</button>
   <button class="settings-toggle-btn" onclick="exportToCSV()" title="Export CSV" style="position:static;width:36px;height:36px;font-size:14px;">⬇</button>
 </div>
 
@@ -370,7 +376,8 @@
           <label class="settings-btn money-file-btn">⬆ Choose a .csv file<input type="file" id="money-import-file" accept=".csv,text/csv" onchange="onImportFile(this)" hidden></label>
           <label class="sleep-checks money-flip"><input type="checkbox" id="money-import-flip"> My bank shows spending as positive numbers</label>
         </div>
-        <p class="mood-note">Download your transactions from your bank's website as a CSV file. It needs a Date, a Description, and an Amount (or Debit/Credit) column.</p>
+        <p class="mood-note">Download your transactions from your bank's website as a CSV file. After you pick the file, you'll confirm which column is the date, the name and the amount.</p>
+        <div class="money-rules"><button type="button" id="money-rules-toggle" class="sleep-q-btn" onclick="toggleRules()">Your sorting rules</button> <button type="button" class="sleep-q-btn" onclick="clearMoneyRules()">🗑 Clear all rules</button> <button type="button" class="sleep-q-btn" onclick="clearAllMoney()">🗑 Delete all money entries</button><div id="money-rules-panel" class="money-rules-panel" style="display:none;"></div></div>
         <p id="money-import-status" class="money-import-status"></p>
         <div id="money-import-review"></div>
       </div>
@@ -381,6 +388,102 @@
         <div id="money-views" class="mood-styles"></div>
         <div id="money-out" class="money-out-box"></div>
       </div>
+    </div>
+  </div>
+</div>
+
+<div id="memory-page" class="sleep-page" style="display:none;">
+  <div class="sleep-wrap">
+    <div class="sleep-head">
+      <span class="sleep-title">Memory dump</span>
+      <button class="settings-btn sleep-close" onclick="toggleMemoryPage()">✕ Close</button>
+    </div>
+    <div class="mem-grid">
+      <div>
+        <div class="cell-border">
+          <div class="title-bar"><span class="title-glyph"></span><span class="title-text" id="mem-month">Calendar</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+          <div class="cell-body">
+            <div class="mem-month-row">
+              <button class="settings-btn mood-nav" onclick="memShiftMonth(-1)" title="Previous month">◀</button>
+              <span id="mem-month-count" class="mem-month-count"></span>
+              <button class="settings-btn mood-nav" onclick="memShiftMonth(1)" title="Next month">▶</button>
+            </div>
+            <div id="mem-cal" class="mem-cal"></div>
+            <p class="mood-note">Highlighted days have a memory. Tap a day to read or write.</p>
+          </div>
+        </div>
+        <div class="mem-tiles">
+          <div class="sleep-tile"><div class="money-tile-label">This month</div><div id="mem-stat-month" class="sleep-big mem-stat">0</div><div class="sleep-sub">notes</div></div>
+          <div class="sleep-tile"><div class="money-tile-label">Streak</div><div id="mem-stat-streak" class="sleep-big mem-stat">0</div><div class="sleep-sub">days in a row</div></div>
+          <div class="sleep-tile"><div class="money-tile-label">All time</div><div id="mem-stat-all" class="sleep-big mem-stat">0</div><div class="sleep-sub">notes</div></div>
+        </div>
+      </div>
+      <div>
+        <div class="cell-border">
+          <div class="title-bar"><span class="title-glyph"></span><span class="title-text" id="mem-day-title">Today</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+          <div class="cell-body">
+            <div id="mem-day-notes"></div>
+            <p class="sleep-label" id="mem-write-label">New note</p>
+            <textarea id="mem-text" class="sleep-input mem-text" placeholder="What happened today? Anything worth remembering..." oninput="memWordCount()"></textarea>
+            <p class="sleep-label">Tags</p>
+            <div id="mem-tags" class="mem-tags"></div>
+            <div class="mem-newtag">
+              <input type="text" id="mem-newtag" class="sleep-input" placeholder="Make your own tag" maxlength="24" onkeydown="if(event.key==='Enter'){event.preventDefault();addMemTag();}">
+              <button type="button" class="settings-btn mem-small-btn" onclick="addMemTag()">+ Add tag</button>
+            </div>
+            <div class="mem-actions">
+              <span id="mem-count" class="sleep-sub">0 words</span>
+              <span><button type="button" id="mem-cancel" class="settings-btn mem-small-btn" style="display:none;" onclick="cancelMemEdit()">Cancel edit</button>
+              <button type="button" id="mem-save" class="settings-btn mem-small-btn" onclick="saveMemory()">Save ✓</button></span>
+            </div>
+            <p id="mem-msg" class="sleep-msg"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="cell-border">
+      <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Search memories</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+      <div class="cell-body">
+        <input type="text" id="mem-search" class="sleep-input" placeholder="Search your memories (any word)" oninput="renderMemList()">
+        <div id="mem-filter-tags" class="mem-tags mem-filter"></div>
+        <p id="mem-list-head" class="sleep-label"></p>
+        <div id="mem-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="shop-page" class="sleep-page" style="display:none;">
+  <div class="sleep-wrap">
+    <div class="sleep-head">
+      <span class="sleep-title">Reward shop</span>
+      <button class="settings-btn sleep-close" onclick="toggleShopPage()">✕ Close</button>
+    </div>
+    <div class="shop-top">
+      <div class="sleep-tile shop-wallet" onclick="toggleGoldBreakdown(event)" title=""><div class="money-tile-label">Your gold <span class="gold-hint">ⓘ hover to see where it came from</span></div><div id="shop-balance" class="shop-big shop-gold">0 G</div><div id="shop-earned" class="sleep-sub"></div><div id="gold-breakdown" class="gold-breakdown"></div></div>
+      <div class="sleep-tile shop-rates"><div class="money-tile-label">How you earn gold</div>
+        <div class="shop-rate-list"><span>Easy habit <b>2 G</b></span><span>Medium <b>5 G</b></span><span>Hard <b>10 G</b></span><span>Unranked <b>1 G</b></span><span>Perfect day <b>+5 G</b></span><span>7 perfect days in a row <b>+20 G</b></span></div></div>
+    </div>
+    <p id="shop-msg" class="shop-msg"></p>
+    <div class="cell-border">
+      <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Shop</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+      <div class="cell-body"><div id="shop-list"></div></div>
+    </div>
+    <div class="cell-border">
+      <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Add your own reward</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+      <div class="cell-body">
+        <div class="shop-add-row">
+          <div><p class="sleep-label">Reward</p><input type="text" id="shop-new-name" class="sleep-input" placeholder="e.g. new sketchbook"></div>
+          <div><p class="sleep-label">Tier</p><select id="shop-new-tier" class="sleep-input" onchange="suggestShopPrice()"></select></div>
+          <div><p class="sleep-label">Price (G)</p><input type="number" id="shop-new-price" class="sleep-input" min="1" step="1" oninput="shopPriceHint()"></div>
+          <button type="button" class="settings-btn shop-add-btn" onclick="addShopItem()">Add</button>
+        </div>
+        <p id="shop-new-hint" class="mood-note"></p>
+      </div>
+    </div>
+    <div class="cell-border">
+      <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Purchase history</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+      <div class="cell-body"><div id="shop-hist-tabs" class="mood-styles"></div><div id="shop-history"></div><p id="shop-hist-sum" class="shop-hist-sum"></p></div>
     </div>
   </div>
 </div>
@@ -434,7 +537,7 @@
                       <p class="xp-line"><strong id="xp-next">100</strong> to next level</p>
                     </div>
                   </div>
-                  <div class="dash-prog-mid"><div id="month-progress-panel" style="display:flex;flex-direction:column;gap:10px;"></div></div>
+                  <div class="dash-prog-mid"><div id="month-progress-panel" style="display:flex;flex-direction:column;gap:10px;"></div><div id="pace-wrap" class="pace-wrap"><div class="pace-legend"><span><i class="pace-key-done"></i>Habits done so far</span><span><i class="pace-key-pace"></i>On-pace line</span><span><i class="pace-key-gap"></i>Gap to make up</span></div><div class="pace-chart-wrap"><canvas id="paceChart"></canvas></div><p id="pace-note" class="pace-note"></p></div></div>
                   <div class="xp-col xp-side">
                     <div class="xp-mini">
                       <p class="xp-tile-label">Quests</p>
