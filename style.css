@@ -1030,6 +1030,14 @@ button.settings-btn:active { transform: translateY(0); }
   border-radius: var(--radius-sm);
   background: var(--c-body-bg); /* delete button background */
   color: var(--c-text); /* delete button "x" */ }
+.sleep-custom-tags { display: contents; }
+.sleep-tag { display: inline-flex; align-items: center; gap: 3px; }
+.sleep-tag-x { padding: 0 3px; font-size: 13px; line-height: 1; cursor: pointer; background: none; border: none; color: var(--c-text-muted); /* x that removes your own tag */ }
+.sleep-newtag { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; margin: 0 0 10px; }
+.sleep-small-btn { width: auto; padding: 5px 12px; }
+.sleep-trend-box { height: auto; margin-top: 2px; }
+.sleep-trend-wrap { position: relative; height: 240px; margin-top: 6px; }
+#sleep-range { margin-bottom: 0; }
 .sleep-legend { display: flex; gap: 12px; margin-top: 4px; font-size: 11px; color: var(--c-text-muted); /* legend text */ }
 .sleep-legend span i { display: inline-block; width: 10px; height: 10px; margin-right: 4px; vertical-align: -1px; }
 .sleep-empty { margin: 0; font-size: 12px; color: var(--c-text-muted); /* "No nights logged yet" */ }

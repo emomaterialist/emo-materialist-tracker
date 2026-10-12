@@ -2577,6 +2577,8 @@ function sleepDateLabel(iso) {
 }
 
 function renderSleep() {
+  renderSleepTags();
+  renderSleepTrend();
   var last = sleepLogs.slice(0, 7);
   var avg = last.length ? last.reduce(function (a, n) { return a + Number(n.hours); }, 0) / last.length : 0;
   var hit = last.length ? Math.round(last.filter(function (n) { return Number(n.hours) >= sleepGoal; }).length / last.length * 100) : 0;
@@ -2615,7 +2617,7 @@ function renderSleep() {
     del.addEventListener('click', function () { deleteSleepLog(n.id); });
     var meta = document.createElement('span');
     meta.className = 'sleep-meta';
-    var tags = [n.took_meds ? 'meds' : '', n.screen_before_bed ? 'screen' : '', n.caffeine_late ? 'caffeine' : ''].filter(Boolean).join(', ');
+    var tags = [n.took_meds ? 'meds' : '', n.screen_before_bed ? 'screen' : '', n.caffeine_late ? 'caffeine' : ''].concat(Array.isArray(n.tags) ? n.tags : []).filter(Boolean).join(', ');
     meta.textContent = (SLEEP_QUALITY[n.quality] || '') + ' · ' + String(n.bed_time).slice(0, 5) + '–' + String(n.wake_time).slice(0, 5) + (tags ? ' · ' + tags : '') + (n.notes ? ' · ' + n.notes : '');
     row.appendChild(date); row.appendChild(bar); row.appendChild(hrs); row.appendChild(del); row.appendChild(meta);
     el.appendChild(row);
@@ -2645,12 +2647,20 @@ async function submitSleepLog() {
     screen_before_bed: document.getElementById('sleep-screen').checked,
     caffeine_late: document.getElementById('sleep-caffeine').checked
   };
+  row.tags = sleepPickedTags();   // your own tags that are ticked (needs the "tags" column, see SQL)
   setSleepMsg('Saving...', 'ok');
   var res = await sb.from('sleep_logs').upsert(row, { onConflict: 'user_id,log_date' });
+  if (res.error && /tags/i.test(res.error.message)) {
+    // The "tags" column hasn't been added in Supabase yet: save everything else so nothing is lost.
+    delete row.tags;
+    res = await sb.from('sleep_logs').upsert(row, { onConflict: 'user_id,log_date' });
+    if (!res.error) setTimeout(function () { setSleepMsg('Saved, but your own tags need the new "tags" column in Supabase (run the SQL).', 'error'); }, 0);
+  }
   if (res.error) return setSleepMsg('Could not save: ' + res.error.message, 'error');
   sleepQuality = -1;
   document.getElementById('sleep-notes').value = '';
   ['sleep-meds', 'sleep-screen', 'sleep-caffeine'].forEach(function (id) { document.getElementById(id).checked = false; });
+  document.querySelectorAll('#sleep-custom-tags input').forEach(function (c) { c.checked = false; });
   renderSleepQuality();
   await loadSleepLogs();
   renderSleep();
@@ -2679,6 +2689,105 @@ function onSleepGoalChange(val) {
   }, 800);
 }
 
+
+// ---- Your own sleep tags (the list is saved to your account as "sleep_tags"; each night saves the ticked ones) ----
+function sleepTagList() { var m = currentUser && currentUser.user_metadata; return (m && Array.isArray(m.sleep_tags)) ? m.sleep_tags : []; }
+function sleepPickedTags() { return Array.prototype.map.call(document.querySelectorAll('#sleep-custom-tags input:checked'), function (c) { return c.value; }); }
+
+function renderSleepTags() {
+  var box = document.getElementById('sleep-custom-tags'); if (!box) return;
+  var picked = sleepPickedTags(), h = '';
+  sleepTagList().forEach(function (t) {
+    h += '<label class="sleep-tag"><input type="checkbox" value="' + moneyEsc(t) + '"' + (picked.indexOf(t) > -1 ? ' checked' : '') + '> ' + moneyEsc(t) +
+      '<button type="button" class="sleep-tag-x" data-sleep-untag="' + moneyEsc(t) + '" title="Remove this tag from your list">×</button></label>';
+  });
+  box.innerHTML = h;
+  box.querySelectorAll('[data-sleep-untag]').forEach(function (b) { b.onclick = function (e) { e.preventDefault(); removeSleepTag(b.getAttribute('data-sleep-untag')); }; });
+}
+
+async function saveSleepTags(list) {
+  currentUser.user_metadata = currentUser.user_metadata || {}; currentUser.user_metadata.sleep_tags = list;
+  var r = await sb.auth.updateUser({ data: { sleep_tags: list } });
+  if (r && r.data && r.data.user) currentUser = r.data.user;
+}
+
+async function addSleepTag() {
+  var inp = document.getElementById('sleep-newtag'), t = inp.value.trim();
+  if (!t) return;
+  var builtIn = ['took sleep meds/melatonin', 'screen before bed', 'caffeine after 3pm'];
+  if (builtIn.indexOf(t.toLowerCase()) > -1 || sleepTagList().some(function (x) { return x.toLowerCase() === t.toLowerCase(); })) return setSleepMsg('You already have that one.', 'error');
+  var picked = sleepPickedTags();
+  await saveSleepTags(sleepTagList().concat([t]));
+  inp.value = '';
+  renderSleepTags();
+  picked.concat([t]).forEach(function (x) { var c = document.querySelector('#sleep-custom-tags input[value="' + x.replace(/"/g, '\\"') + '"]'); if (c) c.checked = true; });
+  setSleepMsg('Added "' + t + '".', 'ok');
+}
+
+async function removeSleepTag(t) {
+  await saveSleepTags(sleepTagList().filter(function (x) { return x !== t; }));
+  renderSleepTags();
+  setSleepMsg('Removed "' + t + '" from your list (old nights keep it).', 'ok');
+}
+
+// ---- Sleep trend chart: a bar for each night's hours, a line connecting them, and a dashed goal line ----
+var sleepTrendDays = 14, sleepTrendChart = null;
+
+function renderSleepTrend() {
+  var canvas = document.getElementById('sleepTrendChart'); if (!canvas || typeof Chart === 'undefined') return;
+  var rangeBox = document.getElementById('sleep-range');
+  rangeBox.innerHTML = '';
+  [[7, 'Last 7 nights'], [14, '2 weeks'], [30, '30 nights']].forEach(function (r) {
+    var b = document.createElement('button'); b.type = 'button';
+    b.className = 'sleep-q-btn' + (sleepTrendDays === r[0] ? ' on' : ''); b.textContent = r[1];
+    b.onclick = function () { sleepTrendDays = r[0]; renderSleepTrend(); };
+    rangeBox.appendChild(b);
+  });
+  // Calendar nights ending at your latest logged night (or last night), so skipped nights show as gaps.
+  var byDate = {}; sleepLogs.forEach(function (n) { byDate[n.log_date] = Number(n.hours); });
+  var end = new Date(); end.setDate(end.getDate() - 1);
+  if (sleepLogs.length) { var p = sleepLogs[0].log_date.split('-'), last = new Date(+p[0], +p[1] - 1, +p[2]); if (last > end) end = last; }
+  var labels = [], hours = [];
+  for (var i = sleepTrendDays - 1; i >= 0; i--) {
+    var d = new Date(end); d.setDate(d.getDate() - i);
+    var iso = localISO(d);
+    labels.push(sleepDateLabel(iso));
+    hours.push(byDate[iso] !== undefined ? byDate[iso] : null);
+  }
+  // Use the exact same colors as the Recent nights bars (some themes override those).
+  function barColor(cls, fallback) {
+    var bar = document.createElement('div'); bar.className = 'sleep-bar'; bar.style.cssText = 'position:absolute;visibility:hidden;';
+    var i = document.createElement('i'); i.className = cls; bar.appendChild(i); document.getElementById('sleep-page').appendChild(bar);
+    var c = getComputedStyle(i).backgroundColor; bar.remove();
+    return (c && c !== 'rgba(0, 0, 0, 0)') ? c : fallback;
+  }
+  var met = barColor('met', getThemeColor('--c-purple') || '#8C5FD9'), under = barColor('under', getThemeColor('--c-pink') || '#FF5FA2');
+  var ink = getThemeColor('--c-text') || '#333', muted = getThemeColor('--c-text-muted') || '#888';
+  if (sleepTrendChart) sleepTrendChart.destroy();
+  sleepTrendChart = new Chart(canvas, {
+    data: { labels: labels, datasets: [
+      { type: 'line', label: 'Trend', data: hours, borderColor: ink, backgroundColor: ink, borderWidth: 2, pointRadius: 3, pointHoverRadius: 5, tension: 0.3, spanGaps: true, order: 1 },
+      { type: 'line', label: 'Goal', data: labels.map(function () { return sleepGoal; }), borderColor: muted, borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0, fill: false, order: 2 },
+      { type: 'bar', label: 'Hours slept', data: hours, backgroundColor: hours.map(function (h) { return h !== null && h >= sleepGoal ? met : under; }), borderRadius: 3, maxBarThickness: 34, order: 3 }
+    ] },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, position: 'top', labels: { color: ink, boxWidth: 12, font: { size: 11 } } },
+        tooltip: { callbacks: { label: function (c) { return c.raw === null ? 'Not logged' : c.dataset.label + ': ' + c.raw + 'h'; } } } },
+      scales: {
+        x: { ticks: { color: muted, font: { size: 10 }, autoSkip: true, maxRotation: 0 }, grid: { display: false } },
+        y: { beginAtZero: true, suggestedMax: Math.max(10, sleepGoal + 2), ticks: { color: muted, font: { size: 10 }, stepSize: 2 }, title: { display: true, text: 'hours', color: muted, font: { size: 10 } } }
+      } }
+  });
+  var logged = hours.filter(function (h) { return h !== null; });
+  var note = document.getElementById('sleep-trend-note');
+  if (!logged.length) { note.textContent = 'Log a few nights to see your trend.'; return; }
+  var avg = logged.reduce(function (a, b) { return a + b; }, 0) / logged.length, half = Math.floor(logged.length / 2), dir = '';
+  if (logged.length >= 4) {
+    var a1 = logged.slice(0, half).reduce(function (a, b) { return a + b; }, 0) / half, a2 = logged.slice(half).reduce(function (a, b) { return a + b; }, 0) / (logged.length - half);
+    dir = a2 - a1 > 0.25 ? ' Trending up ↑' : (a1 - a2 > 0.25 ? ' Trending down ↓' : ' Holding steady →');
+  }
+  note.textContent = logged.length + ' of ' + sleepTrendDays + ' nights logged · average ' + avg.toFixed(1) + 'h · bar colors match Recent nights (met your ' + sleepGoal + 'h goal vs under).' + dir;
+}
 
 // ============================================
 // MOOD TRACKER (saved in the Supabase "mood_logs" table)
