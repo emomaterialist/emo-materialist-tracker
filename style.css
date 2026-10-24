@@ -2998,3 +2998,69 @@ body[data-theme="office"] .today-item, body[data-theme="office"] .mt-side, body[
 body[data-theme="office"] .day-box:hover::after { background: #1F2D3D; color: #FFFFFF; border-color: #1F2D3D; /* checkbox hover tip (charcoal) */ }
 body[data-theme="office"] .sleep-title { color: #1F2D3D; /* page headings (charcoal) */ font-weight: 600; }
 body[data-theme="office"] .donut-label { color: #5F6B7A !important; }
+
+
+/* ---- THEME: Sage & Lilac Ombre 🪻 (sage-to-purple fade page, cream boxes, lilac lace frames, no box shadows) ---- */
+body[data-theme="sage-lilac"] {
+  --c-dark: #5A4182;          /* outlines and dark text on buttons (deep plum) */
+  --c-pink: #9C86C4;          /* main accent: lines, charts, selected things (lilac) */
+  --c-purple: #6E9160;        /* second accent: bars, goal colors (deep sage) */
+  --c-orange: #CBDCBF;        /* third accent / gradient end (pale sage) */
+  --c-body-bg: #FCFAF5;       /* box insides (cream) */
+  --c-body-bg-alt: #F0EAF7;   /* tiles and cards (pale lilac) */
+  --c-text: #3D2D56;          /* main text (dark plum) */
+  --c-text-muted: #776C8A;    /* small/secondary text (dusty plum grey) */
+  --c-page-bg-1: #94AE88;     /* page top (sage) */
+  --c-page-bg-2: #7656A6;     /* page bottom (purple) */
+  --c-grid-dot: rgba(255,255,255,0.28); /* page polka dots (soft white) */
+  --c-font: "Lora", Georgia, serif;
+  --radius-outer: 6px;
+  --radius-inner: 4px;
+  --radius-sm: 4px;
+  --week-1-bg: #A7BE9A;       /* week 1 (sage) */
+  --week-2-bg: #B9A2DC;       /* week 2 (lilac) */
+  --week-3-bg: #7656A6;       /* week 3 (purple) */
+  --week-4-bg: #8C76BE;       /* week 4 (mid lilac) */
+  --week-5-bg: #7F9A74;       /* week 5 (deep sage) */
+  --week-1-text: #3D2D56; --week-2-text: #3D2D56; /* check marks on weeks 1-2 (dark plum) */
+  --week-3-text: #FFFFFF; --week-4-text: #FFFFFF; --week-5-text: #FFFFFF; /* check marks on the darker weeks 3-5 (white) */
+  --week-donut-text: #3D2D56; /* "Wk 1" and % inside the week donuts */
+  --donut-label-color: #776C8A;
+  --checkbox-required-empty: '?';
+  --checkbox-required-done: '♥';
+  --checkbox-flexible-empty: '';
+  --day-toggle-color: #7656A6;
+  --mood-paper: #FFFFFF;      /* mood chart paper + empty days (white) */
+  --money-in: #4F7A45;        /* income amounts (leaf green) */
+  --money-out: #B0406A;       /* expense amounts (berry) */
+  --shop-gold: #A47A1E;       /* gold amounts (antique gold) */
+  --bonus-color: #C9963A;     /* bonus check-ins: striped bars, trend dots, extra-credit ring (honey gold) */
+  --best-color: #7656A6;      /* Personal bests dates (purple) */
+}
+body[data-theme="sage-lilac"] { background-image: radial-gradient(circle, rgba(255,255,255,0.28) 1px, transparent 1px), linear-gradient(135deg, #94AE88 0%, #9C86C4 55%, #7656A6 100%); /* page: sage to lilac to purple fade */ }
+body[data-theme="sage-lilac"] .sleep-page { background-image: radial-gradient(circle, rgba(255,255,255,0.28) 1px, transparent 1px), linear-gradient(135deg, #94AE88 0%, #9C86C4 55%, #7656A6 100%); /* extra pages get the same fade */ }
+body[data-theme="sage-lilac"] .cell-border { border: 1.5px solid #5A4182; /* outer frame line (deep plum) */ outline: 1.5px solid #A7BE9A; /* second frame line (sage) */ outline-offset: 3px; background: #FCFAF5; /* frame fill (cream) */ box-shadow: none; }
+body[data-theme="sage-lilac"] .title-bar { background: #F0EAF7; /* title bar (pale lilac) */ border: none; border-bottom: 1px solid #A7BE9A; /* line under title (sage) */ }
+body[data-theme="sage-lilac"] .title-text { font-family: "Great Vibes", cursive !important; font-size: 24px !important; font-weight: 400 !important; text-transform: none !important; letter-spacing: 0 !important; color: #5A4182 !important; /* box titles (deep plum script) */ }
+body[data-theme="sage-lilac"] .title-glyph { background: none; transform: none; width: auto; height: auto; font-size: 13px; line-height: 1; }
+body[data-theme="sage-lilac"] .title-glyph::before { content: '🪻'; /* little lavender sprig on each title bar */ }
+body[data-theme="sage-lilac"] .title-dots span { border-radius: 50%; background: #A7BE9A; /* dot 1 (sage) */ }
+body[data-theme="sage-lilac"] .title-dots span:nth-child(2) { background: #B9A2DC; /* dot 2 (lilac) */ }
+body[data-theme="sage-lilac"] .title-dots span:nth-child(3) { background: #7656A6; /* dot 3 (purple) */ }
+body[data-theme="sage-lilac"] .cell-body { background: #FCFAF5; /* box inside (cream) */ border: none; }
+body[data-theme="sage-lilac"] .today-item, body[data-theme="sage-lilac"] .mt-side, body[data-theme="sage-lilac"] .dash-dock, body[data-theme="sage-lilac"] .gold-breakdown, body[data-theme="sage-lilac"] .star-tip { box-shadow: none; /* no shadows next to boxes */ }
+body[data-theme="sage-lilac"] .tracker-title .title-text { color: #5A4182 !important; }
+body[data-theme="sage-lilac"] .settings-panel { background: #F7F3FB; /* settings panel (lilac cream) */ border-right: 2px solid #A7BE9A; /* panel edge (sage) */ }
+body[data-theme="sage-lilac"] .settings-header, body[data-theme="sage-lilac"] .settings-close, body[data-theme="sage-lilac"] .settings-value, body[data-theme="sage-lilac"] .habit-list-row, body[data-theme="sage-lilac"] .habit-list-row span, body[data-theme="sage-lilac"] .field-group label { color: #3D2D56 !important; /* settings text (dark plum) */ }
+body[data-theme="sage-lilac"] .settings-label { color: #7656A6; /* settings headings (purple) */ }
+body[data-theme="sage-lilac"] .settings-btn, body[data-theme="sage-lilac"] .auth-btn, body[data-theme="sage-lilac"] .update-btn, body[data-theme="sage-lilac"] .settings-toggle-btn { background: #6E9160; /* buttons (deep sage) */ color: #FFFFFF; /* button text (white) */ border: 1.5px solid #5A4182; /* button outline (deep plum) */ box-shadow: none; border-radius: 999px; }
+body[data-theme="sage-lilac"] .settings-select, body[data-theme="sage-lilac"] .field-group input { background: #FFFFFF; color: #3D2D56; border: 1.5px solid #B9A2DC; /* field outline (lilac) */ }
+body[data-theme="sage-lilac"] .week-col-header { color: #5A4182; /* week headings (deep plum) */ border-bottom-color: #A7BE9A; }
+body[data-theme="sage-lilac"] .week-col { border-right-color: #D4C6EC; /* weekly task column lines (soft lilac) */ }
+body[data-theme="sage-lilac"] .sleep-title { font-family: "Great Vibes", cursive; font-weight: 400; font-size: 36px; color: #FFFFFF; /* page headings (white script on the ombre) */ }
+body[data-theme="sage-lilac"] .sleep-q-btn.on, body[data-theme="sage-lilac"] .grid-tab.on, body[data-theme="sage-lilac"] .day-toggle.selected { background: #7656A6; /* selected button (purple) */ color: #FFFFFF; /* selected text (white) */ }
+body[data-theme="sage-lilac"] #version-text { color: #776C8A !important; }
+body[data-theme="sage-lilac"] .donut-label { color: #776C8A !important; }
+body[data-theme="sage-lilac"] .settings-section .cell-subtitle { color: #776C8A !important; }
+body[data-theme="sage-lilac"] .xp-tile-num.xp-total { color: #7656A6; /* Total XP number (purple) */ }
+body[data-theme="sage-lilac"] .xp-tile-num.xp-level { color: #6E9160; /* Level number (deep sage) */ }

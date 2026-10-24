@@ -620,7 +620,8 @@ var HABIT_COLOR_CONFIG = {
   'pastel-goth':  { mode:'curated', palette:['#FF8CCF','#C3A6FF','#8FE3CF','#FFB3E0','#9AC8FF','#E05FA8','#A07CE8','#F6D6E8','#FF6FB5','#7FD6C2','#D9B8FF','#FFC4E6'] },
   'sage-linen':   { mode:'curated', palette:['#7D8F6E','#B9A36B','#A3B18A','#8FA39A','#C7B08A','#5E7254','#D4C39A','#6E8B84','#B5BFA0','#9C8455','#C9D3B8','#7A6A4F'] },
   'goth-noir':    { mode:'curated', palette:['#F2F2F2','#A6A6A6','#D0D0D0','#7A7A7A','#E3E3E3','#8E8E8E','#BBBBBB','#666666','#FFFFFF','#959595','#C8C8C8','#727272'] },
-  'office':       { mode:'curated', palette:['#2B6CB0','#0F9D9A','#2E9E5B','#5BA4E6','#6CC3A6','#1E4E8C','#3BB8C4','#7BB662','#8FB8E8','#0B7A75','#A8D5BA','#4A7FB5'] }
+  'office':       { mode:'curated', palette:['#2B6CB0','#0F9D9A','#2E9E5B','#5BA4E6','#6CC3A6','#1E4E8C','#3BB8C4','#7BB662','#8FB8E8','#0B7A75','#A8D5BA','#4A7FB5'] },
+  'sage-lilac':   { mode:'curated', palette:['#9C86C4','#6E9160','#B9A2DC','#A7BE9A','#7656A6','#CBDCBF','#D4C6EC','#94AE88','#5A4182','#B8CDAA','#C7B3E3','#7F9A74'] }
 };
 var GOLDEN_ANGLE = 137.508;
 function colorForHabitIndex(i) {
