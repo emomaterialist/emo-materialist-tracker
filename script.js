@@ -5630,6 +5630,8 @@ var DASH_SPANS = { 'summary': 3, 'weeks': 5, 'category-star-map': 4, 'month-prog
   'weekly-planned-tasks': 8, 'planned-vs-actual': 4, 'year-heatmap': 12, 'actual-vs-intended-completions': 6,
   'xp-growth': 6, 'best-streaks': 4, 'personal-bests': 4, 'habit-age': 4, 'xp-speed-and-acceleration': 12 };
 var DASH_SIZES = [3, 4, 6, 8, 12];   // the size button cycles through these (out of 12 columns)
+var DASH_MIN = { 'weeks': 4, 'daily-checklist-monthly-progress': 6 };   // narrowest a box can go (others: 2 columns)
+function dashMin(id) { return DASH_MIN[id] || 2; }
 var DASH_DEFAULT = [], dashLayoutCache = null;
 
 function dashSlug(t) { return (t || '').toLowerCase().replace(/&amp;/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''); }
@@ -5653,8 +5655,9 @@ function dashDevice() { return window.innerWidth <= 700 ? 'phone' : 'desktop'; }
     b.classList.add('dash-box'); b.dataset.box = id;
     b.dataset.span = DASH_SPANS[id] || 12;
     var dots = b.querySelectorAll('.title-bar .title-dots span');
-    ['min', 'size', 'dock'].forEach(function (act, i) { if (dots[i]) { dots[i].dataset.dashAct = act; dots[i].title = ['Minimize / open', 'Change size', 'Send to the dock'][i]; } });
-    var bar = b.querySelector('.title-bar'); if (bar) bar.title = 'Drag to move (long-press on phones)';
+    ['min', 'size', 'dock'].forEach(function (act, i) { if (dots[i]) { dots[i].dataset.dashAct = act; dots[i].dataset.glyph = ['–', '↔', '▾'][i]; dots[i].title = ['Minimize / open', 'Change size', 'Send to the dock'][i]; } });
+    var glyph = b.querySelector('.title-bar .title-glyph'); if (glyph) { glyph.classList.add('dash-move'); glyph.title = 'Drag to move this box'; }   // top-left button = move
+    var grip = document.createElement('div'); grip.className = 'dash-resize'; grip.title = 'Drag to change the width'; b.appendChild(grip);   // right edge = width
     grid.appendChild(b);
     DASH_DEFAULT.push(id);
   });
@@ -5662,6 +5665,7 @@ function dashDevice() { return window.innerWidth <= 700 ? 'phone' : 'desktop'; }
   screen.querySelectorAll('.tracker table.layout').forEach(function (tb) { if (!tb.textContent.trim()) tb.remove(); });
   for (var i = 1; i < trackers.length; i++) if (!trackers[i].textContent.trim()) trackers[i].remove();
   var dock = document.createElement('div'); dock.id = 'dash-dock'; dock.className = 'dash-dock'; document.body.appendChild(dock);
+  var guides = document.createElement('div'); guides.className = 'dash-cols'; guides.innerHTML = new Array(13).join('<i></i>'); grid.insertBefore(guides, grid.firstChild);   // column guides shown while resizing
 })();
 
 function dashReadLayouts() {
@@ -5698,7 +5702,7 @@ function dashApplyLayout() {
   order.forEach(function (id) { g.appendChild(byId[id]); });
   dashBoxes().forEach(function (b) {
     var id = b.dataset.box;
-    b.dataset.span = (L && L.span && L.span[id]) || DASH_SPANS[id] || 12;
+    b.dataset.span = Math.max(dashMin(id), (L && L.span && L.span[id]) || DASH_SPANS[id] || 12);
     b.classList.toggle('dash-min', !!(L && L.min && L.min[id]));
     b.classList.toggle('dash-docked', !!(L && L.dock && L.dock[id]));
   });
@@ -5735,7 +5739,7 @@ document.addEventListener('click', function (e) {
   if (act === 'dock') { box.classList.add('dash-docked'); }
   if (act === 'size') {
     var cur = +box.dataset.span, next = DASH_SIZES.filter(function (s) { return s > cur; })[0] || DASH_SIZES[0];
-    box.dataset.span = next;
+    box.dataset.span = Math.max(next, dashMin(box.dataset.box));
   }
   dashSave();
 });
@@ -5744,12 +5748,13 @@ document.addEventListener('click', function (e) {
 var dashDrag = null;
 document.addEventListener('pointerdown', function (e) {
   var g = dashGrid(); if (!g) return;
-  var bar = e.target.closest && e.target.closest('.title-bar'); if (!bar || !g.contains(bar)) return;
-  if (e.target.closest('.title-dots') || e.target.closest('button,input,select,a')) return;
   if (e.pointerType === 'mouse' && e.button !== 0) return;
-  var box = bar.closest('.dash-box'); if (!box || box.parentElement !== g) return;
+  var grip = e.target.closest && e.target.closest('.dash-resize');
+  if (grip && g.contains(grip)) { dashStartResize(e, grip.parentElement); return; }
+  var mv = e.target.closest && e.target.closest('.dash-move'); if (!mv || !g.contains(mv)) return;   // only the top-left button moves a box
+  var box = mv.closest('.dash-box'); if (!box || box.parentElement !== g) return;
+  e.preventDefault();
   dashDrag = { box: box, x: e.clientX, y: e.clientY, active: false, timer: null };
-  if (e.pointerType !== 'mouse') dashDrag.timer = setTimeout(function () { if (dashDrag) dashStartDrag(); }, 420);
 });
 function dashStartDrag() {
   var d = dashDrag; if (!d || d.active) return;
@@ -5764,8 +5769,7 @@ document.addEventListener('pointermove', function (e) {
   var d = dashDrag; if (!d) return;
   var dist = Math.hypot(e.clientX - d.x, e.clientY - d.y);
   if (!d.active) {
-    if (d.timer) { if (dist > 10) { clearTimeout(d.timer); dashDrag = null; } return; }   // touch moved before the long-press finished: it's a scroll
-    if (dist < 6) return;
+    if (dist < 5) return;
     dashStartDrag();
   }
   e.preventDefault();
@@ -5789,7 +5793,33 @@ function dashEndDrag() {
 }
 document.addEventListener('pointerup', dashEndDrag);
 document.addEventListener('pointercancel', dashEndDrag);
-document.addEventListener('contextmenu', function (e) { if (e.target.closest && e.target.closest('#dash-grid .title-bar')) e.preventDefault(); });   // no phone pop-up menu on long-press
+document.addEventListener('contextmenu', function (e) { if (e.target.closest && e.target.closest('#dash-grid .dash-move, #dash-grid .dash-resize')) e.preventDefault(); });
+
+// Width: drag a box's right edge. Snaps to the 12 columns, never narrower than the box's minimum.
+var dashSize = null;
+function dashStartResize(e, box) {
+  e.preventDefault();
+  var badge = document.createElement('span'); badge.className = 'dash-size-badge'; badge.textContent = box.dataset.span + ' / 12'; box.appendChild(badge);
+  dashSize = { box: box, badge: badge };
+  box.classList.add('dash-sizing'); document.body.classList.add('dash-is-sizing');
+}
+document.addEventListener('pointermove', function (e) {
+  var r = dashSize; if (!r) return;
+  e.preventDefault();
+  var g = dashGrid(), cs = getComputedStyle(g), gap = parseFloat(cs.columnGap) || 14;
+  var inner = g.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), colW = (inner - gap * 11) / 12;
+  var left = r.box.getBoundingClientRect().left;
+  var n = Math.round((e.clientX - left + gap) / (colW + gap));
+  n = Math.max(dashMin(r.box.dataset.box), Math.min(12, n));
+  if (+r.box.dataset.span !== n) { r.box.dataset.span = n; r.badge.textContent = n + ' / 12'; }
+}, { passive: false });
+function dashEndResize() {
+  var r = dashSize; dashSize = null; if (!r) return;
+  r.badge.remove(); r.box.classList.remove('dash-sizing'); document.body.classList.remove('dash-is-sizing');
+  dashSave();
+}
+document.addEventListener('pointerup', dashEndResize);
+document.addEventListener('pointercancel', dashEndResize);   // no phone pop-up menu on long-press
 
 // Switching between computer and phone size swaps to that layout
 var dashLastDevice = dashDevice();
