@@ -79,6 +79,7 @@
   <option value="pastel-goth">Pastel Goth 🖤🎀</option>
   <option value="goth-noir">Goth Noir 🖤🤍</option>
   <option value="sage-linen">Sage &amp; Linen 🌿</option>
+  <option value="office">Office Slate 💼</option>
 </select>
   </div>
   <div class="settings-section">
@@ -121,6 +122,24 @@
     <p class="settings-label">Hard habits optional <span style="font-size:10px;font-weight:400;opacity:0.7;">Missed hard habits don't count against you</span></p>
     <label class="toggle-label">
       <input type="checkbox" id="hard-optional-toggle" onchange="toggleHardOptional(this.checked)">
+      <span class="toggle-slider"></span>
+    </label>
+  </div>
+  <div class="settings-section">
+    <p class="settings-label">Victory animations? <span style="font-size:10px;font-weight:400;opacity:0.7;">Little celebrations when you log things</span></p>
+    <label class="toggle-label">
+      <input type="checkbox" id="victory-toggle" onchange="toggleVictory(this.checked)">
+      <span class="toggle-slider"></span>
+    </label>
+  </div>
+  <div class="settings-section">
+    <p class="settings-label">Dashboard layout <span style="font-size:10px;font-weight:400;opacity:0.7;">Drag a box by its title bar (long-press on phones). The 3 dots on each title bar: minimize · change size · send to the dock</span></p>
+    <button class="settings-btn" onclick="dashResetLayout()">↺ Reset layout</button>
+  </div>
+  <div class="settings-section">
+    <p class="settings-label">Highlight current day and weekends <span style="font-size:10px;font-weight:400;opacity:0.7;">In the checklist and every chart with dates</span></p>
+    <label class="toggle-label">
+      <input type="checkbox" id="highlight-days-toggle" onchange="toggleHighlightDays(this.checked)">
       <span class="toggle-slider"></span>
     </label>
   </div>
@@ -214,6 +233,11 @@
     <p class="cell-subtitle">Love the tracker? Thanks <3!</p>
     <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script><script type='text/javascript'>kofiwidget2.init('Support me on Ko-fi', '#72a4f2', 'R4Q3248OQQ');kofiwidget2.draw();</script>
   </div>
+  <div class="settings-section">
+    <p class="settings-label">📦 Archives <span style="font-size:10px;font-weight:400;opacity:0.7;">Hidden from your dashboard, history kept</span></p>
+    <div id="archive-list"></div>
+    <button class="settings-btn" onclick="toggleSettings(false); toggleEveryPage('archived');" style="margin-top:8px;">🏆 Open the Archives tab to log one</button>
+  </div>
 </div>
 
 <div id="quick-buttons" class="quick-buttons" style="position:fixed;top:14px;left:14px;z-index:1000;display:flex;flex-direction:column;gap:6px;">
@@ -223,8 +247,10 @@
   <button class="settings-toggle-btn" onclick="toggleMoodPage()" title="Mood tracker" style="position:static;width:36px;height:36px;font-size:14px;">🍄</button>
   <button class="settings-toggle-btn" onclick="toggleMoneyPage()" title="Money tracker" style="position:static;width:36px;height:36px;font-size:14px;">💰</button>
   <button class="settings-toggle-btn" onclick="toggleMemoryPage()" title="Memory dump" style="position:static;width:36px;height:36px;font-size:14px;">📝</button>
+  <button class="settings-toggle-btn" onclick="toggleEveryPage()" title="Every habit (Active and Archives)" style="position:static;width:36px;height:36px;font-size:14px;">🏆</button>
   <button class="settings-toggle-btn" onclick="toggleShopPage()" title="Reward shop" style="position:static;width:36px;height:36px;font-size:14px;">🛒</button>
   <button class="settings-toggle-btn" onclick="exportToCSV()" title="Export CSV" style="position:static;width:36px;height:36px;font-size:14px;">⬇</button>
+  <button class="settings-toggle-btn ribbon-toggle" id="ribbon-toggle" onclick="toggleRibbon()" title="Fold the buttons away" style="position:static;width:36px;height:36px;font-size:14px;">«</button>
 </div>
 
 <div id="history-page" style="display:none;position:fixed;top:0;left:0;width:100%;height:100vh;z-index:998;overflow-y:auto;padding:60px 24px 24px;box-sizing:border-box;background:radial-gradient(circle,var(--c-grid-dot) 1px,transparent 1px),linear-gradient(180deg,var(--c-page-bg-1) 0%,var(--c-page-bg-2) 100%);background-size:16px 16px,100% 100%;">
@@ -669,6 +695,18 @@
   </div>
 </div>
 
+<div id="every-page" class="sleep-page" style="display:none;">
+  <div class="sleep-wrap eh-wrap">
+    <div class="sleep-head">
+      <span class="sleep-title">Every habit</span>
+      <button class="settings-btn sleep-close" onclick="toggleEveryPage()">✕ Close</button>
+    </div>
+    <div id="eh-root"></div>
+  </div>
+</div>
+
+<div id="sched-modal" class="sched-modal" style="display:none;"><div class="sched-dialog" id="sched-dialog" role="dialog" aria-label="Edit schedule"></div></div>
+
 <div id="memory-page" class="sleep-page" style="display:none;">
   <div class="sleep-wrap">
     <div class="sleep-head">
@@ -975,7 +1013,7 @@
         </td>
         <td class="cell-outer">
           <div class="cell-border">
-            <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Best month 🏆</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+            <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Personal bests 🏆</span><span class="title-dots"><span></span><span></span><span></span></span></div>
             <div class="cell-body"><div id="best-month-container"></div></div>
           </div>
         </td>

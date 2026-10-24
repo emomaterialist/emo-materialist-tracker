@@ -694,10 +694,14 @@ button.settings-btn:active { transform: translateY(0); }
 }
 
 #emoji-picker-modal {
-  position: relative;
+  position: relative;   /* sits right where it opens: under "Add a habit", or under the habit you're editing */
+  top: auto; left: auto; transform: none;   /* the old centering rules pushed it up and left, on top of the boxes above */
+  width: 100%; box-sizing: border-box; margin: 6px 0 8px; padding: 10px;
 }
+#emoji-picker-modal #emoji-grid { grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 4px; padding: 4px; max-height: 260px; }
+#emoji-picker-modal #emoji-grid button { font-size: 22px !important; padding: 4px; }
 
-#emoji-picker-modal button:first-child {
+#emoji-picker-modal > button:first-child {
   position: absolute;
   top: 8px;
   right: 8px;
@@ -732,6 +736,10 @@ button.settings-btn:active { transform: translateY(0); }
 .today-item input:checked + .today-box { background: var(--c-pink); }
 .today-item input:checked + .today-box::after { opacity: 1; }
 .today-item input:checked ~ .today-name { opacity: 0.55; text-decoration: line-through; }
+.today-item:has(input:checked) { box-shadow: none; transform: none;
+  background: color-mix(in srgb, var(--c-text-muted) 22%, var(--c-body-bg)); /* done box: greyed-out background (theme's grey mixed into the box color) */
+  border-color: var(--c-text-muted); /* done box: grey outline */ }
+.today-item input:checked ~ .today-name, .today-item input:checked ~ .today-tag { filter: grayscale(1); /* done box: emoji and text turn grey */ }
 .today-item input:focus-visible + .today-box { outline: 2px solid var(--c-purple); outline-offset: 2px; }
 .today-name { flex: 1; min-width: 0; }
 .today-tag { flex: none; font-size: 10px; letter-spacing: 0.5px; color: var(--c-text-muted); }
@@ -1414,6 +1422,251 @@ body { --shop-gold: #B8860B; /* gold amounts (dark gold, readable on light backg
   .shop-grid { grid-template-columns: 1fr 1fr; }
 }
 
+/* ===== Personal bests box (best day / week / two weeks / month) ===== */
+.best-list { display: flex; flex-direction: column; gap: 6px; }
+.best-row { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.6fr) auto; gap: 10px; align-items: baseline; padding: 4px 0;
+  border-bottom: 1px solid var(--c-body-bg-alt); /* line between the bests */ }
+.best-row:last-child { border-bottom: none; }
+.best-kind { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--c-text-muted); /* "BEST DAY" labels */ }
+.best-when { font-size: 16px; font-weight: 700; color: var(--best-color, var(--c-orange)); /* the date or date range (themes can set --best-color) */ }
+.best-num { font-size: 13px; font-weight: 700; white-space: nowrap; color: var(--c-text); /* "106 done" */ }
+
+/* ===== Bonus check-ins (archived habits + habits done on a day they weren't due) ===== */
+body { --bonus-color: var(--c-orange); /* striped Bonus bars, Daily trend bonus dots, extra-credit ring (themes can set their own) */ }
+.today-item.bonus { border-style: dashed; border-color: var(--bonus-color); /* bonus box outline (dashed, bonus color) */ }
+.today-item.bonus input:checked + .today-box { background: var(--bonus-color); /* bonus box tick (bonus color) */ }
+.archive-row { gap: 6px; }
+
+/* ===== Every habit page (🏆) — reuses the sleep page frame; colors come from theme variables ===== */
+.eh-wrap { max-width: 1000px; }
+#every-page .cell-border { height: auto; margin-bottom: 14px; }
+.eh-search { font-size: 14px; padding: 9px 12px; margin-bottom: 10px; }
+.eh-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+.eh-tabs .sleep-q-btn { padding: 6px 14px; }
+.eh-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
+.eh-stats .sleep-big { font-size: 24px; color: var(--c-text); /* collector stat numbers */ }
+.eh-nudge { margin-bottom: 10px; padding: 8px 10px; font-size: 12px; color: var(--c-text); /* nudge text */
+  background: var(--c-body-bg-alt); /* nudge box background */
+  border: 2px dashed var(--bonus-color); /* nudge box outline (bonus color) */
+  border-radius: var(--radius-sm); }
+.eh-nudge-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 5px 0;
+  border-top: 1px solid var(--c-body-bg); /* line between nudge rows */ }
+.eh-nudge-row .sleep-q-btn { padding: 4px 10px; }
+.eh-legend { margin: 0 0 8px; font-size: 11px; color: var(--c-text-muted); /* legend text */ }
+.eh-key { padding: 0 6px; border-radius: 3px; border: 2px solid; }
+.eh-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.eh-card { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; font-size: 12px; cursor: pointer;
+  color: var(--c-text); /* card text */
+  background: var(--c-body-bg); /* card background */
+  border: 2px solid var(--c-text-muted); /* card outline (below Lv 3) */
+  border-radius: var(--radius-sm); box-shadow: 2px 2px 0 var(--c-dark); /* card shadow */ }
+.eh-card:hover { transform: translate(-1px, -1px); }
+.eh-card.sel { outline: 3px solid var(--c-purple); /* selected card ring */ outline-offset: 1px; }
+.eh-card.arch { background: var(--c-body-bg-alt); /* archived card background */ }
+.eh-bronze { border-color: #B87333 !important; /* bronze border, Lv 3+ */ }
+.eh-silver { border-color: #A3A8B0 !important; /* silver border, Lv 5+ */ }
+.eh-gold { border-color: #D4A017 !important; /* gold border, Lv 7+ */ }
+.eh-card.eh-gold { box-shadow: 0 0 0 1px #D4A017, 2px 2px 0 var(--c-dark); /* gold cards get a double edge */ }
+.eh-card-top { display: flex; align-items: center; gap: 6px; }
+.eh-lv { padding: 1px 8px; font-size: 11px; font-weight: 700; border-radius: 999px; white-space: nowrap;
+  color: var(--c-dark); /* "Lv 8" text */
+  background: var(--c-pink); /* "Lv 8" pill (theme accent) */ }
+.eh-arch-tag { font-size: 10px; color: var(--c-text-muted); /* "archived" tag */ }
+.eh-plus { margin-left: auto; width: 26px; height: 26px; padding: 0; font-size: 16px; font-weight: 700; line-height: 1; cursor: pointer; border-radius: var(--radius-sm);
+  color: var(--c-dark); /* + text */
+  background: var(--c-body-bg-alt); /* + button */
+  border: 2px solid var(--c-dark); /* + outline */ }
+.eh-plus:hover { background: var(--c-pink); /* + button hover (accent) */ }
+.eh-trash { width: 26px; height: 26px; padding: 0; font-size: 13px; line-height: 1; cursor: pointer; border-radius: var(--radius-sm);
+  background: var(--c-body-bg); /* 🗑 button (archived cards only) */
+  border: 2px solid var(--c-text-muted); /* 🗑 outline */ }
+.eh-trash + .eh-plus { margin-left: 4px; }
+.eh-card-top .eh-trash { margin-left: auto; }
+.eh-purge { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; padding: 8px 10px; font-size: 12px;
+  color: var(--c-text); /* purge bar text */
+  background: var(--c-body-bg-alt); /* purge bar background */
+  border: 2px dashed var(--c-text-muted); /* purge bar outline */
+  border-radius: var(--radius-sm); }
+.eh-purge .sleep-q-btn { padding: 5px 12px; }
+.eh-name { font-size: 13px; font-weight: 700; line-height: 1.3; }
+.eh-meta { color: var(--c-text-muted); /* "104 times · today" */ }
+.eh-meta2 { font-size: 11px; color: var(--c-text-muted); /* "11 to Lv 9 · 520 XP" */ }
+.eh-prog { height: 5px; overflow: hidden; border-radius: 3px; background: var(--c-body-bg-alt); /* empty level bar */ }
+.eh-prog i { display: block; height: 100%; background: var(--c-purple); /* filled level bar */ }
+.eh-detail-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 12px; color: var(--c-text); }
+.eh-detail-top .sleep-q-btn { padding: 5px 12px; }
+.eh-heat { overflow-x: auto; padding-bottom: 4px; }
+.eh-months, .eh-cols { display: flex; gap: 3px; width: max-content; }
+.eh-months span { width: 12px; font-size: 10px; white-space: nowrap; color: var(--c-text-muted); /* month names above the heatmap */ }
+.eh-col { display: grid; grid-template-rows: repeat(7, 12px); gap: 3px; }
+.eh-cell { display: block; width: 12px; height: 12px; border-radius: 2px;
+  background: var(--c-body-bg-alt); /* empty day */
+  border: 1px solid var(--c-text-muted); /* empty day outline */ opacity: 0.8; }
+.eh-cell.l1 { background: var(--c-pink); border-color: var(--c-pink); opacity: 0.6; /* logged once (lighter accent) */ }
+.eh-cell.l2 { background: var(--c-pink); border-color: var(--c-dark); opacity: 1; /* logged 2+ times (full accent) */ }
+.eh-cell.future { opacity: 0.2; }
+.eh-past { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.eh-past .sleep-label { margin: 0; }
+.eh-past .sleep-input { width: auto; }
+.eh-past .sleep-q-btn { padding: 5px 12px; }
+.eh-fame-row { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; font-size: 12px; color: var(--c-text);
+  border-bottom: 1px solid var(--c-body-bg-alt); /* line between Hall of Fame rows */ }
+.eh-fame-row small { color: var(--c-text-muted); }
+@media (max-width: 700px) {
+  .eh-stats { grid-template-columns: 1fr 1fr; }
+  .eh-grid { grid-template-columns: 1fr 1fr; }
+  .eh-plus { width: 34px; height: 34px; }
+}
+
+/* ===== Schedule editor pop-up (📅 Edit schedule) — colors come from theme variables ===== */
+.sched-modal { position: fixed; inset: 0; z-index: 1500; display: flex; align-items: flex-start; justify-content: center; overflow-y: auto; padding: 40px 14px;
+  background: rgba(0, 0, 0, 0.45); /* dimmed page behind the pop-up */ }
+.sched-dialog { position: relative; width: 100%; max-width: 980px; display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 14px; padding: 32px 16px 16px; box-sizing: border-box;
+  color: var(--c-text); /* pop-up text */
+  background: var(--c-body-bg); /* pop-up background */
+  border: 3px solid var(--c-dark); /* pop-up outline */
+  border-radius: var(--radius-outer); box-shadow: 6px 6px 0 var(--c-dark); /* pop-up shadow */ }
+.se-x { position: absolute; top: 8px; right: 10px; padding: 2px 6px; font-size: 16px; cursor: pointer; background: none; border: none; color: var(--c-text-muted); /* ✕ close */ }
+.se-left .sleep-label { margin-top: 10px; }
+.se-title { margin: 0 24px 4px 0; font-size: 16px; font-weight: 700; }
+.se-cur { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; font-size: 12px; border-radius: var(--radius-sm);
+  background: var(--c-body-bg-alt); /* current schedule box */ }
+.se-cur span { color: var(--c-text-muted); /* "Next due: ..." */ }
+.se-seg { display: flex; flex-wrap: wrap; gap: 4px; }
+.se-seg .sleep-q-btn { padding: 6px 8px; }
+.se-opts { margin-top: 6px; font-size: 12px; }
+.se-days { display: flex; gap: 4px; flex-wrap: wrap; }
+.se-day { width: 30px; padding: 4px 0; }
+.se-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 8px; font-size: 12px; }
+.se-num { width: 70px; }
+.se-date { width: auto; }
+.se-radio { display: flex; align-items: center; gap: 6px; margin: 4px 0; font-size: 12px; cursor: pointer; }
+.se-radio input { accent-color: var(--c-pink); /* radio dot color */ }
+.se-btns { display: flex; gap: 6px; margin-top: 12px; }
+.se-btns .settings-btn { flex: 1; }
+.se-btns .sleep-q-btn { flex: 1; }
+.se-right { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.se-box { padding: 10px 12px; border-radius: var(--radius-sm);
+  background: var(--c-body-bg-alt); /* preview + history boxes */
+  border: 1.5px solid var(--c-text-muted); /* preview + history outline */ }
+.se-sub { margin: 0 0 4px; font-size: 13px; }
+.se-sub small { color: var(--c-text-muted); font-weight: 400; }
+.se-sum { margin: 0 0 8px; font-size: 12px; line-height: 1.45; color: var(--c-text-muted); /* preview explanation */ }
+.se-rowlbl { margin: 8px 0 4px; font-size: 11px; color: var(--c-text-muted); /* "Before" / "After saving" */ }
+.se-grid { display: grid; grid-template-columns: repeat(16, minmax(0, 1fr)); gap: 3px; margin-bottom: 6px; }
+.se-cell { text-align: center; font-size: 10px; line-height: 1.2; color: var(--c-text-muted); /* day letters and numbers */ }
+.se-b { position: relative; display: block; height: 18px; border-radius: 3px; box-sizing: border-box;
+  border: 1px dashed var(--c-text-muted); opacity: 0.6; /* not-due day */ }
+.se-b.req { border: 2px solid var(--c-purple); opacity: 1; /* required day */ }
+.se-b.req.done { background: var(--c-purple); /* required + done */ }
+.se-b.any { border: 2px dashed var(--c-pink); opacity: 1; /* "any day" (times per month) */ }
+.se-b.any.done { background: var(--c-pink); /* any day + done */ }
+.se-b.bonus { background: var(--bonus-color); border-color: var(--bonus-color); opacity: 1; /* done on a day that isn't due */ }
+.se-b.mark::before { content: ''; position: absolute; left: -4px; top: -4px; bottom: -4px; width: 2px; background: var(--c-text); /* change-date line */ }
+.se-key { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 6px; font-size: 11px; color: var(--c-text-muted); }
+.se-key i.se-b { display: inline-block; width: 12px; height: 12px; margin-right: 4px; vertical-align: -2px; }
+.se-key-mark { display: inline-block; width: 3px; height: 12px; margin-right: 4px; vertical-align: -2px; background: var(--c-text); }
+.se-hist-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 5px 0; font-size: 12px;
+  border-bottom: 1px solid var(--c-body-bg); /* line between history rows */ }
+.se-hist-row .sleep-q-btn { padding: 3px 10px; }
+.se-hist-when { color: var(--c-text-muted); /* "Jul 29 → Oct 15" */ }
+.se-hist-empty { margin: 0; font-size: 12px; color: var(--c-text-muted); }
+.se-mini { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 6px; font-size: 11px; }
+.se-mini-btn { flex: none; padding: 3px 8px; font-size: 11px; white-space: nowrap; /* "Edit schedule" button in Settings (uses the theme's button colors so it's readable) */ }
+.eh-sched { margin-top: 12px; }
+.eh-sched-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 13px; }
+.eh-sched-head .sleep-q-btn { padding: 4px 10px; }
+.day-box.sched-change::before { content: ''; position: absolute; left: -4px; top: -3px; bottom: -3px; width: 2px; background: var(--c-text); /* checklist: line where a schedule change starts */ }
+@media (max-width: 760px) {
+  .sched-dialog { grid-template-columns: minmax(0, 1fr); padding: 12px; }
+  .sched-modal { padding: 10px 6px 70px; }
+}
+
+/* ===== Highlight current day and weekends (only when the Settings toggle is on) ===== */
+body.hl-days #grid-table th.hl-we, body.hl-days #grid-table td.hl-we { background: color-mix(in srgb, var(--c-text-muted) 14%, transparent) !important; /* weekend columns (soft shade of the theme's grey) */ }
+body.hl-days #grid-table th.hl-today, body.hl-days #grid-table td.hl-today { background: color-mix(in srgb, var(--c-pink) 30%, transparent) !important; /* today's column (theme accent) */
+  box-shadow: inset 2px 0 0 var(--c-pink), inset -2px 0 0 var(--c-pink); /* today's column side lines */ }
+body.hl-days #grid-table th.hl-today { color: var(--c-text) !important; font-weight: 800; border-radius: 4px 4px 0 0; box-shadow: inset 2px 0 0 var(--c-pink), inset -2px 0 0 var(--c-pink), inset 0 2px 0 var(--c-pink); /* today's date heading */ }
+body.hl-days #grid-table tr:last-child td.hl-today { border-radius: 0 0 4px 4px; box-shadow: inset 2px 0 0 var(--c-pink), inset -2px 0 0 var(--c-pink), inset 0 -2px 0 var(--c-pink); }
+
+/* ===== Movable dashboard (snap-to-grid boxes, minimize, size, dock) — colors come from theme variables ===== */
+.dash-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; padding: 14px; align-items: stretch; }
+.dash-grid > .dash-box { min-width: 0 !important; height: auto; display: flex; flex-direction: column; }
+.dash-grid > .dash-box > .cell-body { flex: 1 1 auto; }
+.dash-grid > .dash-summary { min-height: 230px; }
+.dash-grid .dash-bar .chart-wrap, .dash-grid .dash-cat .chart-wrap { margin-bottom: 0; }
+.dash-box[data-span="2"] { grid-column: span 2; } .dash-box[data-span="3"] { grid-column: span 3; } .dash-box[data-span="4"] { grid-column: span 4; }
+.dash-box[data-span="5"] { grid-column: span 5; } .dash-box[data-span="6"] { grid-column: span 6; } .dash-box[data-span="7"] { grid-column: span 7; }
+.dash-box[data-span="8"] { grid-column: span 8; } .dash-box[data-span="9"] { grid-column: span 9; } .dash-box[data-span="12"] { grid-column: span 12; }
+.dash-grid .title-bar { cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none; /* title bars are the drag handles */ }
+body.dash-is-dragging, body.dash-is-dragging * { cursor: grabbing !important; user-select: none; }
+.dash-grid .title-dots span[data-dash-act] { cursor: pointer; transition: transform 0.1s; }
+.dash-grid .title-dots span[data-dash-act]:hover { transform: scale(1.5); /* dot grows a little on hover */ }
+.dash-grid > .dash-box.dash-min { align-self: start; min-height: 0 !important; height: auto !important; container-type: normal; /* minimized boxes shrink to the title bar */ }
+.dash-box.dash-min > :not(.title-bar) { display: none !important; /* minimized: only the title bar stays */ }
+.dash-box.dash-min > .title-bar { border-radius: var(--radius-inner); border-bottom-width: 2px; }
+.dash-box.dash-docked { display: none !important; /* sent to the dock */ }
+.dash-box.dash-dragging { opacity: 0.45; outline: 3px dashed var(--c-pink); /* box being moved */ outline-offset: 2px; }
+.dash-box.dash-flash { outline: 3px solid var(--c-pink); outline-offset: 3px; transition: outline-color 0.8s; /* box you just brought back */ }
+.dash-ghost { position: fixed; z-index: 2000; pointer-events: none; transform: translate(12px, 12px); padding: 5px 10px; font-size: 12px; font-weight: 700; white-space: nowrap; border-radius: var(--radius-sm);
+  color: var(--c-dark); /* label that follows your pointer while dragging */
+  background: var(--c-pink); /* label background (theme accent) */
+  box-shadow: 3px 3px 0 var(--c-dark); }
+.dash-dock { position: fixed; right: 14px; bottom: 12px; z-index: 990; display: none; flex-wrap: wrap; justify-content: flex-end; gap: 6px; max-width: min(720px, calc(100vw - 90px)); padding: 6px; border-radius: var(--radius-sm);
+  background: var(--c-body-bg-alt); /* dock strip */
+  border: 2px solid var(--c-dark); /* dock outline */
+  box-shadow: 3px 3px 0 var(--c-dark); }
+.dash-chip { padding: 4px 10px; font-family: inherit; font-size: 11px; font-weight: 700; white-space: nowrap; cursor: pointer; border-radius: var(--radius-sm);
+  color: var(--c-text); /* dock button text */
+  background: var(--c-body-bg); /* dock button */
+  border: 2px solid var(--c-dark); /* dock button outline */ }
+.dash-chip:hover { background: var(--c-pink); color: var(--c-dark); /* dock button hover */ }
+/* Button ribbon folded away: only ⚙ Settings and the » button stay */
+.quick-buttons.ribbon-min > button:not(:first-child):not(.ribbon-toggle) { display: none !important; }
+@media (max-width: 1100px) {
+  .dash-box[data-span="2"], .dash-box[data-span="3"], .dash-box[data-span="4"], .dash-box[data-span="5"] { grid-column: span 6; }
+  .dash-box[data-span="7"], .dash-box[data-span="8"], .dash-box[data-span="9"] { grid-column: span 12; }
+}
+@media (max-width: 700px) {
+  .dash-grid { padding: 8px 0; gap: 12px; }
+  .dash-grid > .dash-box { grid-column: 1 / -1 !important; }
+  .dash-grid > .dash-summary { height: 180px; min-height: 0; }
+  .dash-grid > .dash-summary.dash-min { height: auto; }
+  .dash-dock { right: 8px; left: 8px; bottom: 60px; max-width: none; justify-content: center; }
+  .quick-buttons { max-width: calc(100vw - 16px); overflow-x: auto; gap: 4px !important; /* phone button row scrolls sideways when it doesn't fit */ }
+}
+
+/* ===== Victory animations (colors come from the theme) ===== */
+#victory-layer { position: fixed; inset: 0; z-index: 10000; pointer-events: none; overflow: hidden; }
+.vic-word { position: fixed; transform: translate(-50%, -50%); white-space: nowrap; padding: 3px 11px; font-size: 14px; font-weight: 800; border-radius: 999px;
+  color: var(--c-text); /* cheer word text */
+  background: var(--c-body-bg); /* cheer word bubble */
+  border: 2px solid var(--c-pink); /* cheer bubble outline (theme accent) */
+  box-shadow: 2px 2px 0 var(--c-dark); /* cheer bubble shadow */
+  animation: vic-rise 1.15s ease-out forwards; }
+@keyframes vic-rise {
+  0%   { opacity: 0; transform: translate(-50%, -30%) scale(0.6); }
+  15%  { opacity: 1; transform: translate(-50%, -110%) scale(1.1); }
+  70%  { opacity: 1; transform: translate(-50%, -160%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -200%) scale(0.95); } }
+.vic-spark { position: fixed; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 1px; animation: vic-burst 0.75s ease-out forwards; }
+.vic-spark.round { border-radius: 50%; }
+@keyframes vic-burst { 0% { transform: translate(0, 0) scale(1); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) scale(0.3) rotate(180deg); opacity: 0; } }
+.vic-confetti { position: fixed; top: -16px; width: 8px; height: 13px; border-radius: 2px; animation: vic-fall 2s cubic-bezier(0.3, 0.6, 0.6, 1) forwards; }
+@keyframes vic-fall { to { transform: translate(var(--drift), 110vh) rotate(var(--spin)); } }
+.vic-banner { position: fixed; left: 50%; top: 28%; max-width: 90vw; padding: 12px 24px; text-align: center; font-size: 22px; font-weight: 800; border-radius: var(--radius-outer);
+  color: var(--c-text); /* banner text */
+  background: var(--c-body-bg); /* banner background */
+  border: 3px solid var(--c-pink); /* banner outline (theme accent) */
+  box-shadow: 5px 5px 0 var(--c-dark); /* banner shadow */
+  animation: vic-banner 2.5s ease forwards; }
+@keyframes vic-banner {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  12%  { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+  20%  { transform: translate(-50%, -50%) scale(1); }
+  85%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -65%) scale(1); } }
+
 /* =============================================
    THEME DEFINITIONS
    INSTRUCTIONS: All code for each theme (color vars + overrides) 
@@ -1452,9 +1705,9 @@ body, body[data-theme="vaporwave"] {
   --week-5-text: #9265b8;
   --donut-label-color: #2B1B40;
   /* Checkbox symbols (modular per theme) */
-  --checkbox-required-empty: '✕';
+  --checkbox-required-empty: '?';
   --checkbox-required-done: '✓';
-  --checkbox-flexible-empty: '?';
+  --checkbox-flexible-empty: '';
 }
 body[data-theme="vaporwave"] .habit-del-btn { border-color: #F23E9E; color: #F23E9E; }
 body[data-theme="vaporwave"] .habit-list-row { color: #F23E9E; }
@@ -1495,13 +1748,13 @@ body[data-theme="classic"] {
   --week-5-text: #2C2420;
   --donut-label-color: #D4B896;
   /* Checkbox symbols (modular per theme) */
-  --checkbox-required-empty: '◆';
+  --checkbox-required-empty: '?';
   --checkbox-required-done: '✓';
-  --checkbox-flexible-empty: '?';
+  --checkbox-flexible-empty: '';
   /* Checkbox symbols (modular per theme) */
-  --checkbox-required-empty: '◆';
+  --checkbox-required-empty: '?';
   --checkbox-required-done: '✓';
-  --checkbox-flexible-empty: '?';
+  --checkbox-flexible-empty: '';
 }
 body[data-theme="classic"] .settings-label { color: #D4B896; }
 body[data-theme="classic"] .habit-del-btn { border-color: #7A2E3A; color: #7A2E3A; }
@@ -1544,13 +1797,13 @@ body[data-theme="basic"] {
   --week-5-text: #8ad4ff;
   --donut-label-color: #1F2937;
   /* Checkbox symbols (modular per theme) */
-  --checkbox-required-empty: '○';
+  --checkbox-required-empty: '?';
   --checkbox-required-done: '●';
-  --checkbox-flexible-empty: '?';
+  --checkbox-flexible-empty: '';
   /* Checkbox symbols (modular per theme) */
-  --checkbox-required-empty: '○';
+  --checkbox-required-empty: '?';
   --checkbox-required-done: '●';
-  --checkbox-flexible-empty: '?';
+  --checkbox-flexible-empty: '';
 }
 body[data-theme="basic"] .habit-del-btn { border-color: #374151; color: #374151; }
 body[data-theme="basic"] .habit-list-row { color: #60A5FA; }
@@ -1594,13 +1847,13 @@ body[data-theme="vaporwave2"] {
   --week-5-text: #FFF;
   --donut-label-color: #F0E8FF;
   /* Checkbox symbols (modular per theme) */
-  --checkbox-required-empty: '◈';
+  --checkbox-required-empty: '?';
   --checkbox-required-done: '◆';
-  --checkbox-flexible-empty: '?';
+  --checkbox-flexible-empty: '';
   /* Checkbox symbols (modular per theme) */
-  --checkbox-required-empty: '◈';
+  --checkbox-required-empty: '?';
   --checkbox-required-done: '◆';
-  --checkbox-flexible-empty: '?';
+  --checkbox-flexible-empty: '';
   --day-toggle-color: #00F0FF;  /* Neon cyan for dark bg */
 }
 body[data-theme="vaporwave2"] .day-box[data-required="true"] {
@@ -1637,9 +1890,9 @@ body[data-theme="retro95"] {
   --week-5-text: #ffffff;
   --donut-label-color: #000000;
   /* Checkbox symbols (modular per theme) */
-  --checkbox-required-empty: '□';
+  --checkbox-required-empty: '?';
   --checkbox-required-done: '■';
-  --checkbox-flexible-empty: '?';
+  --checkbox-flexible-empty: '';
   --day-toggle-color: #000000;  /* Black for gray bg */
 }
 body[data-theme="retro95"] .cell-border { border: 2px solid; border-color: #DFDFDF #000 #000 #DFDFDF; box-shadow: inset 1px 1px 0 #FFFFFF, inset -1px -1px 0 #808080; background: #C0C0C0; padding: 2px; }
@@ -1720,9 +1973,9 @@ body[data-theme="gothic"] {
   --week-donut-text: #5C0000;  /* "Wk 1" and % inside the week donuts (oxblood, readable on white) */
   --donut-label-color: #8B0000;  /* labels under donuts (dark red, readable on white) */
   /* Checkbox symbols (modular per theme) */
-  --checkbox-required-empty: '✦';
+  --checkbox-required-empty: '?';
   --checkbox-required-done: '✧';
-  --checkbox-flexible-empty: '?';
+  --checkbox-flexible-empty: '';
   --day-toggle-color: #e3a8b1;  /* Near-black for white bg */
 }
 body[data-theme="gothic"] .title-text { font-family: "Monsieur La Doulaise", cursive !important; font-size: 24px !important; letter-spacing: 1px !important; color: #FFFFFF !important; font-weight: 400 !important; text-transform: none !important; }
@@ -1781,9 +2034,9 @@ body[data-theme="tron"] {
   --week-5-text: #FFF;
   --donut-label-color: #00FFFF;
   /* Checkbox symbols (modular per theme) */
-  --checkbox-required-empty: '◈';
+  --checkbox-required-empty: '?';
   --checkbox-required-done: '◆';
-  --checkbox-flexible-empty: '?';
+  --checkbox-flexible-empty: '';
   --day-toggle-color: #00FFFF;  /* Neon cyan for very dark bg */
 }
 body[data-theme="tron"] .cell-border { border: 2px solid #00FFFF; box-shadow: 0 0 8px rgba(0,255,255,0.4), 4px 4px 0 #000; background: #000; }
@@ -1839,9 +2092,9 @@ body[data-theme="superpink"] {
   --week-5-text: #000000;
   --donut-label-color: #D70087;
   /* Checkbox symbols */
-  --checkbox-required-empty: '♡';
+  --checkbox-required-empty: '?';
   --checkbox-required-done: '♥';
-  --checkbox-flexible-empty: '?';
+  --checkbox-flexible-empty: '';
   --day-toggle-color: #D70087;
 }
 
@@ -1929,9 +2182,9 @@ body[data-theme="light-pastel"] {
   --week-5-text: #5c3c5c;
   --donut-label-color: #5c3c5c;
   /* Checkbox symbols (modular per theme) */
-  --checkbox-required-empty: '◇';
+  --checkbox-required-empty: '?';
   --checkbox-required-done: '◆';
-  --checkbox-flexible-empty: '?';
+  --checkbox-flexible-empty: '';
   --day-toggle-color: #e2c1f5;  /* Dark purple for pale bg */
 }
 body[data-theme="light-pastel"] .habit-del-btn { border-color: #d4a8d8; color: #d4a8d8; }
@@ -1941,6 +2194,7 @@ body[data-theme="light-pastel"] .habit-list-row span { color: #d4a8d8 !important
 body[data-theme="light-pastel"] #version-text { color: #cda0fa !important; }
 body[data-theme="light-pastel"] .donut-label { color: #5c3c5c !important; }
 body[data-theme="light-pastel"] .settings-section .cell-subtitle { color: #e0c8f5 !important; }
+body[data-theme="light-pastel"] { --best-color: #9C5A8C; /* Personal bests dates (deep mauve, readable on pale) */ }
 
 /* ---- THEME 10: Light Melon ---- */
 body[data-theme="light-melon"] {
@@ -1971,9 +2225,9 @@ body[data-theme="light-melon"] {
   --week-5-text: #6B5530;
   --donut-label-color: #8a6a5a;
   /* Checkbox symbols (modular per theme) */
-  --checkbox-required-empty: '○';
+  --checkbox-required-empty: '?';
   --checkbox-required-done: '◉';
-  --checkbox-flexible-empty: '?';
+  --checkbox-flexible-empty: '';
   --day-toggle-color: #6B5530;  /* Dark brown for cream bg */
 }
 body[data-theme="light-melon"] .cell-border { border: 2px solid; border-color: #fef8ec #6B5530 #6B5530 #fef8ec; box-shadow: inset 1px 1px 0 #FFFFFF, inset -1px -1px 0 #b39977; background: #fef8ec; padding: 2px; }
@@ -2057,9 +2311,9 @@ body[data-theme="experimental"] {
   --week-5-text: #000000;
   --donut-label-color: #FF00FF;
   /* Checkbox symbols (modular per theme) */
-  --checkbox-required-empty: '⭐';
+  --checkbox-required-empty: '?';
   --checkbox-required-done: '💿';
-  --checkbox-flexible-empty: '❓';
+  --checkbox-flexible-empty: '';
   --day-toggle-color: #f0e7a8;  /* NEON YELLOW */
   --habit-text-color: #4d785a;  /* NEON GREEN - stands out! */
 }
@@ -2115,9 +2369,9 @@ body[data-theme="v4p3"] {
 --week-5-text: #00FF00;
   --donut-label-color: #39FF14;
   /* Checkbox symbols */
-  --checkbox-required-empty: '▲';
+  --checkbox-required-empty: '?';
   --checkbox-required-done: '◆';
-  --checkbox-flexible-empty: '◊';
+  --checkbox-flexible-empty: '';
   --day-toggle-color: #00FFFF;
   --habit-text-color: #00FF00;
   --c-chart-bg: #5615ab;
@@ -2184,9 +2438,9 @@ body[data-theme="debug"] {
   --week-4-text: #1E1B2E;
   --week-5-text: #1E1B2E;
   --donut-label-color: #3B2F4A; /* Deep plum */
-  --checkbox-required-empty: '🔴';
+  --checkbox-required-empty: '?';
   --checkbox-required-done: '🟢';
-  --checkbox-flexible-empty: '🔵';
+  --checkbox-flexible-empty: '';
   --day-toggle-color: #A86B87;  /* Dusty rose */
   --habit-text-color: #3B2F4A;  /* Deep plum */
   --chart-bg: #F2EEE6;          /* Light paper */
@@ -2251,9 +2505,9 @@ body[data-theme="dark-romantic"] {
   --week-4-text: #E8F0F8;
   --week-5-text: #F0E8F8;
   --donut-label-color: #E8D9D9;
-  --checkbox-required-empty: '◇';
+  --checkbox-required-empty: '?';
   --checkbox-required-done: '◆';
-  --checkbox-flexible-empty: '◊';
+  --checkbox-flexible-empty: '';
   --day-toggle-color: #D1436B;
   --habit-text-color: #E8D9D9;
 }
@@ -2278,6 +2532,7 @@ body[data-theme="dark-romantic"] .money-net { color: #C9A0DC; /* net number (lig
 body[data-theme="dark-romantic"] { --shop-gold: #FFD45E; /* gold amounts (bright gold, readable on dark) */ }
 body[data-theme="dark-romantic"] { --xp-accel-color: #FF6F8E; /* XP" dashed line in "XP speed and acceleration" (bright pinkish red) */ }
 body[data-theme="dark-romantic"] .money-import-sim { border-color: #C9A0DC; /* dashed outline around the similar list (light lavender) */ }
+body[data-theme="dark-romantic"] { --bonus-color: #F2A65A; /* bonus check-ins: striped bars, trend dots, extra-credit ring (warm amber, readable on dark) */ }
 
 /* ---- THEME: Coquette Bows 🎀 (cream paper, baby pink, rose, double-line frames) ---- */
 body[data-theme="coquette"] {
@@ -2303,9 +2558,9 @@ body[data-theme="coquette"] {
   --week-5-bg: #F4C9A8;       /* week 5 color (peach) */
   --week-1-text: #6E3A4A; --week-2-text: #6E3A4A; --week-3-text: #6E3A4A; --week-4-text: #6E3A4A; --week-5-text: #6E3A4A; /* week label text (deep rose) */
   --donut-label-color: #9C5A6E;
-  --checkbox-required-empty: '♡';
+  --checkbox-required-empty: '?';
   --checkbox-required-done: '♥';
-  --checkbox-flexible-empty: '·';
+  --checkbox-flexible-empty: '';
   --day-toggle-color: #C26A85;
   --mood-paper: #FFFFFF;      /* mood chart paper + empty days (white) */
   --money-in: #4F8A64;        /* income amounts (sage green) */
@@ -2330,6 +2585,8 @@ body[data-theme="coquette"] .sleep-q-btn.on { color: #FFFFFF; /* selected button
 body[data-theme="coquette"] #version-text { color: #9C5A6E !important; }
 body[data-theme="coquette"] .donut-label { color: #9C5A6E !important; }
 body[data-theme="coquette"] .settings-section .cell-subtitle { color: #B07A8A !important; }
+body[data-theme="coquette"] { --bonus-color: #C9A227; /* bonus check-ins: striped bars, trend dots, extra-credit ring (antique gold, shows on cream) */ }
+body[data-theme="coquette"] { --best-color: #C26A85; /* Personal bests dates (deep rose, readable on cream) */ }
 
 
 /* ---- THEME: Pink Pixel Arcade (bubblegum pink, chunky black-plum pixel frames) ---- */
@@ -2357,9 +2614,9 @@ body[data-theme="pixel-pink"] {
   --week-5-bg: #FF7A5C;       /* week 5 (coral) */
   --week-1-text: #FFFFFF; --week-2-text: #FFFFFF; --week-3-text: #3D0A24; --week-4-text: #3D0A24; --week-5-text: #3D0A24; /* week label text */
   --donut-label-color: #3D0A24;
-  --checkbox-required-empty: '□';
+  --checkbox-required-empty: '?';
   --checkbox-required-done: '■';
-  --checkbox-flexible-empty: '?';
+  --checkbox-flexible-empty: '';
   --day-toggle-color: #FF3D8B;
   --mood-paper: #FFFFFF;      /* mood chart paper + empty days (white) */
   --money-in: #007A6E;        /* income amounts (dark teal) */
@@ -2385,6 +2642,7 @@ body[data-theme="pixel-pink"] .sleep-q-btn.on { background: #3D0A24; /* selected
 body[data-theme="pixel-pink"] #version-text { color: #3D0A24 !important; }
 body[data-theme="pixel-pink"] .donut-label { color: #3D0A24 !important; }
 body[data-theme="pixel-pink"] .settings-section .cell-subtitle { color: #8A2E5C !important; }
+body[data-theme="pixel-pink"] { --bonus-color: #FFC93C; /* bonus check-ins: striped bars, trend dots, extra-credit ring (coin yellow) */ }
 
 
 /* ---- THEME: Pixel Arcade (unisex: midnight navy, coin yellow, arcade cyan) ---- */
@@ -2408,9 +2666,9 @@ body[data-theme="pixel-arcade"] {
   --week-1-text: #0B0B1F; --week-2-text: #0B0B1F; --week-3-text: #0B0B1F; --week-4-text: #0B0B1F; --week-5-text: #0B0B1F; /* week label text */
   --donut-label-color: #F4F4F8;
   --habit-text-color: #F4F4F8;  /* habit names */
-  --checkbox-required-empty: '□';
+  --checkbox-required-empty: '?';
   --checkbox-required-done: '■';
-  --checkbox-flexible-empty: '?';
+  --checkbox-flexible-empty: '';
   --day-toggle-color: #FFD93D;
   --mood-paper: #22224F;      /* mood chart paper + empty days */
   --mood-ink: #F4F4F8;       /* mood chart outlines and day numbers */
@@ -2470,9 +2728,9 @@ body[data-theme="pastel-goth"] {
   --week-1-text: #140C12; --week-2-text: #140C12; --week-3-text: #140C12; --week-4-text: #140C12; --week-5-text: #140C12; /* week label text */
   --donut-label-color: #F6D6E8;
   --habit-text-color: #F6D6E8;  /* habit names */
-  --checkbox-required-empty: '♡';
+  --checkbox-required-empty: '?';
   --checkbox-required-done: '♥';
-  --checkbox-flexible-empty: '✝';
+  --checkbox-flexible-empty: '';
   --day-toggle-color: #FF8CCF;
   --mood-paper: #2B1C26;      /* mood chart paper + empty days */
   --mood-ink: #F6D6E8;       /* mood chart outlines and day numbers */
@@ -2532,9 +2790,9 @@ body[data-theme="goth-noir"] {
   --week-1-text: #0D0D0D; --week-2-text: #0D0D0D; --week-3-text: #0D0D0D; --week-4-text: #0D0D0D; --week-5-text: #0D0D0D; /* week label text */
   --donut-label-color: #EDEDED;
   --habit-text-color: #EDEDED;  /* habit names */
-  --checkbox-required-empty: '♡';
+  --checkbox-required-empty: '?';
   --checkbox-required-done: '♥';
-  --checkbox-flexible-empty: '✝';
+  --checkbox-flexible-empty: '';
   --day-toggle-color: #F2F2F2;
   --mood-paper: #222222;      /* mood chart paper + empty days */
   --mood-ink: #EDEDED;       /* mood chart outlines and day numbers */
@@ -2599,9 +2857,9 @@ body[data-theme="sage-linen"] {
   --week-2-text: #2F3A2C; --week-3-text: #2F3A2C; --week-4-text: #2F3A2C; --week-5-text: #2F3A2C; /* check marks on weeks 2-5 (deep forest) */
   --week-donut-text: #2F3A2C; /* "Wk 1" and % inside the week donuts (deep forest) */
   --donut-label-color: #6E7A63;
-  --checkbox-required-empty: '◇';
+  --checkbox-required-empty: '?';
   --checkbox-required-done: '✓';
-  --checkbox-flexible-empty: '?';
+  --checkbox-flexible-empty: '';
   --day-toggle-color: #7D8F6E;
   --mood-paper: #FFFFFF;      /* mood chart paper + empty days (white) */
   --money-in: #4F7A4A;        /* income amounts (leaf green) */
@@ -2622,3 +2880,70 @@ body[data-theme="sage-linen"] .settings-btn, body[data-theme="sage-linen"] .auth
 body[data-theme="sage-linen"] .sleep-title { font-family: "Cormorant Garamond", Georgia, serif; font-size: 30px; color: #2F3A2C; /* page headings (deep forest) */ }
 body[data-theme="sage-linen"] .sleep-q-btn.on { background: #7D8F6E; /* selected button (sage) */ color: #F8F6EE; /* selected text (linen) */ }
 body[data-theme="sage-linen"] .donut-label { color: #6E7A63 !important; }
+
+
+/* ---- THEME: Office Slate 💼 (light grey, crisp white boxes, blue / teal / green accents) ---- */
+body[data-theme="office"] {
+  --c-dark: #7C8A9C;          /* outlines on checkboxes, tiles, bars (slate grey) */
+  --c-pink: #2B6CB0;          /* main accent: lines, charts, selected things (office blue) */
+  --c-purple: #0F9D9A;        /* second accent: bars, goal colors (teal) */
+  --c-orange: #2E9E5B;        /* third accent (green) */
+  --c-body-bg: #FFFFFF;       /* box insides (white) */
+  --c-body-bg-alt: #F1F4F7;   /* tiles and cards (very light grey) */
+  --c-text: #1F2D3D;          /* main text (charcoal navy) */
+  --c-text-muted: #5F6B7A;    /* small/secondary text (grey) */
+  --c-page-bg-1: #EEF1F4;     /* page background top (light grey) */
+  --c-page-bg-2: #E2E6EB;     /* page background bottom (slightly deeper grey) */
+  --c-grid-dot: rgba(31,45,61,0.08); /* page dots (barely there) */
+  --c-font: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --radius-outer: 8px;
+  --radius-inner: 7px;
+  --radius-sm: 4px;
+  --week-1-bg: #2B6CB0;       /* week 1 (blue) */
+  --week-2-bg: #0F9D9A;       /* week 2 (teal) */
+  --week-3-bg: #2E9E5B;       /* week 3 (green) */
+  --week-4-bg: #5BA4E6;       /* week 4 (sky blue) */
+  --week-5-bg: #6CC3A6;       /* week 5 (sea green) */
+  --week-1-text: #FFFFFF; --week-2-text: #FFFFFF; --week-3-text: #FFFFFF; /* check marks on weeks 1-3 (white) */
+  --week-4-text: #1F2D3D; --week-5-text: #1F2D3D; /* check marks on weeks 4-5 (charcoal) */
+  --week-donut-track: #E2E6EB; /* empty part of the week donuts (light grey) */
+  --week-donut-text: #1F2D3D;  /* "Wk 1" and % inside the week donuts (charcoal) */
+  --donut-label-color: #5F6B7A;
+  --checkbox-required-empty: '?';
+  --checkbox-required-done: '✓';
+  --checkbox-flexible-empty: '';
+  --day-toggle-color: #2B6CB0;
+  --mood-paper: #FFFFFF;      /* mood chart paper + empty days (white) */
+  --money-in: #2E8B57;        /* income amounts (green) */
+  --money-out: #C0392B;       /* expense amounts (red) */
+  --money-bar-in: #0F9D9A;    /* income bars (teal) */
+  --shop-gold: #A8740F;       /* gold amounts (dark gold) */
+}
+body[data-theme="office"] .cell-border { border: 1px solid #C9D1DB; /* box outline (light grey) */ background: #FFFFFF; /* frame fill (white) */ box-shadow: 0 1px 2px rgba(31,45,61,0.06), 0 4px 12px rgba(31,45,61,0.07); /* soft floating shadow */ }
+body[data-theme="office"] .title-bar { background: linear-gradient(90deg, #2B6CB0, #0F9D9A, #2E9E5B) top / 100% 3px no-repeat, #F7F9FB; /* blue-teal-green stripe on top of a light grey bar */ border: none; border-bottom: 1px solid #E2E6EB; /* line under title (light grey) */ padding-top: 7px; }
+body[data-theme="office"] .title-text { color: #1F2D3D; /* box titles (charcoal) */ font-weight: 600; letter-spacing: 0.08em; }
+body[data-theme="office"] .title-glyph { background: #2B6CB0; /* title square (blue) */ transform: none; border-radius: 2px; }
+body[data-theme="office"] .title-dots span { border-radius: 50%; background: #2B6CB0; /* dot 1 (blue) */ }
+body[data-theme="office"] .title-dots span:nth-child(2) { background: #0F9D9A; /* dot 2 (teal) */ }
+body[data-theme="office"] .title-dots span:nth-child(3) { background: #2E9E5B; /* dot 3 (green) */ }
+body[data-theme="office"] .cell-body { border: none; background: #FFFFFF; /* box inside (white) */ }
+body[data-theme="office"] .auth-window { background: #FFFFFF; border: 1px solid #C9D1DB; box-shadow: 0 4px 16px rgba(31,45,61,0.1); /* login box (white card, soft shadow) */ }
+body[data-theme="office"] .settings-panel { background: #F7F9FB; /* settings panel (light grey) */ border-right: 1px solid #C9D1DB; box-shadow: 4px 0 16px rgba(31,45,61,0.08); }
+body[data-theme="office"] .settings-header, body[data-theme="office"] .settings-close, body[data-theme="office"] .settings-value, body[data-theme="office"] .habit-list-row, body[data-theme="office"] .habit-list-row span, body[data-theme="office"] .field-group label { color: #1F2D3D !important; /* settings text (charcoal) */ }
+body[data-theme="office"] .settings-header, body[data-theme="office"] .settings-section, body[data-theme="office"] .habit-list-row { border-bottom-color: #E2E6EB; /* divider lines in settings (light grey) */ }
+body[data-theme="office"] .settings-label { color: #2B6CB0; /* settings headings (blue) */ }
+body[data-theme="office"] .settings-section .cell-subtitle { color: #5F6B7A !important; /* small settings notes (grey) */ }
+body[data-theme="office"] #version-text { color: #5F6B7A !important; /* version line (grey) */ }
+body[data-theme="office"] .habit-del-btn { border-color: #C0392B; color: #C0392B; /* delete habit button (red) */ }
+body[data-theme="office"] .settings-btn, body[data-theme="office"] .auth-btn, body[data-theme="office"] .update-btn, body[data-theme="office"] .settings-toggle-btn { background: #2B6CB0; /* buttons (blue) */ color: #FFFFFF; /* button text (white) */ border: 1px solid #245A93; /* button edge (darker blue) */ box-shadow: 0 1px 2px rgba(31,45,61,0.18); }
+body[data-theme="office"] .settings-btn:hover, body[data-theme="office"] .auth-btn:hover, body[data-theme="office"] .update-btn:hover { background: #245A93; /* button hover (darker blue) */ border-color: #245A93; }
+body[data-theme="office"] .settings-select, body[data-theme="office"] .field-group input, body[data-theme="office"] .sleep-input { background: #FFFFFF; color: #1F2D3D; border: 1px solid #C9D1DB; /* text fields (white, grey outline) */ }
+body[data-theme="office"] .field-group input:focus, body[data-theme="office"] .sleep-input:focus { outline: none; border-color: #2B6CB0; box-shadow: 0 0 0 3px rgba(43,108,176,0.18); /* focused field (blue ring) */ }
+body[data-theme="office"] .day-toggle.selected, body[data-theme="office"] .grid-tab.on, body[data-theme="office"] .sleep-q-btn.on, body[data-theme="office"] .xp-rank-btn:hover { background: #2B6CB0; /* selected button (blue) */ color: #FFFFFF; /* selected text (white) */ border-color: #2B6CB0; }
+body[data-theme="office"] .week-col, body[data-theme="office"] .week-col-header { border-color: #E2E6EB; /* weekly task column lines (light grey) */ }
+body[data-theme="office"] .week-col-header { color: #1F2D3D; /* week headings (charcoal) */ background: #F7F9FB; }
+body[data-theme="office"] .correlation-card { border: 1px solid #E2E6EB; /* correlation cards (light grey outline) */ }
+body[data-theme="office"] .today-item, body[data-theme="office"] .mt-side, body[data-theme="office"] .star-tip, body[data-theme="office"] .gold-breakdown { box-shadow: 0 1px 3px rgba(31,45,61,0.12); /* soft shadow instead of the hard offset one */ }
+body[data-theme="office"] .day-box:hover::after { background: #1F2D3D; color: #FFFFFF; border-color: #1F2D3D; /* checkbox hover tip (charcoal) */ }
+body[data-theme="office"] .sleep-title { color: #1F2D3D; /* page headings (charcoal) */ font-weight: 600; }
+body[data-theme="office"] .donut-label { color: #5F6B7A !important; }

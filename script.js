@@ -12,7 +12,9 @@ var currentUser = null;
 var currentMonth = new Date().getMonth() + 1;
 var currentYear = new Date().getFullYear();
 var extraCreditEnabled = false;
-var RAW_HABITS = [];
+var RAW_HABITS = [];      // active habits (dashboard, checklist, Today box)
+var ARCHIVED_HABITS = [];  // archived habits (Archives tab); history kept
+function allHabits() { return RAW_HABITS.concat(ARCHIVED_HABITS); }
 var logsLookup = {};
 var scheduleLookup = {};
 var allTimeLogs = {};
@@ -123,6 +125,7 @@ function onLoggedIn() {
   // Add-mode emoji button
   document.getElementById('emoji-picker-btn').onclick = function() {
     window._editingHabitId = null;
+    emojiPickerHome();   // back under "Add a habit"
     initEmojiPicker();
     document.getElementById('emoji-picker-modal').style.display = 'block';
   };
@@ -152,7 +155,7 @@ function onLoggedIn() {
   buildScheduleRows();
   initMonthYearPickers();
   updateMonthLabel();
-  loadAndRender();
+  loadAndRender().then(applySyncedPrefs);   // after the first draw, pull your toggles from your account
 }
 
 // ============================================
@@ -198,7 +201,9 @@ function jumpToCurrentMonth() {
   document.getElementById('year-select').value = currentYear;
   updateMonthLabel(); loadAndRender();
 }
-function toggleExtraCredit(val) { extraCreditEnabled = val; renderEverything(); }
+function toggleExtraCredit(val) { extraCreditEnabled = val; try { localStorage.setItem('habitTrackerExtraCredit', val ? '1' : '0'); } catch (e) {} savePref({ extra_credit: val }); renderEverything(); }
+try { extraCreditEnabled = localStorage.getItem('habitTrackerExtraCredit') === '1'; } catch (e) {}
+(function () { var cb = document.getElementById('extra-credit-toggle'); if (cb) cb.checked = extraCreditEnabled; })();
 function initMonthYearPickers() {
   document.getElementById('month-select').value = currentMonth;
   var yearSel = document.getElementById('year-select'); yearSel.innerHTML = '';
@@ -208,7 +213,16 @@ function initMonthYearPickers() {
   }
   yearSel.value = currentYear;
 }
+// The emoji picker is one shared box. Editing a habit moves it under that habit; this puts it back under "Add a habit".
+var EMOJI_HOME = null;
+function emojiPickerHome() {
+  var picker = document.getElementById('emoji-picker-modal'); if (!picker) return;
+  if (!EMOJI_HOME) return;
+  if (picker.parentNode !== EMOJI_HOME.parent) EMOJI_HOME.parent.insertBefore(picker, EMOJI_HOME.next);
+}
+(function () { var p = document.getElementById('emoji-picker-modal'); if (p) EMOJI_HOME = { parent: p.parentNode, next: p.nextSibling }; })();
 function renderHabitList() {
+  emojiPickerHome(); var _pk = document.getElementById('emoji-picker-modal'); if (_pk) _pk.style.display = 'none';   // keep the picker safe before the list is rebuilt
   var el=document.getElementById('habit-list'); el.innerHTML='';
   if(RAW_HABITS.length===0){el.innerHTML='<p style="font-size:11px;color:var(--c-text-muted);">No habits yet. Add one above!</p>';return;}
   var defaultCats=['General','Health','Fitness','Mindfulness','Learning','Productivity','Self-care','Finance','Social','Skincare'];
@@ -227,7 +241,7 @@ function renderHabitList() {
     nameSpan.textContent=h.icon+' '+h.name;
     if(h.category){var catTag=document.createElement('span');catTag.textContent=' '+h.category;catTag.style.cssText='font-size:9px;color:var(--c-text-muted);opacity:0.7;';nameSpan.appendChild(catTag);}
     var editBtn=document.createElement('button'); editBtn.className='habit-del-btn'; editBtn.textContent='✏️'; editBtn.title='Edit';
-    var delBtn=document.createElement('button'); delBtn.className='habit-del-btn'; delBtn.textContent='🗑'; delBtn.title='Delete';
+    var delBtn=document.createElement('button'); delBtn.className='habit-del-btn'; delBtn.textContent='📦'; delBtn.title='Archive (hide from the dashboard, keep its history)';
     delBtn.onclick=function(){archiveHabit(h.id);};
     row.appendChild(nameSpan); row.appendChild(editBtn); row.appendChild(delBtn);
     wrapper.appendChild(row);
@@ -244,6 +258,7 @@ function renderHabitList() {
       '</div>',
       '<select id="ec-'+h.id+'" style="width:100%;font-size:11px;background:var(--c-body-bg);border:1px solid var(--c-dark);color:var(--c-text);padding:4px;margin-bottom:6px;">'+catOptions+'</select>',
       '<input id="ecc-'+h.id+'" type="text" placeholder="New category name..." style="display:none;width:100%;font-size:11px;background:var(--c-body-bg);border:1px solid var(--c-dark);color:var(--c-text);padding:4px;margin-bottom:6px;box-sizing:border-box;">',
+      '<div class="se-mini"><span>📅 '+moneyEsc(schedDescribe(schedCurrent(h)))+'</span><button type="button" class="sleep-q-btn se-mini-btn" onclick="openScheduleEditor('+h.id+')">Edit schedule</button></div>',
       '<div style="display:flex;gap:6px;">',
         '<button id="es-'+h.id+'" style="flex:1;padding:5px;font-size:11px;background:var(--c-pink);color:var(--c-dark);border:none;cursor:pointer;font-weight:700;">Save</button>',
         '<button id="esc-'+h.id+'" style="padding:5px 10px;font-size:11px;background:transparent;color:var(--c-text-muted);border:1px solid var(--c-dark);cursor:pointer;">Cancel</button>',
@@ -256,8 +271,10 @@ function renderHabitList() {
     var emojiBtn = form.querySelector('#ei-'+h.id+'-btn');
     emojiBtn.onclick = function() {
       window._editingHabitId = h.id;
+      var picker = document.getElementById('emoji-picker-modal');
+      emojiBtn.parentNode.insertAdjacentElement('afterend', picker);   // open right under this habit's emoji button
       initEmojiPicker();
-      document.getElementById('emoji-picker-modal').style.display = 'block';
+      picker.style.display = 'block';
     };
     
     editBtn.onclick=function(){var o=form.style.display==='block';form.style.display=o?'none':'block';editBtn.textContent=o?'✏️':'✕';};
@@ -437,43 +454,92 @@ async function submitAddHabit() {
   await loadHabits(); renderEverything();
 }
 async function archiveHabit(habitId) {
-  await sb.from('habits').update({archived:true}).eq('id',habitId);
-  await loadHabits(); renderEverything();
+  var h=RAW_HABITS.filter(function(x){return x.id===habitId;})[0];
+  if(h && !confirm('Archive "'+h.name+'"?\n\nIt leaves your checklist and Today box, but its history stays. You can still log it from the Archives tab and restore it any time.')) return;
+  var r=await sb.from('habits').update({archived:true}).eq('id',habitId);
+  if(r&&r.error){alert('Could not archive: '+r.error.message);return;}
+  await loadHabits(); renderEverything(); if(typeof ehRender==='function')ehRender();
+}
+async function restoreHabit(habitId) {
+  var r=await sb.from('habits').update({archived:false}).eq('id',habitId);
+  if(r&&r.error){alert('Could not restore: '+r.error.message);return;}
+  await loadHabits(); renderEverything(); if(typeof ehRender==='function')ehRender();
+}
+// Permanently removes an archived habit: its logs, its schedule, then the habit itself.
+// skipConfirm is used by "Delete all never-logged" (which asks once for the whole batch).
+async function deleteHabitForever(habitId, skipConfirm) {
+  var h=ARCHIVED_HABITS.filter(function(x){return x.id===habitId;})[0]; if(!h)return false;
+  if(!skipConfirm && !confirm('Delete "'+h.name+'" forever?\n\nThis erases the habit AND every day you ever logged it. This cannot be undone.'))return false;
+  var steps=[['habit_logs','habit_id'],['habit_schedule','habit_id'],['habits','id']];
+  for(var i=0;i<steps.length;i++){
+    var r=await sb.from(steps[i][0]).delete().eq(steps[i][1],habitId);
+    if(r&&r.error){alert('Could not delete "'+h.name+'" ('+steps[i][0]+'): '+r.error.message);return false;}
+  }
+  delete allTimeLogs[String(habitId)]; delete logsLookup[String(habitId)];
+  if(!skipConfirm){ if(ehSel===habitId)ehSel=null; await loadHabits(); renderEverything(); if(typeof ehRender==='function')ehRender(); }
+  return true;
+}
+// Archives tab: one button to clear out every archived habit that was never logged (old test habits).
+async function deleteNeverLoggedArchived() {
+  var list=ARCHIVED_HABITS.filter(function(h){var l=allTimeLogs[String(h.id)]||{};return !Object.keys(l).some(function(k){return l[k]>0;});});
+  if(!list.length){alert('Every archived habit has at least one log, so nothing to clear.');return;}
+  if(!confirm('Delete these '+list.length+' archived habits forever? None of them were ever logged.\n\n'+list.map(function(h){return '• '+h.name;}).join('\n')+'\n\nThis cannot be undone.'))return;
+  var gone=0;
+  for(var i=0;i<list.length;i++){ if(await deleteHabitForever(list[i].id,true))gone++; else break; }
+  ehSel=null; await loadHabits(); renderEverything(); ehRender();
+  victory('pop','Cleared '+gone+' 🧹');
+}
+// Settings > Archives: every archived habit with Restore and Delete forever.
+function renderArchiveList() {
+  var el=document.getElementById('archive-list'); if(!el)return;
+  if(!ARCHIVED_HABITS.length){el.innerHTML='<p class="settings-value" style="opacity:0.7;">Nothing archived. Use 📦 next to a habit above to archive it.</p>';return;}
+  el.innerHTML=ARCHIVED_HABITS.map(function(h){
+    return '<div class="habit-list-row archive-row"><span style="flex:1;font-size:12px;">'+(h.icon||'✅')+' '+moneyEsc(h.name)+(h.category?' <span style="font-size:9px;opacity:0.7;">'+moneyEsc(h.category)+'</span>':'')+'</span>'+
+      '<button class="habit-del-btn" title="Restore to your dashboard" onclick="restoreHabit('+h.id+')">↩ Restore</button>'+
+      '<button class="habit-del-btn" title="Delete forever (erases its history)" onclick="deleteHabitForever('+h.id+')">🗑</button></div>';
+  }).join('');
 }
 
 // ============================================
 // DATA LOADING
 // ============================================
 async function loadHabits() {
-  var { data } = await sb.from('habits').select('*, habit_schedule(*)').eq('user_id',currentUser.id).eq('archived',false);
-  RAW_HABITS = data||[]; buildScheduleLookup(); renderHabitList();
+  var { data } = await sb.from('habits').select('*, habit_schedule(*)').eq('user_id',currentUser.id);
+  await fixIntervalStartDates(data||[]);
+  await loadScheduleVersions();
+  RAW_HABITS = (data||[]).filter(function(h){return !h.archived;});
+  ARCHIVED_HABITS = (data||[]).filter(function(h){return !!h.archived;});
+  buildScheduleLookup(); renderHabitList(); renderArchiveList();
 }
 async function loadLogs() {
   var start = currentYear+'-'+String(currentMonth).padStart(2,'0')+'-01';
   var lastDay = new Date(currentYear,currentMonth,0).getDate();
   var end = currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(lastDay).padStart(2,'0');
-  var habitIds = RAW_HABITS.map(function(h){return h.id;});
+  var habitIds = allHabits().map(function(h){return h.id;});   // archived habits too, so their logs show as bonus
   if (habitIds.length===0) { logsLookup={}; return; }
   var { data } = await sb.from('habit_logs').select('habit_id,log_date,times_completed').in('habit_id',habitIds).gte('log_date',start).lte('log_date',end);
   logsLookup={};
   (data||[]).forEach(function(log){ var hid=String(log.habit_id); if(!logsLookup[hid])logsLookup[hid]={}; logsLookup[hid][log.log_date]=log.times_completed; });
 }
 async function loadAllTimeLogs() {
-  var habitIds = RAW_HABITS.map(function(h){return h.id;});
+  var habitIds = allHabits().map(function(h){return h.id;});
   if (habitIds.length===0) { allTimeLogs={}; return; }
   var { data } = await sb.from('habit_logs').select('habit_id,log_date,times_completed').in('habit_id',habitIds).order('log_date',{ascending:true});
   allTimeLogs={};
   (data||[]).forEach(function(log){ var hid=String(log.habit_id); if(!allTimeLogs[hid])allTimeLogs[hid]={}; allTimeLogs[hid][log.log_date]=log.times_completed; });
 }
 async function saveLog(habitId, logDate, timesCompleted) {
+  var hid=String(habitId); if(!allTimeLogs[hid])allTimeLogs[hid]={};
+  var before=allTimeLogs[hid][logDate]||0;   // what it was before this click (for the victory animation)
+  if(!logsLookup[hid])logsLookup[hid]={}; logsLookup[hid][logDate]=timesCompleted;
+  allTimeLogs[hid][logDate]=timesCompleted;
+  vicHabit(habitId, logDate, before, timesCompleted);
   await sb.from('habit_logs').upsert({habit_id:habitId,log_date:logDate,times_completed:timesCompleted},{onConflict:'habit_id,log_date'});
-  var hid=String(habitId); if(!logsLookup[hid])logsLookup[hid]={}; logsLookup[hid][logDate]=timesCompleted;
-  if(!allTimeLogs[hid])allTimeLogs[hid]={}; allTimeLogs[hid][logDate]=timesCompleted;
   refreshCharts();
 }
 function buildScheduleLookup() {
   scheduleLookup={};
-  RAW_HABITS.forEach(function(h){
+  allHabits().forEach(function(h){
     var hid=String(h.id);
     scheduleLookup[hid]={};
     (h.habit_schedule||[]).forEach(function(s){
@@ -514,7 +580,8 @@ var HABIT_COLOR_CONFIG = {
   'pixel-arcade': { mode:'curated', palette:['#FFD93D','#3EC1D3','#FF6B6B','#6BCB77','#B388FF','#FF9F45','#4D96FF','#F15BB5','#00F5D4','#FEE440','#FF5D8F','#9BF6FF'] },
   'pastel-goth':  { mode:'curated', palette:['#FF8CCF','#C3A6FF','#8FE3CF','#FFB3E0','#9AC8FF','#E05FA8','#A07CE8','#F6D6E8','#FF6FB5','#7FD6C2','#D9B8FF','#FFC4E6'] },
   'sage-linen':   { mode:'curated', palette:['#7D8F6E','#B9A36B','#A3B18A','#8FA39A','#C7B08A','#5E7254','#D4C39A','#6E8B84','#B5BFA0','#9C8455','#C9D3B8','#7A6A4F'] },
-  'goth-noir':    { mode:'curated', palette:['#F2F2F2','#A6A6A6','#D0D0D0','#7A7A7A','#E3E3E3','#8E8E8E','#BBBBBB','#666666','#FFFFFF','#959595','#C8C8C8','#727272'] }
+  'goth-noir':    { mode:'curated', palette:['#F2F2F2','#A6A6A6','#D0D0D0','#7A7A7A','#E3E3E3','#8E8E8E','#BBBBBB','#666666','#FFFFFF','#959595','#C8C8C8','#727272'] },
+  'office':       { mode:'curated', palette:['#2B6CB0','#0F9D9A','#2E9E5B','#5BA4E6','#6CC3A6','#1E4E8C','#3BB8C4','#7BB662','#8FB8E8','#0B7A75','#A8D5BA','#4A7FB5'] }
 };
 var GOLDEN_ANGLE = 137.508;
 function colorForHabitIndex(i) {
@@ -635,8 +702,9 @@ function renderDonuts() {
         }
       }
     });
+    if(extraCreditEnabled){ for(var bd=ws;bd<=we;bd++) td+=bonusForDay(bd).count; }   // Extra credit: bonus check-ins push the week past 100%
     monthGoal+=tp; monthDone+=td;
-    var pct=tp>0?Math.round((td/tp)*100):0, offset=circ-(pct/100)*circ;
+    var pct=tp>0?Math.round((td/tp)*100):0, offset=circ-(Math.min(pct,100)/100)*circ;
     weekPcts.push(pct);
     var color=weekColors[w]||'#ccc', fill=getThemeColor('--week-donut-track')||weekFillColors[w]||'#eee', txt=getThemeColor('--week-donut-text')||weekTextColors[w]||'#333';   // dark themes can set their own donut track/text colors
     var item=document.createElement('div'); item.style.cssText='flex:0 0 auto;text-align:center;';
@@ -654,7 +722,9 @@ function renderSummaryDonut(done, goal, elId, label) {
   var r=44, circ=2*Math.PI*r, pct=goal>0?Math.round((done/goal)*100):0;
   var shown=Math.min(pct,100), offset=circ-(shown/100)*circ;
   var color=getThemeColor('--c-pink'), track=hexToRgba(color,0.2), txt=getThemeColor('--c-text');
-  el.innerHTML='<svg width="120" height="120" viewBox="0 0 100 100"><circle cx="50" cy="50" r="'+r+'" fill="none" stroke="'+track+'" stroke-width="10"></circle><circle cx="50" cy="50" r="'+r+'" fill="none" stroke="'+color+'" stroke-width="10" stroke-dasharray="'+circ+' '+circ+'" stroke-dashoffset="'+offset+'" transform="rotate(-90 50 50)" stroke-linecap="round"></circle><text x="50" y="57" text-anchor="middle" font-size="22" font-weight="700" fill="'+txt+'">'+pct+'%</text></svg><p>'+done+' of '+goal+' habits done</p>';
+  var over='';   // Extra credit above 100%: a thin inner ring in the bonus color
+  if(pct>100){ var r2=34, c2=2*Math.PI*r2, f2=Math.min((pct-100)/100,1); over='<circle cx="50" cy="50" r="'+r2+'" fill="none" stroke="'+bonusColor()+'" stroke-width="5" stroke-dasharray="'+(f2*c2)+' '+c2+'" transform="rotate(-90 50 50)" stroke-linecap="round"></circle>'; }
+  el.innerHTML='<svg width="120" height="120" viewBox="0 0 100 100"><circle cx="50" cy="50" r="'+r+'" fill="none" stroke="'+track+'" stroke-width="10"></circle><circle cx="50" cy="50" r="'+r+'" fill="none" stroke="'+color+'" stroke-width="10" stroke-dasharray="'+circ+' '+circ+'" stroke-dashoffset="'+offset+'" transform="rotate(-90 50 50)" stroke-linecap="round"></circle>'+over+'<text x="50" y="57" text-anchor="middle" font-size="22" font-weight="700" fill="'+txt+'">'+pct+'%</text></svg><p>'+done+' of '+goal+' habits done</p>';
   el.insertAdjacentHTML('afterbegin','<p class="sum-label">'+(label||'This month')+'</p>');
 }
 
@@ -669,13 +739,14 @@ function getCategoryTotals(){
     if(h.id===-1)return; var hid=String(h.id), cat=h.category||'General';
     if(!cats[cat])cats[cat]={done:0,goal:0};
     for(var d=1;d<=DAYS_IN_MONTH;d++){
-      var dow=(firstDayMonBased+d-1)%7, sched=scheduleLookup[hid]&&scheduleLookup[hid][dow];
-      if(!sched||!(sched.required>0))continue;
+      var req=dayRequirement(h,d);   // same rule as the checklist, so "every X days" habits count too
+      if(!(req>0))continue;
       var iso=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(d).padStart(2,'0');
       var n=(logsLookup[hid]&&logsLookup[hid][iso])||0;
-      cats[cat].goal+=sched.required; cats[cat].done+=Math.min(n,sched.required);
+      cats[cat].goal+=req; cats[cat].done+=Math.min(n,req);
     }
   });
+  if(extraCreditEnabled){ for(var d=1;d<=DAYS_IN_MONTH;d++) bonusForDay(d).items.forEach(function(it){ var c=it.h.category||'General'; if(cats[c]&&cats[c].goal>0) cats[c].done+=it.n; }); }   // Extra credit: bonus counts toward the star map
   return cats;
 }
 function loadStarSelection(names){
@@ -764,23 +835,28 @@ function renderCharts() {
     return { label:h.name, data:dayLabels.map(function(day){
       if(h.id===-1)return 0;
       var iso=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(day).padStart(2,'0');
-      var dow=(firstDayMonBased+day-1)%7, sched=scheduleLookup[hid]&&scheduleLookup[hid][dow];
+      var dow=(firstDayMonBased+day-1)%7, sched=schedDays(habitAt(h,iso))[dow];
       var req=sched?sched.required:1, done=(logsLookup[hid]&&logsLookup[hid][iso])||0;
+      if(done>0&&isBonusDay(h,day))return 0;   // done on a day it wasn't due: drawn in the striped Bonus piece instead
       var ratio=req>0?done/req:0; return extraCreditEnabled?ratio:Math.min(ratio,1);
     }), _rawCounts:dayLabels.map(function(day){
       if(h.id===-1)return{done:0,required:1};
       var iso=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(day).padStart(2,'0');
-      var dow=(firstDayMonBased+day-1)%7, sched=scheduleLookup[hid]&&scheduleLookup[hid][dow];
+      var dow=(firstDayMonBased+day-1)%7, sched=schedDays(habitAt(h,iso))[dow];
       return{done:(logsLookup[hid]&&logsLookup[hid][iso])||0,required:sched?sched.required:1};
     }), backgroundColor:colorForHabitIndex(i), borderRadius:1, borderWidth:0 };
   });
   var totals=barDatasets.map(function(ds,i){return{index:i,total:ds.data.reduce(function(a,b){return a+b;},0)};});
   totals.sort(function(a,b){return b.total-a.total;}); var top5=totals.slice(0,5).map(function(t){return t.index;});
   var lineData=dayLabels.map(function(day){return barDatasets.reduce(function(sum,ds){return sum+(ds.data[day-1]||0);},0);});
+  // Bonus = archived habits logged that day + habits done on a day they weren't due.
+  var bonusDays=dayLabels.map(function(day){return bonusForDay(day);});
+  var bColor=bonusColor(), hasBonus=bonusDays.some(function(b){return b.count>0;});
+  if(hasBonus) barDatasets.push({ label:'Bonus', data:bonusDays.map(function(b){return b.count;}), _bonus:bonusDays, backgroundColor:bonusPattern(bColor), borderColor:bColor, borderWidth:1, borderRadius:1 });
   if(barChartInstance)barChartInstance.destroy(); if(lineChartInstance)lineChartInstance.destroy(); if(catChartInstance)catChartInstance.destroy();
 
   // Size the bar chart so one fully-done habit segment is about 6px tall.
-  var yMax=Math.max(1,Math.ceil(Math.max.apply(null,lineData)));
+  var yMax=Math.max(1,Math.ceil(Math.max.apply(null,lineData.map(function(v,i){return v+bonusDays[i].count;}))));
   var barWrap=document.getElementById('barChart').parentElement;
   var BAR_PX_PER_HABIT=14, BAR_MIN_HEIGHT=260;  // change these two numbers to make the graph taller or shorter
   barWrap.style.height=Math.max(BAR_MIN_HEIGHT,yMax*BAR_PX_PER_HABIT+80)+'px';
@@ -789,8 +865,20 @@ function renderCharts() {
   
   var axisTextColor=getThemeColor('--c-text-muted');
   
-  barChartInstance=new Chart(document.getElementById('barChart'),{type:'bar',data:{labels:dayLabels,datasets:barDatasets},options:{responsive:true,maintainAspectRatio:false,scales:{y:{stacked:true,beginAtZero:true,max:yMax,ticks:{color:axisTextColor,stepSize:yMax>12?Math.ceil(yMax/8):1}},x:{stacked:true,ticks:{color:axisTextColor,autoSkip:true,maxRotation:0,font:{size:9}}}},plugins:{legend:{position:'bottom',labels:{color:getThemeColor('--c-text'),boxWidth:10,font:{size:10},filter:function(item){return top5.indexOf(item.datasetIndex)!==-1;}}},tooltip:{callbacks:{label:function(ctx){var r=ctx.dataset._rawCounts[ctx.dataIndex];return r&&r.done>0?ctx.dataset.label+': '+r.done+'/'+r.required:null;}}}}}});
-  lineChartInstance=new Chart(document.getElementById('lineChart'),{type:'line',data:{labels:dayLabels,datasets:[{data:lineData,borderColor:getThemeColor('--c-pink'),backgroundColor:hexToRgba(getThemeColor('--c-pink'),0.2),fill:true,tension:0,pointRadius:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{color:axisTextColor}},x:{ticks:{color:axisTextColor,autoSkip:true,maxRotation:0,font:{size:9}}}}}});
+  barChartInstance=new Chart(document.getElementById('barChart'),{type:'bar',data:{labels:dayLabels,datasets:barDatasets},options:{responsive:true,maintainAspectRatio:false,scales:{y:{stacked:true,beginAtZero:true,max:yMax,ticks:{color:axisTextColor,stepSize:yMax>12?Math.ceil(yMax/8):1}},x:{stacked:true,ticks:{color:axisTextColor,autoSkip:true,maxRotation:0,font:{size:9}}}},plugins:{legend:{position:'bottom',labels:{color:getThemeColor('--c-text'),boxWidth:10,font:{size:10},filter:function(item){return top5.indexOf(item.datasetIndex)!==-1||item.text==='Bonus';}}},tooltip:{callbacks:{label:function(ctx){if(ctx.dataset._bonus)return bonusTooltipLines(ctx.dataset._bonus[ctx.dataIndex]);var r=ctx.dataset._rawCounts[ctx.dataIndex];return r&&r.done>0?ctx.dataset.label+': '+r.done+'/'+r.required:null;}}}}}});
+  // Daily trend: the line is your routine; a bonus-colored dot above it marks bonus check-ins.
+  // The more archived habits you logged that day, the bigger the dot. Hover it to see which ones.
+  var lineSets=[{label:'Habits done',data:lineData,borderColor:getThemeColor('--c-pink'),backgroundColor:hexToRgba(getThemeColor('--c-pink'),0.2),fill:true,tension:0,pointRadius:2}];
+  if(hasBonus) lineSets.push({label:'Bonus',data:bonusDays.map(function(b,i){return b.count?lineData[i]+b.count:null;}),_bonus:bonusDays,showLine:false,fill:false,
+    pointRadius:bonusDays.map(function(b){return b.count?Math.min(14,4+b.archived.length*2.5+b.offday.length):0;}),
+    pointHoverRadius:bonusDays.map(function(b){return b.count?Math.min(16,6+b.archived.length*2.5+b.offday.length):0;}),
+    pointBackgroundColor:bColor,pointBorderColor:getThemeColor('--c-body-bg')||'#fff',pointBorderWidth:1.5});
+  var stemPlugin={id:'bonusStem',beforeDatasetDraw:function(chart,args){
+    if(args.index!==1)return; var m0=chart.getDatasetMeta(0), m1=chart.getDatasetMeta(1), c=chart.ctx;
+    c.save(); c.strokeStyle=bColor; c.lineWidth=2; c.setLineDash([3,2]);
+    bonusDays.forEach(function(b,i){ if(!b.count||!m0.data[i]||!m1.data[i])return; c.beginPath(); c.moveTo(m0.data[i].x,m0.data[i].y); c.lineTo(m1.data[i].x,m1.data[i].y); c.stroke(); });
+    c.restore(); }};
+  lineChartInstance=new Chart(document.getElementById('lineChart'),{type:'line',data:{labels:dayLabels,datasets:lineSets},plugins:[stemPlugin],options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{title:function(items){return items.length?monthDayLabel(+items[0].label):'';},label:function(ctx){if(ctx.dataset._bonus)return bonusTooltipLines(ctx.dataset._bonus[ctx.dataIndex]);return 'Habits done: '+Math.round(ctx.parsed.y*10)/10;}}}},scales:{y:{beginAtZero:true,ticks:{color:axisTextColor}},x:{ticks:{color:axisTextColor,autoSkip:true,maxRotation:0,font:{size:9}}}}}});
   renderCategoryChart(axisTextColor);
   renderStarMap();
   renderXpGrowth();
@@ -806,19 +894,23 @@ function renderCategoryChart(axisTextColor) {
     if(h.id===-1)return; var hid=String(h.id), cat=h.category||'General';
     if(!cats[cat])cats[cat]={done:0,goal:0};
     for(var d=1;d<=DAYS_IN_MONTH;d++){
-      var dow=(firstDayMonBased+d-1)%7, sched=scheduleLookup[hid]&&scheduleLookup[hid][dow];
-      if(!sched||!(sched.required>0))continue;
+      var req=dayRequirement(h,d);   // same rule as the checklist, so "every X days" habits count too
+      if(!(req>0))continue;
       var iso=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(d).padStart(2,'0');
       var n=(logsLookup[hid]&&logsLookup[hid][iso])||0;
-      cats[cat].goal+=sched.required; cats[cat].done+=Math.min(n,sched.required);
+      cats[cat].goal+=req; cats[cat].done+=Math.min(n,req);
     }
   });
+  var bonusCat={};   // bonus check-ins per category (archived habits and not-due days)
+  for(var bd=1;bd<=DAYS_IN_MONTH;bd++) bonusForDay(bd).items.forEach(function(it){ var c=it.h.category||'General'; bonusCat[c]=(bonusCat[c]||0)+it.n; if(!cats[c])cats[c]={done:0,goal:0}; });
   var names=Object.keys(cats).sort(function(a,b){return cats[b].goal-cats[a].goal;});
-  var color=getThemeColor('--c-pink');
-  catChartInstance=new Chart(el,{type:'bar',data:{labels:names,datasets:[
+  var color=getThemeColor('--c-pink'), bc=bonusColor();
+  var catSets=[
     {label:'Done',data:names.map(function(n){return cats[n].done;}),backgroundColor:color,borderRadius:2,borderWidth:0},
     {label:'Left to do',data:names.map(function(n){return cats[n].goal-cats[n].done;}),backgroundColor:hexToRgba(color,0.2),borderRadius:2,borderWidth:0}
-  ]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true,beginAtZero:true,ticks:{color:axisTextColor}},y:{stacked:true,ticks:{color:axisTextColor,font:{size:10}}}},plugins:{legend:{position:'bottom',labels:{color:getThemeColor('--c-text'),boxWidth:10,font:{size:10}}}}}});
+  ];
+  if(Object.keys(bonusCat).length) catSets.push({label:'Bonus',data:names.map(function(n){return bonusCat[n]||0;}),backgroundColor:bonusPattern(bc),borderColor:bc,borderWidth:1,borderRadius:2});
+  catChartInstance=new Chart(el,{type:'bar',data:{labels:names,datasets:catSets},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true,beginAtZero:true,ticks:{color:axisTextColor}},y:{stacked:true,ticks:{color:axisTextColor,font:{size:10}}}},plugins:{legend:{position:'bottom',labels:{color:getThemeColor('--c-text'),boxWidth:10,font:{size:10}}}}}});
 }
 
 // ============================================
@@ -872,6 +964,8 @@ function buildHabitTooltip(h) {
   }
 
   lines.push('Category: ' + (h.category || 'General'));
+  var vs = SCHED_VERSIONS[hid];
+  if (vs && vs.length > 1) { lines.push('Schedule history:'); vs.forEach(function (v) { lines.push('  ' + (v.effective_from <= '1901-01-01' ? 'Start' : moneyDay(v.effective_from)) + ': ' + schedDescribe(v)); }); }
   return lines.join('\n');
 }
 
@@ -888,7 +982,7 @@ function renderGrid() {
   for(var d=1;d<=DAYS_IN_MONTH;d++){
     var w=weekBoundaries.length===0?0:weekBoundaries[weekBoundaries.length-1].week;
     if(weekBoundaries.filter(function(b){return b.week===w;}).length===7)w++;
-    var th=document.createElement('th'); th.innerHTML=dayInitials[(firstDayMonBased+d-1)%7]+'<br>'+d;
+    var th=document.createElement('th'); th.innerHTML=dayInitials[(firstDayMonBased+d-1)%7]+'<br>'+d; th.className=hlDayClass(d);
     headRow.appendChild(th); weekBoundaries.push({day:d,week:w});
   }
   var progressTh=document.createElement('th'); progressTh.textContent='Progress'; progressTh.style.minWidth='110px';
@@ -905,25 +999,14 @@ function renderGrid() {
     row.appendChild(labelCell);
 
     weekBoundaries.forEach(function(b){
-      var cell=document.createElement('td'), box=document.createElement('div'); box.className='day-box';
+      var cell=document.createElement('td'), box=document.createElement('div'); box.className='day-box'; cell.className=hlDayClass(b.day);
       var isoDate=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(b.day).padStart(2,'0');
-      var dow=(firstDayMonBased+b.day-1)%7, sched=scheduleLookup[hid]&&scheduleLookup[hid][dow];
       var timesRequired, isFlexible;
-
-      if(h.freq_type==='monthly'){
-        timesRequired=1; isFlexible=true;
-      } else if(h.freq_type==='interval' && h.start_date && h.freq_value){
-        var cellDate=new Date(currentYear,currentMonth-1,b.day);
-        var startDate=new Date(h.start_date);
-        cellDate.setHours(0,0,0,0); startDate.setHours(0,0,0,0);
-        var daysSince=Math.round((cellDate-startDate)/86400000);
-        var isOnDay=(daysSince>=0 && daysSince%h.freq_value===0);
-        timesRequired=isOnDay?1:0;
-        isFlexible=false;
-      } else {
-        timesRequired=sched?sched.required:0;
-        isFlexible=sched?sched.flexible:true;
-      }
+      var rq=schedReq(habitAt(h,isoDate),currentYear,currentMonth,b.day);   // uses the schedule that was active on this date
+      if(rq.kind==='monthly'){ timesRequired=1; isFlexible=true; }
+      else { timesRequired=rq.req; isFlexible=rq.flexible; }
+      var chg=schedChangeOn(hid,isoDate);   // a schedule change starts on this day: draw the marker line
+      if(chg){ box.classList.add('sched-change'); }
 
       var timesLogged=(logsLookup[hid]&&logsLookup[hid][isoDate])||0;
       box.dataset.required = (!isFlexible && timesRequired > 0) ? 'true' : 'false';
@@ -982,6 +1065,7 @@ function renderGrid() {
           };
         })(h.id,isoDate,timesRequired,b.week,hi,b.day));
       }
+      if(chg) box.dataset.tip=(box.dataset.tip?box.dataset.tip+' · ':'')+'Schedule changed: '+chg;
       cell.appendChild(box); row.appendChild(cell);
     });
 
@@ -1111,32 +1195,16 @@ var _ctxTarget=null;
 
 function updateProgressCell(hid, hi) {
   var cell=document.getElementById('progress-cell-'+hi); if(!cell)return;
-  var h=habits[hi], totalDone=0, totalRequired=0;
-
-  if(h.freq_type==='monthly' && h.freq_value){
-    totalRequired=h.freq_value;
-    Object.keys(logsLookup[hid]||{}).forEach(function(iso){
-      if(iso.startsWith(currentYear+'-'+String(currentMonth).padStart(2,'0')))
-        totalDone+=(logsLookup[hid][iso]||0);
-    });
-  } else if(h.freq_type==='interval' && h.freq_value && h.start_date){
-    var startDate=new Date(h.start_date); startDate.setHours(0,0,0,0);
-    for(var d=1;d<=DAYS_IN_MONTH;d++){
-      var cellDate=new Date(currentYear,currentMonth-1,d); cellDate.setHours(0,0,0,0);
-      var daysSince=Math.round((cellDate-startDate)/86400000);
-      if(daysSince>=0 && daysSince%h.freq_value===0){
-        totalRequired++;
-        var iso=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-        totalDone+=(logsLookup[hid]&&logsLookup[hid][iso])||0;
-      }
-    }
-  } else {
-    for(var d=1;d<=DAYS_IN_MONTH;d++){
-      var dow=(firstDayMonBased+d-1)%7, sched=scheduleLookup[hid]&&scheduleLookup[hid][dow];
-      if(sched&&sched.required>0){ totalRequired+=sched.required; var iso=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(d).padStart(2,'0'); totalDone+=(logsLookup[hid]&&logsLookup[hid][iso])||0; }
-    }
-    if(totalRequired===0){ totalDone=Object.values(logsLookup[hid]||{}).reduce(function(a,b){return a+b;},0); totalRequired=DAYS_IN_MONTH; }
+  var h=habits[hi], totalDone=0, totalRequired=0, monthlyGoal=0, hasMonthly=false;
+  // Day by day, using whichever schedule was active that day ("X times per month" parts are prorated by days).
+  for(var d=1;d<=DAYS_IN_MONTH;d++){
+    var iso=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    var hh=habitAt(h,iso), r=schedReq(hh,currentYear,currentMonth,d), n=(logsLookup[hid]&&logsLookup[hid][iso])||0;
+    if(r.kind==='monthly'){ hasMonthly=true; monthlyGoal+=(hh.freq_value||0)/DAYS_IN_MONTH; totalDone+=n; }
+    else if(r.req>0){ totalRequired+=r.req; totalDone+=n; }
   }
+  totalRequired+=Math.round(monthlyGoal);
+  if(totalRequired===0 && !hasMonthly){ totalDone=Object.values(logsLookup[hid]||{}).reduce(function(a,b){return a+b;},0); totalRequired=DAYS_IN_MONTH; }
 
   var pct=Math.round((totalDone/Math.max(1,totalRequired))*100);
   if(!extraCreditEnabled)pct=Math.min(pct,100);
@@ -1166,13 +1234,15 @@ function renderMonthProgress() {
       }
     }
   });
-  var habitPct=totalRequired>0?Math.min(100,Math.round((totalDone/totalRequired)*100)):0;
+  if(extraCreditEnabled){ for(var bd=1;bd<=DAYS_IN_MONTH;bd++) totalDone+=bonusForDay(bd).count; }   // Extra credit: bonus can push you past 100%
+  var habitPct=totalRequired>0?Math.round((totalDone/totalRequired)*100):0;
+  if(!extraCreditEnabled) habitPct=Math.min(100,habitPct);
   var pink=getThemeColor('--c-pink'), purple=getThemeColor('--c-purple');
   el.innerHTML=[
     '<div><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--c-text-muted);margin-bottom:4px;"><span>Time elapsed</span><span>'+dayOfMonth+' / '+DAYS_IN_MONTH+' days</span></div>',
     '<div style="background:var(--c-body-bg-alt);border:1px solid var(--c-dark);height:10px;border-radius:3px;overflow:hidden;"><div style="background:'+purple+';width:'+timePct+'%;height:100%;border-radius:3px;"></div></div></div>',
     '<div><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--c-text-muted);margin-bottom:4px;"><span>Habits done</span><span>'+habitPct+'%</span></div>',
-    '<div style="background:var(--c-body-bg-alt);border:1px solid var(--c-dark);height:10px;border-radius:3px;overflow:hidden;"><div style="background:'+pink+';width:'+habitPct+'%;height:100%;border-radius:3px;"></div></div></div>',
+    '<div style="background:var(--c-body-bg-alt);border:1px solid var(--c-dark);height:10px;border-radius:3px;overflow:hidden;"><div style="background:'+pink+';width:'+Math.min(100,habitPct)+'%;height:100%;border-radius:3px;"></div></div></div>',
     '<div style="font-size:10px;text-align:center;margin-top:4px;">',
     habitPct>=timePct?'<span style="color:'+pink+';">✓ Ahead of pace</span>':'<span style="color:var(--c-text-muted);">'+( timePct-habitPct)+'% behind pace</span>',
     '</div>'
@@ -1298,6 +1368,7 @@ function renderWeeklyTasks() {
           if(!weeklyTaskData[weekIdx].tasks[taskIdx])weeklyTaskData[weekIdx].tasks[taskIdx]={t:'',c:false,pinned:false,id:null};
           weeklyTaskData[weekIdx].tasks[taskIdx].c=this.checked;
           saveWeeklyTask(weekIdx,taskIdx,weeklyTaskData[weekIdx].tasks[taskIdx].t||'',this.checked,weeklyTaskData[weekIdx].tasks[taskIdx].pinned||false);
+          if(this.checked)victory('pop','Task done!');
           renderPlannedActualChart();
           renderXpStats();
         });
@@ -1448,18 +1519,8 @@ function renderActualVsIntended() {
     RAW_HABITS.forEach(function(h,i){
       if(h.id===-1)return;
       var hid=String(h.id);
-      var req=0;
-      var sched=scheduleLookup[hid]&&scheduleLookup[hid][dow];
-      if(sched && sched.required>0) {
-        req=sched.required;
-      } else if(h.freq_type==='interval' && h.freq_value && h.start_date){
-        var cellDate=new Date(currentYear,currentMonth-1,d);
-        var startDate=new Date(h.start_date);
-        cellDate.setHours(0,0,0,0); startDate.setHours(0,0,0,0);
-        var daysSince=Math.round((cellDate-startDate)/86400000);
-        var isOnDay=(daysSince>=0 && daysSince%h.freq_value===0);
-        req=isOnDay?1:0;
-      }
+      var rq=schedReq(habitAt(h,iso),currentYear,currentMonth,d);
+      var req=rq.kind==='monthly'?0:rq.req;
       
       var done=(logsLookup[hid]&&logsLookup[hid][iso])||0;
       if(req>0) {
@@ -1563,17 +1624,40 @@ function renderStreaks() {
   });
 }
 
+// Personal bests: best day, best week, best two weeks and best month (all habits, archived ones too).
+// Week and two weeks are any 7 / 14 days in a row, so a great stretch counts even if it crosses a month.
 function renderBestMonth() {
   var el=document.getElementById('best-month-container'); if(!el)return;
-  var monthMap={};
-  RAW_HABITS.forEach(function(h){ var hid=String(h.id); Object.keys(allTimeLogs[hid]||{}).forEach(function(d){ var ym=d.substring(0,7); monthMap[ym]=(monthMap[ym]||0)+(allTimeLogs[hid][d]||0); }); });
-  var months=Object.keys(monthMap).sort();
-  if(months.length===0){el.innerHTML='<p class="cell-subtitle">Not enough data yet</p>';return;}
-  var best=months.reduce(function(a,b){return monthMap[a]>=monthMap[b]?a:b;});
-  var parts=best.split('-');
-  var mNames=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var label=mNames[parseInt(parts[1])-1]+' '+parts[0];
-  el.innerHTML='<div style="display:flex;align-items:center;gap:10px;"><span style="font-size:28px;font-weight:700;color:var(--c-orange);">'+label+'</span><div><div style="font-size:14px;font-weight:700;color:var(--c-text);">'+monthMap[best]+' done</div><div style="font-size:10px;color:var(--c-text-muted);">personal best month</div></div></div>';
+  var perDay={};
+  allHabits().forEach(function(h){ var logs=allTimeLogs[String(h.id)]||{}; Object.keys(logs).forEach(function(d){ if(logs[d]>0) perDay[d]=(perDay[d]||0)+logs[d]; }); });
+  var days=Object.keys(perDay).sort();
+  if(days.length===0){el.innerHTML='<p class="cell-subtitle">Not enough data yet</p>';return;}
+  var fmt=function(iso,yr){ return isoToDate(iso).toLocaleDateString('en-US',yr?{month:'short',day:'numeric',year:'numeric'}:{month:'short',day:'numeric'}); };
+  // every calendar day from the first log to today, so empty days count as 0 inside a stretch
+  var all=[], end=new Date(); end.setHours(0,0,0,0);
+  for(var d=isoToDate(days[0]); d<=end; d.setDate(d.getDate()+1)) all.push(localISO(d));
+  function bestRun(len){
+    var sum=0, best={total:-1,start:all[0],end:all[0]};
+    for(var i=0;i<all.length;i++){
+      sum+=perDay[all[i]]||0; if(i>=len) sum-=perDay[all[i-len]]||0;
+      if(i>=Math.min(len,all.length)-1 && sum>best.total) best={total:sum,start:all[Math.max(0,i-len+1)],end:all[i]};
+    }
+    return best;
+  }
+  var bd=days.reduce(function(a,b){return perDay[a]>=perDay[b]?a:b;});
+  var wk=bestRun(7), tw=bestRun(14);
+  var monthMap={}; days.forEach(function(d){ var ym=d.substring(0,7); monthMap[ym]=(monthMap[ym]||0)+perDay[d]; });
+  var bm=Object.keys(monthMap).reduce(function(a,b){return monthMap[a]>=monthMap[b]?a:b;});
+  var mp=bm.split('-'), mNames=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var rows=[
+    ['Best day', fmt(bd,true), perDay[bd]],
+    ['Best week', fmt(wk.start)+' – '+fmt(wk.end,true), wk.total],
+    ['Best two weeks', fmt(tw.start)+' – '+fmt(tw.end,true), tw.total],
+    ['Best month', mNames[+mp[1]-1]+' '+mp[0], monthMap[bm]]
+  ];
+  el.innerHTML='<div class="best-list">'+rows.map(function(r){
+    return '<div class="best-row"><span class="best-kind">'+r[0]+'</span><span class="best-when">'+r[1]+'</span><span class="best-num">'+r[2]+' done</span></div>';
+  }).join('')+'</div>';
 }
 
 function renderHabitAge() {
@@ -1594,7 +1678,7 @@ function toggleHistoryPage() {
   var page=document.getElementById('history-page');
   var isShowing=page.style.display==='block';
   page.style.display=isShowing?'none':'block';
-  ['sleep-page','mood-page','money-page','shop-page','memory-page'].forEach(function(id){var el=document.getElementById(id); if(el)el.style.display='none';});
+  ['sleep-page','mood-page','money-page','shop-page','memory-page','every-page'].forEach(function(id){var el=document.getElementById(id); if(el)el.style.display='none';});
   if(!isShowing)renderHistoryPage();
 }
 function renderHistoryPage() {
@@ -1683,22 +1767,23 @@ function localISO(d) {
 // Returns {required, tag} if the habit is required today, otherwise null.
 // Same rules as the monthly grid: flexible and "X per month" habits are optional, so they are not listed.
 function getTodayRequirement(h, now) {
-  var hid = String(h.id);
+  h = habitAt(h, localISO(now));   // the schedule active today
+  var hid = String(h.id), SD = schedDays(h);
   var dow = (now.getDay()+6)%7;
   if (h.freq_type === 'monthly') return null;
   if (h.freq_type === 'interval' && h.start_date && h.freq_value) {
     var cellDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    var startDate = new Date(h.start_date);
+    var startDate = parseLocalDate(h.start_date);
     startDate.setHours(0,0,0,0);
     var daysSince = Math.round((cellDate - startDate)/86400000);
     if (daysSince >= 0 && daysSince % h.freq_value === 0) return { required: 1, tag: 'every '+h.freq_value+' days' };
     return null;
   }
-  var sched = scheduleLookup[hid] && scheduleLookup[hid][dow];
+  var sched = SD[dow];
   if (!sched || sched.flexible || !(sched.required > 0)) return null;
   var fixedDays = [];
   for (var i = 0; i < 7; i++) {
-    var s = scheduleLookup[hid][i];
+    var s = SD[i];
     if (s && !s.flexible && s.required > 0) fixedDays.push(DAY_ABBR[i]);
   }
   return { required: sched.required, tag: fixedDays.length === 7 ? 'daily' : fixedDays.join(' ') };
@@ -1708,14 +1793,15 @@ function getTodayRequirement(h, now) {
 // Returns {required, tag} or null if the habit is already in the required list.
 function getTodayOptional(h, now) {
   if (getTodayRequirement(h, now)) return null;
+  var base = h; h = habitAt(h, localISO(now));
   var hid = String(h.id);
   var dow = (now.getDay()+6)%7;
   if (h.freq_type === 'monthly') {
-    var ym = localISO(now).slice(0, 7), total = 0;
+    var ym = localISO(now).slice(0, 7), total = 0, goal = monthlyGoalFor(base, now.getFullYear(), now.getMonth() + 1);
     Object.keys(allTimeLogs[hid] || {}).forEach(function(d) { if (d.indexOf(ym) === 0) total += allTimeLogs[hid][d] || 0; });
-    return { required: 1, tag: h.freq_value ? total + '/' + h.freq_value + ' this month' : 'any day' };
+    return { required: 1, tag: goal ? total + '/' + goal + ' this month' : 'any day' };
   }
-  var sched = scheduleLookup[hid] && scheduleLookup[hid][dow];
+  var sched = schedDays(h)[dow];
   if (sched && sched.flexible && sched.required > 0) return { required: sched.required, tag: 'flexible' };
   return { required: 1, tag: 'extra' };
 }
@@ -1730,6 +1816,7 @@ try { showOptionalToday = localStorage.getItem('habitTrackerShowOptional') === '
 function toggleShowOptional(on) {
   showOptionalToday = on;
   try { localStorage.setItem('habitTrackerShowOptional', on ? '1' : '0'); } catch (e) {}
+  savePref({ show_optional: on });
   if (currentUser) { renderToday(); renderXpStats(); }
 }
 
@@ -1775,12 +1862,21 @@ function renderToday() {
     if (opt) optItems.push({ h: h, req: opt, done: done });
   });
 
-  // The counter and bar only count the required habits.
+  // Bonus: archived habits logged today, and active habits done today that weren't due (and aren't already listed).
+  var listed = {}; items.concat(optItems).forEach(function(it) { listed[String(it.h.id)] = 1; });
+  var bonusItems = [];
+  allHabits().forEach(function(h) {
+    var hid = String(h.id), n = (allTimeLogs[hid] && allTimeLogs[hid][iso]) || 0;
+    if (n > 0 && !listed[hid] && (h.archived || habitAt(h, iso).freq_type !== 'monthly')) bonusItems.push({ h: h, req: { required: 1, tag: h.archived ? 'archived' : 'bonus' }, done: n });
+  });
+
+  // The counter and bar only count the required habits (plus bonus ones when Extra credit is on).
   var doneCount = items.filter(function(it) { return it.done >= it.req.required; }).length;
+  if (extraCreditEnabled) doneCount += bonusItems.length;
   document.getElementById('today-done').textContent = doneCount;
   document.getElementById('today-total').textContent = items.length;
   var pct = items.length ? Math.round((doneCount / items.length) * 100) : 0;
-  document.getElementById('today-bar-fill').style.width = pct + '%';
+  document.getElementById('today-bar-fill').style.width = Math.min(pct, 100) + '%';
 
   if (items.length === 0) {
     var empty = document.createElement('p');
@@ -1798,6 +1894,13 @@ function renderToday() {
     sub.textContent = 'Optional';
     listEl.appendChild(sub);
     optItems.forEach(function(it) { listEl.appendChild(makeTodayItem(it, iso, true)); });
+  }
+  if (bonusItems.length) {
+    var bsub = document.createElement('p');
+    bsub.className = 'today-sub';
+    bsub.textContent = 'Bonus' + (extraCreditEnabled ? ' (counts as extra credit)' : '');
+    listEl.appendChild(bsub);
+    bonusItems.forEach(function(it) { var el = makeTodayItem(it, iso, true); el.classList.add('bonus'); el.title = 'Click to un-log'; listEl.appendChild(el); });
   }
 }
 
@@ -1821,6 +1924,7 @@ async function onTodayClick(h, required, iso) {
   var cur = (allTimeLogs[hid] && allTimeLogs[hid][iso]) || 0;
   var next = required === 1 ? (cur >= 1 ? 0 : 1) : (cur >= required ? 0 : cur + 1);
   setLocalLog(hid, iso, next);
+  vicHabit(h.id, iso, cur, next);
   var res = await sb.from('habit_logs').upsert(
     { habit_id: h.id, log_date: iso, times_completed: next },
     { onConflict: 'habit_id,log_date' }
@@ -1851,6 +1955,7 @@ try { xpMode = localStorage.getItem('habitTrackerXpMode') === '1'; } catch (e) {
 function toggleXpMode(on) {
   xpMode = on;
   try { localStorage.setItem('habitTrackerXpMode', on ? '1' : '0'); } catch (e) {}
+  savePref({ xp_mode: on });   // also saved to your account, so every device and browser gets it
   if (!currentUser) return;
   renderGrid();
   renderWeeklyTasks();
@@ -1994,9 +2099,11 @@ async function loadTaskXpOtherMonths() {
 // Total XP, XP per habit category, and XP from weekly tasks.
 function computeXp() {
   var total = 0, byCat = {};
-  RAW_HABITS.forEach(function (h) {
+  allHabits().forEach(function (h) {   // archived habits keep earning XP when you log them
     var cat = h.category || 'General';
     if (byCat[cat] === undefined) byCat[cat] = 0;
+    var cb = comebackDates(String(h.id)).length * COMEBACK_XP;   // +20 XP each time you revive a habit after 30+ days
+    total += cb; byCat[cat] += cb;
     var per = XP_VALUES[h.difficulty] || 0;
     if (!per) return;
     var hid = String(h.id), logs = allTimeLogs[hid] || {}, times = 0;
@@ -2005,7 +2112,7 @@ function computeXp() {
       if (n <= 0) return;
       var p = iso.split('-');
       var dow = (new Date(+p[0], +p[1] - 1, +p[2]).getDay() + 6) % 7;
-      var s = scheduleLookup[hid] && scheduleLookup[hid][dow];
+      var s = schedDays(habitAt(h, iso))[dow];
       var cap = (s && s.required > 0) ? s.required : 1;   // extra ticks beyond the goal earn no XP
       times += Math.min(n, cap);
     });
@@ -2026,17 +2133,10 @@ function computeXp() {
 // How many times a habit is required on a given date (0 = not required that day).
 // Same rules as the monthly grid and Today's box.
 function habitRequiredOn(h, y, m, d) {
-  if (h.freq_type === 'monthly') return 0;
-  var dow = (new Date(y, m - 1, d).getDay() + 6) % 7;
-  if (h.freq_type === 'interval' && h.start_date && h.freq_value) {
-    var cellDate = new Date(y, m - 1, d);
-    var startDate = new Date(h.start_date);
-    cellDate.setHours(0, 0, 0, 0); startDate.setHours(0, 0, 0, 0);
-    var daysSince = Math.round((cellDate - startDate) / 86400000);
-    return (daysSince >= 0 && daysSince % h.freq_value === 0) ? 1 : 0;
-  }
-  var s = scheduleLookup[String(h.id)] && scheduleLookup[String(h.id)][dow];
-  return (s && !s.flexible && s.required > 0) ? s.required : 0;
+  var iso = y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+  var r = schedReq(habitAt(h, iso), y, m, d);
+  if (r.kind === 'monthly' || (r.kind === 'days' && r.flexible)) return 0;
+  return r.req;
 }
 
 // Days in a row where every required habit was done. Days with nothing required are skipped.
@@ -2210,7 +2310,7 @@ function renderWeekBars(pcts) {
   el.style.gridTemplateColumns = 'repeat(' + pcts.length + ', minmax(0,1fr))';
   pcts.forEach(function (pct, w) {
     var color = weekColors[w] || '#ccc';
-    var h = Math.max(2, Math.round(pct / 100 * 90));
+    var h = Math.max(2, Math.round(Math.min(pct, 100) / 100 * 90));
     var item = document.createElement('div'); item.className = 'week-bar-item';
     item.innerHTML = '<div class="week-bar-track"><div class="week-bar-pct">' + pct + '%</div>' +
       '<div class="week-bar-fill" style="height:' + h + 'px;background:' + color + ';"></div></div>' +
@@ -2340,7 +2440,8 @@ function renderWeekBars(pcts) {
 var xpGrowthInstance = null;
 function getXpGrowth() {
   var perDay = {};
-  RAW_HABITS.forEach(function (h) {
+  allHabits().forEach(function (h) {
+    comebackDates(String(h.id)).forEach(function (iso) { perDay[iso] = (perDay[iso] || 0) + COMEBACK_XP; });
     var per = XP_VALUES[h.difficulty] || 0;
     if (!per) return;
     var hid = String(h.id), logs = allTimeLogs[hid] || {};
@@ -2349,7 +2450,7 @@ function getXpGrowth() {
       if (n <= 0) return;
       var p = iso.split('-');
       var dow = (new Date(+p[0], +p[1] - 1, +p[2]).getDay() + 6) % 7;
-      var s = scheduleLookup[hid] && scheduleLookup[hid][dow];
+      var s = schedDays(habitAt(h, iso))[dow];
       var cap = (s && s.required > 0) ? s.required : 1;
       perDay[iso] = (perDay[iso] || 0) + Math.min(n, cap) * per;
     });
@@ -2450,20 +2551,18 @@ function getYearProgress() {
     var iso = localISO(d), dow = (d.getDay() + 6) % 7;
     RAW_HABITS.forEach(function (h) {
       if (h.id === -1) return;
-      var hid = String(h.id), req = 0;
-      var s = scheduleLookup[hid] && scheduleLookup[hid][dow];
-      if (s && s.required > 0) req = s.required;
-      else if (h.freq_type === 'interval' && h.freq_value && h.start_date) {
-        var st = new Date(h.start_date); st.setHours(0, 0, 0, 0);
-        var ds = Math.round((d - st) / 86400000);
-        req = (ds >= 0 && ds % h.freq_value === 0) ? 1 : 0;
-      }
+      var hid = String(h.id);
+      var rq = schedReq(habitAt(h, iso), d.getFullYear(), d.getMonth() + 1, d.getDate());
+      var req = rq.kind === 'monthly' ? 0 : rq.req;
       if (req > 0) {
         var n = (allTimeLogs[hid] && allTimeLogs[hid][iso]) || 0;
         if (isHardOptional(h)) { var got = Math.min(n, req); goal += got; done += got; }
         else { goal += req; done += n; }
+      } else if (extraCreditEnabled && rq.kind !== 'monthly') {
+        done += (allTimeLogs[hid] && allTimeLogs[hid][iso]) || 0;   // Extra credit: done on a day it wasn't due
       }
     });
+    if (extraCreditEnabled) ARCHIVED_HABITS.forEach(function (h) { done += (allTimeLogs[String(h.id)] && allTimeLogs[String(h.id)][iso]) || 0; });   // Extra credit: archived habits
   }
   return { done: done, goal: goal };
 }
@@ -2483,6 +2582,7 @@ function isHardOptional(h) { return hardOptional && h.difficulty === 'hard'; }
 function toggleHardOptional(on) {
   hardOptional = on;
   try { localStorage.setItem('habitTrackerHardOptional', on ? '1' : '0'); } catch (e) {}
+  savePref({ hard_optional: on });
   if (currentUser) { renderDonuts(); renderMonthProgress(); renderXpStats(); }
 }
 
@@ -2491,16 +2591,8 @@ function toggleHardOptional(on) {
 // "Every X days" habits count on the days they come due; "specific days" habits use their schedule.
 // "X times per month" habits have no set day, so they return 0.
 function dayRequirement(h, d) {
-  if (h.freq_type === 'interval' && h.freq_value && h.start_date) {
-    var cellDate = new Date(currentYear, currentMonth - 1, d);
-    var startDate = new Date(h.start_date);
-    cellDate.setHours(0, 0, 0, 0); startDate.setHours(0, 0, 0, 0);
-    var daysSince = Math.round((cellDate - startDate) / 86400000);
-    return (daysSince >= 0 && daysSince % h.freq_value === 0) ? 1 : 0;
-  }
-  var dow = (firstDayMonBased + d - 1) % 7;
-  var sched = scheduleLookup[String(h.id)] && scheduleLookup[String(h.id)][dow];
-  return (sched && sched.required > 0) ? sched.required : 0;
+  var iso = currentYear + '-' + String(currentMonth).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+  return schedReq(habitAt(h, iso), currentYear, currentMonth, d).req;
 }
 
 // ============================================
@@ -2549,7 +2641,7 @@ function toggleSleepPage() {
   var opening = page.style.display !== 'block';
   page.style.display = opening ? 'block' : 'none';
   if (!opening) return;
-  ['history-page', 'mood-page', 'money-page', 'shop-page', 'memory-page'].forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  ['history-page', 'mood-page', 'money-page', 'shop-page', 'memory-page', 'every-page'].forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
   var meta = currentUser && currentUser.user_metadata;
   sleepGoal = (meta && meta.sleep_goal) ? Number(meta.sleep_goal) : 8;
   document.getElementById('sleep-goal').value = sleepGoal;
@@ -2687,6 +2779,7 @@ async function submitSleepLog() {
   await loadSleepLogs();
   renderSleep();
   setSleepMsg('Saved ' + row.hours + 'h for ' + sleepDateLabel(date) + '.', 'ok');
+  victory('pop', 'Sleep logged 🌙');
 }
 
 async function deleteSleepLog(id) {
@@ -2830,7 +2923,7 @@ function toggleMoodPage() {
   var opening = page.style.display !== 'block';
   page.style.display = opening ? 'block' : 'none';
   if (!opening) return;
-  ['sleep-page', 'history-page', 'money-page', 'shop-page', 'memory-page'].forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  ['sleep-page', 'history-page', 'money-page', 'shop-page', 'memory-page', 'every-page'].forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
   var meta = currentUser && currentUser.user_metadata;
   if (meta && meta.mood_style) moodStyle = meta.mood_style;
   moodYear = currentYear; moodMonth = currentMonth;
@@ -2902,6 +2995,7 @@ async function paintMood(d) {
   var clearing = before === moodBrush;
   if (clearing) delete moodData[iso]; else moodData[iso] = moodBrush;
   renderMood();
+  if (!clearing) victory('pop', 'Mood logged');
   var res = clearing
     ? await sb.from('mood_logs').delete().eq('user_id', currentUser.id).eq('log_date', iso)
     : await sb.from('mood_logs').upsert({ user_id: currentUser.id, log_date: iso, mood: moodBrush }, { onConflict: 'user_id,log_date' });
@@ -3111,7 +3205,7 @@ function toggleMoneyPage() {
   var opening = page.style.display !== 'block';
   page.style.display = opening ? 'block' : 'none';
   if (!opening) return;
-  ['sleep-page', 'history-page', 'mood-page', 'shop-page', 'memory-page'].forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  ['sleep-page', 'history-page', 'mood-page', 'shop-page', 'memory-page', 'every-page'].forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
   document.getElementById('money-date').value = localISO(new Date());
   setMoneyKind(moneyKind);
   if (!moneyDistAnchor) moneyDistAnchor = new Date();
@@ -3227,6 +3321,7 @@ async function submitMoney() {
   await loadMoneyLogs();
   renderMoney();
   setMoneyMsg('Saved ' + (moneyKind === 'income' ? 'income' : 'expense') + ': ' + item + ' ' + moneyFmt(amount) + '.', 'ok');
+  victory('pop', moneyKind === 'income' ? 'Money in! 💵' : 'Logged 💸');
 }
 
 async function deleteMoney(id) {
@@ -3914,7 +4009,7 @@ function toggleShopPage() {
   var opening = page.style.display !== 'block';
   page.style.display = opening ? 'block' : 'none';
   if (!opening) return;
-  ['sleep-page', 'history-page', 'mood-page', 'money-page', 'memory-page'].forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  ['sleep-page', 'history-page', 'mood-page', 'money-page', 'memory-page', 'every-page'].forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
   fillShopTierSelect();
   loadShop().then(renderShop);
 }
@@ -3962,7 +4057,7 @@ function computeGold() {
   var dayEarn = {};   // gold earned on each date (for the "Gold over time" chart)
   function addDay(iso, g) { if (iso > today) iso = today; if (iso < start) iso = start; dayEarn[iso] = (dayEarn[iso] || 0) + g; }
   // 1) Habits: gold per completion, capped at what was required that day (extra ticks earn nothing).
-  RAW_HABITS.forEach(function (h) {
+  allHabits().forEach(function (h) {
     var per = GOLD_VALUES[h.difficulty] || GOLD_UNRANKED, hid = String(h.id), logs = allTimeLogs[hid] || {}, cnt = 0;
     Object.keys(logs).forEach(function (iso) {
       if (iso < start || iso > today) return;
@@ -4126,11 +4221,13 @@ async function buyShopItem(id) {
   if (res.error) { setShopMsg('Could not buy: ' + res.error.message); return; }
   await loadShop(); renderShop();
   setShopMsg('Bought "' + item.name + '"! It is in your purchase history, ready to redeem.');
+  victory('big', 'Treat yourself! 🎁');
 }
 
 async function setRedeemed(id, on) {
   var res = await sb.from('shop_purchases').update({ redeemed: on, redeemed_at: on ? new Date().toISOString() : null }).eq('id', id);
   if (res.error) { setShopMsg('Could not update: ' + res.error.message); return; }
+  if (on) victory('pop', 'Enjoy it! ✨');
   await loadShop(); renderShop();
 }
 
@@ -4185,7 +4282,7 @@ function toggleMemoryPage() {
   var opening = page.style.display !== 'block';
   page.style.display = opening ? 'block' : 'none';
   if (!opening) return;
-  ['sleep-page', 'history-page', 'mood-page', 'money-page', 'shop-page'].forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  ['sleep-page', 'history-page', 'mood-page', 'money-page', 'shop-page', 'every-page'].forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
   loadMemories().then(renderMemory);
 }
 
@@ -4345,6 +4442,7 @@ async function saveMemory() {
   else r = await sb.from('memory_logs').insert({ user_id: currentUser.id, log_date: memSelected, body: body, tags: memPicked.slice() });
   if (r.error) { setMemMsg('Could not save: ' + r.error.message, true); return; }
   setMemMsg(memEditId ? 'Changes saved.' : 'Saved.');
+  if (!memEditId) victory('pop', 'Memory saved 📝');
   cancelMemEdit(true);
   await loadMemories(); renderMemory();
 }
@@ -4571,6 +4669,7 @@ async function mtTogglePaid(planId, iso) {
     res = await sb.from('money_logs').insert(row);
   }
   if (res.error) { alert('Could not save: ' + res.error.message); return; }
+  if (!log) victory('pop', p.kind === 'income' ? 'Money in! 💵' : 'Paid ✓');
   await loadMoneyLogs(); renderMoney();
 }
 
@@ -4653,6 +4752,7 @@ async function mtCycleGoal(id) {
   var next = ((g.status || 0) + 1) % 3, r = await sb.from('money_goals').update({ status: next }).eq('id', id);
   if (r.error) return mtMsg('mt-goals-msg', 'Could not save: ' + r.error.message, 'error');
   g.status = next; mtRenderGoals(); mtRenderToday();
+  if (next === 2) victory('big', 'Goal reached! 🏆');
 }
 async function mtAddGoal() {
   var name = document.getElementById('mt-g-name').value.trim(), link = document.getElementById('mt-g-link').value || '';
@@ -4704,6 +4804,7 @@ async function mtAddToFund() {
   var r = await sb.from('money_logs').insert({ user_id: currentUser.id, kind: 'expense', item: 'To ' + f.name, amount: Math.round(amount * 100) / 100, category: 'Savings', account: moneyAccountList()[0] || 'Personal', log_date: date || localISO(new Date()), fund_id: f.id });
   if (r.error) return mtMsg('mt-funds-msg', 'Could not save: ' + r.error.message, 'error');
   document.getElementById('mt-fa-amount').value = ''; mtMsg('mt-funds-msg', 'Added ' + moneyFmt(amount) + ' to ' + f.name + '.');
+  victory('pop', 'Saved ' + moneyFmt(amount) + ' 💰');
   await loadMoneyLogs(); renderMoney();
 }
 
@@ -4742,6 +4843,7 @@ async function mtPayDebt() {
   if (r.error) return mtMsg('mt-debts-msg', 'Could not save: ' + r.error.message, 'error');
   document.getElementById('mt-dp-amount').value = ''; mtMsg('mt-debts-msg', 'Logged ' + moneyFmt(amount) + ' toward ' + d.name + '.');
   await loadMoneyLogs(); renderMoney();
+  if (d.start_balance && mtDebtLeft(d) === 0) victory('big', d.name + ' paid off! 🎉'); else victory('pop', 'Payment logged 💪');
 }
 
 // ---- ENVELOPES ----
@@ -4805,3 +4907,910 @@ function mtAddListItem(which) {
   var o = {}; o[key] = moneyMeta(key).concat([v]);
   mtSaveMeta(o).then(function () { inp.value = ''; refreshMoneySelects(); mtRenderSettings(); mtMsg('mt-set-msg', 'Added "' + v + '".'); });
 }
+
+
+// ============================================
+// SETTINGS THAT FOLLOW YOU (XP Mode, Hard habits optional, Show optional habits, Victory animations)
+// They used to live only in this browser's storage, so another browser, CodePen or another laptop
+// started with them off. Now they're also saved to your account (Supabase user_metadata).
+// ============================================
+var victoryOn = true;   // on by default; turn off in Settings
+try { var _vic = localStorage.getItem('habitTrackerVictory'); if (_vic !== null) victoryOn = _vic === '1'; } catch (e) {}
+(function () { var cb = document.getElementById('victory-toggle'); if (cb) cb.checked = victoryOn; })();
+
+var SYNCED_PREFS = [
+  { meta: 'xp_mode',       local: 'habitTrackerXpMode',       box: 'xp-mode-toggle',       get: function () { return xpMode; },           set: function (v) { xpMode = v; } },
+  { meta: 'hard_optional', local: 'habitTrackerHardOptional', box: 'hard-optional-toggle', get: function () { return hardOptional; },     set: function (v) { hardOptional = v; } },
+  { meta: 'show_optional', local: 'habitTrackerShowOptional', box: 'show-optional-toggle', get: function () { return showOptionalToday; }, set: function (v) { showOptionalToday = v; } },
+  { meta: 'extra_credit',  local: 'habitTrackerExtraCredit',  box: 'extra-credit-toggle',  get: function () { return extraCreditEnabled; }, set: function (v) { extraCreditEnabled = v; } },
+  { meta: 'victory_anim',  local: 'habitTrackerVictory',      box: 'victory-toggle',       get: function () { return victoryOn; },        set: function (v) { victoryOn = v; } }
+];
+
+function savePref(obj) {
+  if (!currentUser) return;
+  currentUser.user_metadata = currentUser.user_metadata || {};
+  Object.keys(obj).forEach(function (k) { currentUser.user_metadata[k] = obj[k]; });
+  sb.auth.updateUser({ data: obj }).then(function (r) { if (r && r.data && r.data.user) currentUser = r.data.user; });
+}
+
+async function applySyncedPrefs() {
+  if (!currentUser) return;
+  // getSession() can hand back an old copy saved in this browser, so ask the server for the latest settings.
+  try { var r = await sb.auth.getUser(); if (r && r.data && r.data.user) currentUser = r.data.user; } catch (e) {}
+  var meta = currentUser.user_metadata || {}, push = {}, changed = false;
+  SYNCED_PREFS.forEach(function (p) {
+    if (typeof meta[p.meta] === 'boolean') { if (meta[p.meta] !== p.get()) { p.set(meta[p.meta]); changed = true; } }   // your account's setting wins
+    else push[p.meta] = p.get();                                                                                        // first time: save this browser's setting to your account
+    try { localStorage.setItem(p.local, p.get() ? '1' : '0'); } catch (e) {}
+    var cb = document.getElementById(p.box); if (cb) cb.checked = p.get();
+  });
+  if (Object.keys(push).length) savePref(push);
+  if (typeof dashApplyLayout === 'function') dashApplyLayout();   // movable dashboard: use this account's saved layout
+  var t = meta.preferred_theme;   // same fix for the theme
+  if (t && t !== document.body.getAttribute('data-theme')) { var sel = document.getElementById('theme-select'); if (sel) sel.value = t; changeTheme(t); }
+  else if (changed) renderEverything();
+}
+
+function toggleVictory(on) {
+  victoryOn = on;
+  try { localStorage.setItem('habitTrackerVictory', on ? '1' : '0'); } catch (e) {}
+  savePref({ victory_anim: on });
+  if (on) victory('pop', 'Yay! 🎉');
+}
+
+// ============================================
+// VICTORY ANIMATIONS
+// victory('pop', text)  = little burst + word where you clicked
+// victory('big', text)  = confetti rain + banner for bigger wins
+// Colors come from the theme, so every theme gets its own confetti.
+// ============================================
+var vicPt = null;
+document.addEventListener('pointerdown', function (e) { vicPt = { x: e.clientX, y: e.clientY, t: Date.now() }; }, true);
+var VIC_CHEERS = ['Nice!', 'Yes!', 'Done!', 'Go you!', 'Slay!', '+1', 'Love that', 'Crushed it', 'On a roll', '✨'];
+
+function vicColors() {
+  var cs = getComputedStyle(document.body);
+  return ['--c-pink', '--c-purple', '--c-orange', '--week-1-bg', '--week-2-bg', '--week-3-bg', '--week-4-bg']
+    .map(function (v) { return cs.getPropertyValue(v).trim(); }).filter(Boolean);
+}
+function vicLayer() {
+  var l = document.getElementById('victory-layer');
+  if (!l) { l = document.createElement('div'); l.id = 'victory-layer'; l.setAttribute('aria-hidden', 'true'); document.body.appendChild(l); }
+  return l;
+}
+function vicRemoveLater(el, ms) { setTimeout(function () { el.remove(); }, ms); }
+
+function victory(kind, text) {
+  if (!victoryOn) return;
+  var calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;   // people who turned off motion in their computer settings get just the word
+  if (kind === 'big') vicBig(text, calm);
+  else vicPop(text || VIC_CHEERS[Math.floor(Math.random() * VIC_CHEERS.length)], calm);
+}
+
+function vicPop(text, calm) {
+  var layer = vicLayer(), colors = vicColors();
+  var p = (vicPt && Date.now() - vicPt.t < 5000) ? vicPt : { x: innerWidth / 2, y: innerHeight / 2 };
+  var word = document.createElement('div');
+  word.className = 'vic-word'; word.textContent = text;
+  word.style.left = p.x + 'px'; word.style.top = p.y + 'px';
+  layer.appendChild(word); vicRemoveLater(word, 1200);
+  if (calm) return;
+  for (var i = 0; i < 14; i++) {
+    var s = document.createElement('i'), a = Math.random() * Math.PI * 2, d = 30 + Math.random() * 45;
+    s.className = 'vic-spark' + (i % 3 === 0 ? ' round' : '');
+    s.style.left = p.x + 'px'; s.style.top = p.y + 'px';
+    s.style.setProperty('--dx', Math.cos(a) * d + 'px'); s.style.setProperty('--dy', Math.sin(a) * d + 'px');
+    s.style.background = colors[i % colors.length];
+    layer.appendChild(s); vicRemoveLater(s, 800);
+  }
+}
+
+function vicBig(text, calm) {
+  var layer = vicLayer(), colors = vicColors();
+  var old = layer.querySelector('.vic-banner'); if (old) old.remove();
+  var b = document.createElement('div');
+  b.className = 'vic-banner'; b.textContent = text;
+  layer.appendChild(b); vicRemoveLater(b, 2600);
+  if (calm) return;
+  for (var i = 0; i < 70; i++) {
+    var c = document.createElement('i');
+    c.className = 'vic-confetti';
+    c.style.left = Math.random() * 100 + 'vw';
+    c.style.background = colors[i % colors.length];
+    c.style.animationDelay = Math.random() * 0.6 + 's';
+    c.style.animationDuration = 1.6 + Math.random() * 1.2 + 's';
+    c.style.setProperty('--drift', (Math.random() * 160 - 80) + 'px');
+    c.style.setProperty('--spin', (Math.random() * 720 - 360) + 'deg');
+    layer.appendChild(c); vicRemoveLater(c, 3600);
+  }
+}
+
+// Called whenever a habit box is ticked (monthly checklist or Today box).
+function vicHabit(habitId, iso, before, after) {
+  if (!victoryOn || !(after > before)) return;   // only when you add a check, not when you take one away
+  var h = RAW_HABITS.filter(function (x) { return String(x.id) === String(habitId); })[0]; if (!h) return;
+  var now = new Date(), todayIso = localISO(now);
+  // Biggest win first: this tick finished ALL of today's required habits.
+  if (iso === todayIso) {
+    var items = [];
+    RAW_HABITS.forEach(function (x) { var r = getTodayRequirement(x, now); if (r) items.push({ x: x, r: r }); });
+    var mine = items.filter(function (it) { return String(it.x.id) === String(habitId); })[0];
+    var allDone = items.length && items.every(function (it) { return ((allTimeLogs[String(it.x.id)] || {})[iso] || 0) >= it.r.required; });
+    if (allDone && mine && before < mine.r.required) { victory('big', 'All of today\'s habits done! 🎉'); return; }
+  }
+  // Next: this tick finished the habit for the whole month on screen.
+  var ym = currentYear + '-' + String(currentMonth).padStart(2, '0');
+  if (iso.indexOf(ym) === 0) {
+    var tot = 0, gotNow = 0, gotBefore = 0;
+    for (var d = 1; d <= DAYS_IN_MONTH; d++) {
+      var req = dayRequirement(h, d); if (!req) continue;
+      var dIso = ym + '-' + String(d).padStart(2, '0'), n = (allTimeLogs[String(h.id)] || {})[dIso] || 0;
+      tot += req; gotNow += Math.min(n, req); gotBefore += Math.min(dIso === iso ? before : n, req);
+    }
+    if (tot && gotNow >= tot && gotBefore < tot) { victory('big', (h.icon || '') + ' ' + h.name + ': month complete! 🏆'); return; }
+  }
+  // Otherwise a little pop. Habits you do more than once a day say when they're finished for the day.
+  var dayReq = 1;
+  if (iso.indexOf(ym) === 0) dayReq = dayRequirement(h, +iso.slice(8)) || 1;
+  if (dayReq > 1 && after >= dayReq) victory('pop', after + '/' + dayReq + ' ✓');
+  else victory('pop');
+}
+
+
+// ============================================
+// BONUS CHECK-INS (archived habits + habits done on a day they weren't due)
+// Always drawn on the charts in the striped bonus color.
+// Percentages only count them when Extra credit is on (then they can go past 100%).
+// ============================================
+var COMEBACK_XP = 20, COMEBACK_GAP = 30;   // +20 XP for logging a habit you haven't touched in 30+ days
+function bonusColor() { return getThemeColor('--bonus-color') || getThemeColor('--c-orange') || '#EF9F27'; }
+function bonusPattern(color) {   // diagonal stripes for the Bonus bars
+  var c = document.createElement('canvas'); c.width = c.height = 8;
+  var x = c.getContext('2d');
+  x.fillStyle = lightenColor(color, 0.55) || color; x.fillRect(0, 0, 8, 8);
+  x.strokeStyle = color; x.lineWidth = 3; x.beginPath();
+  x.moveTo(-2, 10); x.lineTo(10, -2); x.moveTo(-2, 2); x.lineTo(2, -2); x.moveTo(6, 10); x.lineTo(10, 6); x.stroke();
+  return x.createPattern(c, 'repeat');
+}
+function isBonusDay(h, d) {   // d = day of the month on screen
+  if (h.archived) return true;
+  var iso = currentYear + '-' + String(currentMonth).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+  if (habitAt(h, iso).freq_type === 'monthly') return false;   // "X times a month" days count on any day
+  return dayRequirement(h, d) === 0;
+}
+function bonusForDay(d) {
+  var iso = currentYear + '-' + String(currentMonth).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+  var out = { count: 0, items: [], archived: [], offday: [] };
+  allHabits().forEach(function (h) {
+    var n = (logsLookup[String(h.id)] && logsLookup[String(h.id)][iso]) || 0;
+    if (n > 0 && isBonusDay(h, d)) {
+      out.count += n; out.items.push({ h: h, n: n });
+      (h.archived ? out.archived : out.offday).push((h.icon ? h.icon + ' ' : '') + h.name + (n > 1 ? ' ×' + n : ''));
+    }
+  });
+  return out;
+}
+function bonusTooltipLines(b) {
+  if (!b || !b.count) return null;
+  var lines = ['Bonus: ' + b.count + ' check-in' + (b.count > 1 ? 's' : '') + (extraCreditEnabled ? ' (extra credit on)' : '')];
+  if (b.archived.length) { lines.push('Archived:'); b.archived.forEach(function (n) { lines.push('  ' + n); }); }
+  if (b.offday.length) { lines.push('Not due that day:'); b.offday.forEach(function (n) { lines.push('  ' + n); }); }
+  return lines;
+}
+function monthDayLabel(d) { return new Date(currentYear, currentMonth - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+function comebackDates(hid) {   // dates you logged a habit after a 30+ day gap
+  var logs = allTimeLogs[hid] || {}, days = Object.keys(logs).filter(function (k) { return logs[k] > 0; }).sort(), out = [];
+  for (var i = 1; i < days.length; i++) if (isoDiff(days[i - 1], days[i]) >= COMEBACK_GAP) out.push(days[i]);
+  return out;
+}
+function isoToDate(iso) { var p = iso.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+function isoDiff(a, b) { return Math.round((isoToDate(b) - isoToDate(a)) / 86400000); }
+
+// ============================================
+// EVERY HABIT PAGE (🏆): Active and Archives tabs, trophy cards, levels, heatmaps
+// ============================================
+var EH_LEVELS = [0, 3, 7, 15, 25, 40, 60, 85, 115, 150, 200, 260, 330, 410, 500];   // check-ins needed for Lv 1, 2, 3...
+var ehTab = 'active', ehSel = null, ehQuery = '';
+function ehLevel(n) { var l = 1; for (var i = 0; i < EH_LEVELS.length; i++) if (n >= EH_LEVELS[i]) l = i + 1; return l; }
+function ehTier(l) { return l >= 7 ? 'gold' : l >= 5 ? 'silver' : l >= 3 ? 'bronze' : ''; }
+function ehInfo(h) {
+  var hid = String(h.id), logs = allTimeLogs[hid] || {}, total = 0, days = 0, first = null, last = null, capped = 0;
+  Object.keys(logs).forEach(function (iso) {
+    var n = logs[iso] || 0; if (n <= 0) return;
+    total += n; days++;
+    if (!first || iso < first) first = iso; if (!last || iso > last) last = iso;
+    var p = iso.split('-'), dow = (new Date(+p[0], +p[1] - 1, +p[2]).getDay() + 6) % 7, s = schedDays(habitAt(h, iso))[dow];
+    capped += Math.min(n, (s && s.required > 0) ? s.required : 1);
+  });
+  var lv = ehLevel(total), today = localISO(new Date());
+  return { total: total, days: days, first: first, last: last, lv: lv, next: EH_LEVELS[lv] || null,
+    ago: last ? isoDiff(last, today) : null,
+    xp: capped * (XP_VALUES[h.difficulty] || 0) + comebackDates(hid).length * COMEBACK_XP };
+}
+function ehAgoText(i) { return i.ago === null ? 'never logged' : i.ago === 0 ? 'today' : i.ago === 1 ? 'yesterday' : i.ago + ' days ago'; }
+
+function toggleEveryPage(tab) {
+  var page = document.getElementById('every-page');
+  var opening = tab ? true : page.style.display !== 'block';
+  page.style.display = opening ? 'block' : 'none';
+  if (!opening) return;
+  if (tab) ehTab = tab;
+  ['sleep-page', 'history-page', 'mood-page', 'money-page', 'shop-page', 'memory-page'].forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  ehRender();
+}
+
+function ehBox(title, body, extra) {
+  return '<div class="cell-border eh-box' + (extra || '') + '"><div class="title-bar"><span class="title-glyph"></span><span class="title-text">' + title + '</span><span class="title-dots"><span></span><span></span><span></span></span></div><div class="cell-body">' + body + '</div></div>';
+}
+
+function ehRender() {
+  var root = document.getElementById('eh-root'); if (!root || document.getElementById('every-page').style.display !== 'block') return;
+  var all = allHabits(), info = {};
+  all.forEach(function (h) { info[h.id] = ehInfo(h); });
+  var q = ehQuery.trim().toLowerCase();
+  var list = q ? all.filter(function (h) { return h.name.toLowerCase().indexOf(q) > -1 || (h.category || '').toLowerCase().indexOf(q) > -1; })
+               : (ehTab === 'archived' ? ARCHIVED_HABITS : RAW_HABITS).slice();
+  list.sort(function (a, b) { return info[b.id].total - info[a.id].total || a.name.localeCompare(b.name); });
+
+  // Collector stats
+  var lv5 = all.filter(function (h) { return info[h.id].lv >= 5; }).length;
+  var checks = all.reduce(function (a, h) { return a + info[h.id].total; }, 0);
+  var stats = '<div class="eh-stats">' +
+    '<div class="sleep-tile"><div class="sleep-big">' + all.length + '</div><div class="sleep-sub">habits ever tracked</div></div>' +
+    '<div class="sleep-tile"><div class="sleep-big">' + lv5 + '</div><div class="sleep-sub">habits at Lv 5+</div></div>' +
+    '<div class="sleep-tile"><div class="sleep-big">' + checks + '</div><div class="sleep-sub">lifetime check-ins</div></div>' +
+    '<div class="sleep-tile"><div class="sleep-big">' + ARCHIVED_HABITS.length + '</div><div class="sleep-sub">archived</div></div></div>';
+
+  var top = '<input id="eh-search" class="sleep-input eh-search" type="search" placeholder="🔍 Search every habit, then tap + to log it" value="' + moneyEsc(ehQuery) + '">' +
+    '<div class="eh-tabs"><button type="button" class="sleep-q-btn' + (ehTab === 'active' && !q ? ' on' : '') + '" data-eh-tab="active">Active ' + RAW_HABITS.length + '</button>' +
+    '<button type="button" class="sleep-q-btn' + (ehTab === 'archived' && !q ? ' on' : '') + '" data-eh-tab="archived">Archives ' + ARCHIVED_HABITS.length + '</button></div>' + stats;
+
+  // 30-day nudge (Active tab only)
+  var nudge = '';
+  if (ehTab === 'active' && !q) {
+    var stale = RAW_HABITS.filter(function (h) { var i = info[h.id]; if (i.ago !== null) return i.ago >= COMEBACK_GAP; return h.created_at && isoDiff(localISO(new Date(h.created_at)), localISO(new Date())) >= COMEBACK_GAP; });
+    if (stale.length) nudge = '<div class="eh-nudge"><b>💤 Not done in 30+ days. Archive?</b>' + stale.map(function (h) {
+      return '<div class="eh-nudge-row"><span>' + (h.icon || '') + ' ' + moneyEsc(h.name) + ' · ' + ehAgoText(info[h.id]) + '</span><button type="button" class="sleep-q-btn" data-eh-archive="' + h.id + '">📦 Archive</button></div>';
+    }).join('') + '</div>';
+  }
+
+  var cards = list.map(function (h) {
+    var i = info[h.id], tier = ehTier(i.lv), prev = EH_LEVELS[i.lv - 1] || 0, pct = i.next ? Math.round((i.total - prev) / (i.next - prev) * 100) : 100;
+    return '<div class="eh-card' + (tier ? ' eh-' + tier : '') + (ehSel === h.id ? ' sel' : '') + (h.archived ? ' arch' : '') + '" data-eh-card="' + h.id + '">' +
+      '<div class="eh-card-top"><span class="eh-lv">Lv ' + i.lv + '</span>' + (h.archived ? '<span class="eh-arch-tag">archived</span>' : '') +
+      (h.archived ? '<button type="button" class="eh-trash" data-eh-delete="' + h.id + '" title="Delete forever (erases its history)">🗑</button>' : '') +
+      '<button type="button" class="eh-plus" data-eh-log="' + h.id + '" title="Log it today">+</button></div>' +
+      '<div class="eh-name">' + (h.icon || '✅') + ' ' + moneyEsc(h.name) + '</div>' +
+      '<div class="eh-meta">' + i.total + ' times · ' + ehAgoText(i) + '</div>' +
+      '<div class="eh-prog"><i style="width:' + pct + '%"></i></div>' +
+      '<div class="eh-meta2">' + (i.next ? (i.next - i.total) + ' to Lv ' + (i.lv + 1) : 'Max level') + ' · ' + i.xp + ' XP</div></div>';
+  }).join('');
+  if (!cards) cards = q ? '<p class="sleep-empty">No habit called "' + moneyEsc(ehQuery) + '". Press Enter to add it as a new habit.</p>'
+                        : (ehTab === 'archived' ? '<p class="sleep-empty">Nothing archived yet. Archive a habit with 📦 in Settings → Your habits.</p>' : '<p class="sleep-empty">No active habits yet.</p>');
+  if (ehTab === 'archived' && !q && ARCHIVED_HABITS.length) nudge += '<div class="eh-purge"><span>Old test habits cluttering your stats? 🗑 on a card deletes it forever.</span><button type="button" class="sleep-q-btn" data-eh-purge="1">🧹 Delete all never-logged</button></div>';
+  var legend = '<p class="eh-legend">Card border: <span class="eh-key eh-bronze">bronze Lv 3+</span> <span class="eh-key eh-silver">silver Lv 5+</span> <span class="eh-key eh-gold">gold Lv 7+</span> · logging a habit after 30+ days gives a +' + COMEBACK_XP + ' XP comeback bonus</p>';
+
+  var detail = '';
+  var sh = ehSel !== null && all.filter(function (h) { return h.id === ehSel; })[0];
+  if (sh) detail = ehBox(moneyEsc(sh.name) + ' · all time', ehDetail(sh, info[sh.id]), ' eh-detail-box');
+
+  var fame = all.slice().sort(function (a, b) { return info[b.id].total - info[a.id].total; }).filter(function (h) { return info[h.id].total > 0; }).slice(0, 10);
+  var fameHtml = fame.map(function (h, k) { var i = info[h.id]; return '<div class="eh-fame-row"><span>' + (k + 1) + '. ' + (h.icon || '') + ' ' + moneyEsc(h.name) + (h.archived ? ' <small>(archived)</small>' : '') + '</span><span>Lv ' + i.lv + ' · ' + i.total + '</span></div>'; }).join('') || '<p class="sleep-empty">Log some habits to fill your Hall of Fame.</p>';
+
+  var focus = document.activeElement && document.activeElement.id === 'eh-search', caret = focus ? document.activeElement.selectionStart : 0;
+  root.innerHTML = ehBox(q ? 'Search results' : (ehTab === 'archived' ? 'Archives' : 'Active habits'), top + nudge + legend + '<div class="eh-grid">' + cards + '</div>') + detail + ehBox('Hall of fame', fameHtml);
+  if (focus) { var se = document.getElementById('eh-search'); se.focus(); try { se.setSelectionRange(caret, caret); } catch (e) {} }
+}
+
+function ehDetail(h, i) {
+  var hid = String(h.id), logs = allTimeLogs[hid] || {}, today = new Date(); today.setHours(0, 0, 0, 0);
+  var startIso = i.first || localISO(today);
+  if (h.created_at && localISO(new Date(h.created_at)) < startIso) startIso = localISO(new Date(h.created_at));
+  var start = isoToDate(startIso), minStart = new Date(today); minStart.setDate(minStart.getDate() - 7 * 15);
+  if (start > minStart) start = minStart;                       // always show at least ~16 weeks
+  start.setDate(start.getDate() - ((start.getDay() + 6) % 7));  // back to Monday
+  var cols = '', months = '', lastM = -1, sinceLabel = 9;
+  for (var w = new Date(start); w <= today; w.setDate(w.getDate() + 7)) {
+    var m = w.getMonth(), show = m !== lastM && sinceLabel >= 3;   // month name when the month changes (spaced out so names don't overlap)
+    months += '<span>' + (show ? w.toLocaleDateString('en-US', { month: 'short' }) : '') + '</span>';
+    if (m !== lastM && show) sinceLabel = 0; else sinceLabel++;
+    if (show || m !== lastM) lastM = show ? m : lastM;
+    cols += '<div class="eh-col">';
+    for (var r = 0; r < 7; r++) {
+      var d = new Date(w); d.setDate(w.getDate() + r);
+      var iso = localISO(d), n = logs[iso] || 0, cls = d > today ? ' future' : n > 1 ? ' l2' : n ? ' l1' : '';
+      cols += '<i class="eh-cell' + cls + '" title="' + d.toDateString() + (n ? ': ' + n + '×' : '') + '"></i>';
+    }
+    cols += '</div>';
+  }
+  var cb = comebackDates(hid).length;
+  return '<div class="eh-detail-top"><span>' + i.days + ' days logged · ' + i.total + ' check-ins · Lv ' + i.lv + ' · ' + i.xp + ' XP' + (cb ? ' · ' + cb + ' comeback' + (cb > 1 ? 's' : '') : '') + (i.first ? ' · first ' + moneyDay(i.first) : '') + '</span>' +
+      (h.archived ? '<span><button type="button" class="sleep-q-btn" onclick="restoreHabit(' + h.id + ')">↩ Restore to dashboard</button> <button type="button" class="sleep-q-btn" data-eh-delete="' + h.id + '">🗑 Delete forever</button></span>' : '<button type="button" class="sleep-q-btn" data-eh-archive="' + h.id + '">📦 Archive</button>') + '</div>' +
+    '<div class="eh-heat"><div class="eh-months">' + months + '</div><div class="eh-cols">' + cols + '</div></div>' +
+    '<div class="eh-sched"><div class="eh-sched-head"><b>Schedule history</b><button type="button" class="sleep-q-btn" onclick="openScheduleEditor(' + h.id + ')">📅 Edit schedule</button></div>' + schedHistoryHtml(h, false) + '</div>' +
+    '<div class="eh-past"><span class="sleep-label">Forgot a day?</span><input type="date" id="eh-past-date" class="sleep-input" max="' + localISO(today) + '" value="' + localISO(today) + '">' +
+    '<button type="button" class="settings-btn sleep-small-btn" data-eh-past="1" data-id="' + h.id + '">+ Log that day</button>' +
+    '<button type="button" class="sleep-q-btn" data-eh-past="-1" data-id="' + h.id + '">− Remove one</button></div>';
+}
+
+async function ehLog(id, iso, delta) {
+  var h = allHabits().filter(function (x) { return x.id === id; })[0]; if (!h) return;
+  var hid = String(id), logs = allTimeLogs[hid] || {}, before = logs[iso] || 0, next = Math.max(0, before + delta);
+  if (next === before) return;
+  var prevDays = Object.keys(logs).filter(function (k) { return logs[k] > 0 && k < iso; }).sort();
+  var comeback = delta > 0 && before === 0 && prevDays.length && isoDiff(prevDays[prevDays.length - 1], iso) >= COMEBACK_GAP;
+  var lvBefore = ehInfo(h).lv;
+  await saveLog(id, iso, next);   // also redraws the dashboard (and pops for active habits)
+  var lvAfter = ehInfo(h).lv;
+  if (delta > 0) {
+    if (lvAfter > lvBefore) victory('big', (h.icon || '') + ' ' + h.name + ' reached Lv ' + lvAfter + '! 🏆');
+    else if (comeback) victory('big', 'Comeback! +' + COMEBACK_XP + ' XP 🔥');
+    else if (h.archived) victory('pop');
+  }
+  ehRender();
+}
+
+document.addEventListener('click', function (e) {
+  var page = document.getElementById('every-page'); if (!page || !page.contains(e.target)) return;
+  var t = e.target.closest('[data-eh-tab],[data-eh-log],[data-eh-archive],[data-eh-delete],[data-eh-purge],[data-eh-past],[data-eh-card]'); if (!t) return;
+  if (t.hasAttribute('data-eh-delete')) { e.stopPropagation(); deleteHabitForever(+t.getAttribute('data-eh-delete')); return; }
+  if (t.hasAttribute('data-eh-purge')) { deleteNeverLoggedArchived(); return; }
+  if (t.hasAttribute('data-eh-tab')) { ehTab = t.getAttribute('data-eh-tab'); ehQuery = ''; ehRender(); return; }
+  if (t.hasAttribute('data-eh-log')) { e.stopPropagation(); var id = +t.getAttribute('data-eh-log'); ehSel = id; ehLog(id, localISO(new Date()), 1); return; }
+  if (t.hasAttribute('data-eh-archive')) { archiveHabit(+t.getAttribute('data-eh-archive')); return; }
+  if (t.hasAttribute('data-eh-past')) {
+    var iso = (document.getElementById('eh-past-date') || {}).value;
+    if (!iso || iso > localISO(new Date())) { alert('Pick a day that is today or earlier.'); return; }
+    ehLog(+t.getAttribute('data-id'), iso, +t.getAttribute('data-eh-past')); return;
+  }
+  if (t.hasAttribute('data-eh-card')) {
+    var cid = +t.getAttribute('data-eh-card'); ehSel = ehSel === cid ? null : cid; ehRender();
+    if (ehSel !== null) { var box = document.querySelector('.eh-detail-box'); if (box) box.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+  }
+});
+document.addEventListener('input', function (e) { if (e.target && e.target.id === 'eh-search') { ehQuery = e.target.value; ehRender(); } });
+document.addEventListener('keydown', function (e) {
+  if (!e.target || e.target.id !== 'eh-search' || e.key !== 'Enter') return;
+  var name = ehQuery.trim(); if (!name) return;
+  var match = allHabits().filter(function (h) { return h.name.toLowerCase().indexOf(name.toLowerCase()) > -1; });
+  if (match.length === 1) { ehSel = match[0].id; ehLog(match[0].id, localISO(new Date()), 1); return; }   // one match: Enter logs it
+  if (match.length) return;
+  if (!confirm('Add "' + name + '" as a new habit? Settings will open with the name filled in.')) return;
+  toggleEveryPage(); toggleSettings();
+  var f = document.getElementById('habit-name'); if (f) { f.value = name; f.scrollIntoView({ block: 'center' }); f.focus(); }
+});
+
+
+
+// ============================================
+// SCHEDULE HISTORY: change a habit's schedule from a date on (or rewrite all history)
+// Each change is saved as a version in the habit_schedule_versions table.
+// A habit with no versions simply uses its current schedule for every date.
+// ============================================
+var SCHED_VERSIONS = {}, SCHED_TABLE_OK = true, SCHED_BEGIN = '1900-01-01';
+var DAY_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+// "2026-10-15" means Oct 15 on your own calendar (new Date("2026-10-15") would read it as London midnight).
+function parseLocalDate(s) {
+  if (typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s)) { var p = s.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  return new Date(s);
+}
+// One-time fix: "every X days" start dates used to be read one day early in the Americas.
+// Save them as the day they've actually been showing, so your pattern stays exactly the same.
+async function fixIntervalStartDates(rows) {
+  if (!currentUser) return;
+  try { var u = await sb.auth.getUser(); if (u && u.data && u.data.user) currentUser = u.data.user; } catch (e) {}
+  if ((currentUser.user_metadata || {}).interval_dates_local) return;
+  var ok = true;
+  for (var i = 0; i < rows.length; i++) {
+    var h = rows[i];
+    if (h.freq_type !== 'interval' || !/^\d{4}-\d{2}-\d{2}$/.test(h.start_date || '')) continue;
+    var old = new Date(h.start_date); old.setHours(0, 0, 0, 0);
+    var shown = localISO(old);
+    if (shown === h.start_date) continue;
+    var r = await sb.from('habits').update({ start_date: shown }).eq('id', h.id);
+    if (r && r.error) ok = false; else h.start_date = shown;
+  }
+  if (ok) savePref({ interval_dates_local: true });
+}
+async function loadScheduleVersions() {
+  SCHED_VERSIONS = {};
+  if (!currentUser) return;
+  var r = await sb.from('habit_schedule_versions').select('*').eq('user_id', currentUser.id).order('effective_from', { ascending: true });
+  if (r.error) { SCHED_TABLE_OK = false; return; }
+  SCHED_TABLE_OK = true;
+  (r.data || []).forEach(function (v) {
+    var k = String(v.habit_id);
+    (SCHED_VERSIONS[k] = SCHED_VERSIONS[k] || []).push({ id: v.id, effective_from: v.effective_from, freq_type: v.freq_type || 'days', freq_value: v.freq_value, start_date: v.start_date, days: v.days || {} });
+  });
+  Object.keys(SCHED_VERSIONS).forEach(function (k) { SCHED_VERSIONS[k].sort(function (a, b) { return a.effective_from < b.effective_from ? -1 : 1; }); });
+}
+// The habit as it was scheduled on a date. The newest version is always the habit's current schedule.
+function habitAt(h, iso) {
+  var vs = SCHED_VERSIONS[String(h.id)];
+  if (!vs || !vs.length) return h;
+  var v = vs[0];
+  for (var i = 0; i < vs.length; i++) if (vs[i].effective_from <= iso) v = vs[i];
+  if (v === vs[vs.length - 1]) return h;
+  return { id: h.id, name: h.name, icon: h.icon, category: h.category, difficulty: h.difficulty, archived: h.archived, created_at: h.created_at,
+    freq_type: v.freq_type, freq_value: v.freq_value, start_date: v.start_date, _sched: v.days };
+}
+function schedDays(h) { return h._sched || scheduleLookup[String(h.id)] || {}; }
+// What a schedule asks for on one day: kind (days / interval / monthly), how many times, and whether it's a flexible day.
+function schedReq(hh, y, m, d) {
+  if (hh.freq_type === 'monthly') return { kind: 'monthly', req: 0, flexible: true };
+  if (hh.freq_type === 'interval' && hh.freq_value && hh.start_date) {
+    var ds = Math.round((new Date(y, m - 1, d) - parseLocalDate(hh.start_date)) / 86400000);
+    return { kind: 'interval', req: (ds >= 0 && ds % hh.freq_value === 0) ? 1 : 0, flexible: false };
+  }
+  var s = schedDays(hh)[(new Date(y, m - 1, d).getDay() + 6) % 7];
+  return { kind: 'days', req: (s && s.required > 0) ? s.required : 0, flexible: s ? !!s.flexible : true };
+}
+// "X times per month" goal for a month, prorated by the days each schedule covered.
+function monthlyGoalFor(h, y, m) {
+  var dim = new Date(y, m, 0).getDate(), g = 0;
+  for (var d = 1; d <= dim; d++) { var hh = habitAt(h, y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0')); if (hh.freq_type === 'monthly') g += (hh.freq_value || 0) / dim; }
+  return Math.round(g);
+}
+function schedChangeOn(hid, iso) {
+  var vs = SCHED_VERSIONS[hid]; if (!vs || vs.length < 2) return '';
+  for (var i = 1; i < vs.length; i++) if (vs[i].effective_from === iso) return schedDescribe(vs[i - 1]) + ' → ' + schedDescribe(vs[i]);
+  return '';
+}
+function schedCurrent(h) {   // current schedule as a plain object
+  var days = {}, sl = scheduleLookup[String(h.id)] || {};
+  Object.keys(sl).forEach(function (k) { days[k] = { required: sl[k].required, flexible: !!sl[k].flexible }; });
+  return { freq_type: h.freq_type || 'days', freq_value: h.freq_value, start_date: h.start_date, days: days };
+}
+function schedDescribe(v) {
+  if (v.freq_type === 'monthly') return (v.freq_value || 0) + ' times per month, any day';
+  if (v.freq_type === 'interval') return 'Every ' + v.freq_value + ' days' + (v.start_date ? ' (cycle from ' + moneyDay(v.start_date).replace(/, \d{4}$/, '') + ')' : '');
+  var req = [], flex = [], per = 1;
+  for (var i = 0; i < 7; i++) { var s = v.days && v.days[i]; if (!s || !(s.required > 0)) continue; if (s.required > per) per = s.required; (s.flexible ? flex : req).push(DAY_SHORT[i]); }
+  var t = req.length === 7 ? 'Daily' : req.length ? req.join('/') : '';
+  if (flex.length) t += (t ? ' · flexible ' : 'Flexible ') + flex.join('/');
+  return (t || 'No days') + (per > 1 ? ' (' + per + '× a day)' : '');
+}
+function schedHistoryHtml(h, withUndo) {
+  var vs = SCHED_VERSIONS[String(h.id)];
+  if (!vs || vs.length < 2) return '<p class="se-hist-empty">No changes yet. Always: ' + moneyEsc(schedDescribe(schedCurrent(h))) + '</p>';
+  return vs.map(function (v, i) {
+    var from = v.effective_from <= '1901-01-01' ? 'Start' : moneyDay(v.effective_from);
+    var to = i < vs.length - 1 ? moneyDay(localISO(new Date(parseLocalDate(vs[i + 1].effective_from).getTime() - 864e5))) : 'now';
+    return '<div class="se-hist-row"><span><span class="se-hist-when">' + from + ' → ' + to + '</span> · ' + moneyEsc(schedDescribe(v)) + '</span>' +
+      (withUndo && i > 0 ? '<button type="button" class="sleep-q-btn" onclick="undoScheduleVersion(' + h.id + ',' + v.id + ')">Undo</button>' : '') + '</div>';
+  }).join('');
+}
+
+// ---------- The editor (a pop-up window) ----------
+var SE = null;   // what's being edited
+function openScheduleEditor(id) {
+  var h = allHabits().filter(function (x) { return x.id === id; })[0]; if (!h) return;
+  var cur = schedCurrent(h), today = localISO(new Date());
+  var req = [], flex = [], per = 1;
+  for (var i = 0; i < 7; i++) { var s = cur.days[i]; req.push(!!(s && s.required > 0 && !s.flexible)); flex.push(!!(s && s.required > 0 && s.flexible)); if (s && s.required > per) per = s.required; }
+  SE = { h: h, type: cur.freq_type === 'interval' || cur.freq_type === 'monthly' ? cur.freq_type : 'days', req: req, flex: flex, per: per,
+    every: cur.freq_type === 'interval' ? cur.freq_value || 2 : 2, cycle: today, times: cur.freq_type === 'monthly' ? cur.freq_value || 4 : 4,
+    eff: today, mode: SCHED_TABLE_OK ? 'keep' : 'rewrite', msg: '' };
+  document.getElementById('sched-modal').style.display = 'flex';
+  seRender();
+}
+function closeScheduleEditor() { document.getElementById('sched-modal').style.display = 'none'; SE = null; }
+function seNew() {   // the new schedule from the editor
+  if (SE.type === 'monthly') return { freq_type: 'monthly', freq_value: SE.times, start_date: SE.h.start_date || null, days: {} };
+  if (SE.type === 'interval') return { freq_type: 'interval', freq_value: SE.every, start_date: SE.cycle, days: {} };
+  var days = {};
+  for (var i = 0; i < 7; i++) if (SE.req[i] || SE.flex[i]) days[i] = { required: SE.per, flexible: !SE.req[i] };
+  return { freq_type: 'days', freq_value: null, start_date: SE.h.start_date || null, days: days };
+}
+function seNextDue(h) {
+  var out = [], t = new Date(); t.setHours(0, 0, 0, 0);
+  if (habitAt(h, localISO(t)).freq_type === 'monthly') return 'Any day (' + monthlyGoalFor(h, t.getFullYear(), t.getMonth() + 1) + ' this month)';
+  for (var i = 0; i < 120 && out.length < 5; i++) {
+    var d = new Date(t); d.setDate(t.getDate() + i);
+    if (schedReq(habitAt(h, localISO(d)), d.getFullYear(), d.getMonth() + 1, d.getDate()).req > 0) out.push(moneyDay(localISO(d)).replace(/, \d{4}$/, ''));
+  }
+  return out.length ? out.join(', ') : 'Nothing due soon';
+}
+function seRender() {
+  if (!SE) return;
+  var h = SE.h, nv = seNew(), rewrite = SE.mode === 'rewrite';
+  var segBtn = function (t, label) { return '<button type="button" class="sleep-q-btn' + (SE.type === t ? ' on' : '') + '" data-se-type="' + t + '">' + label + '</button>'; };
+  var dayBtns = function (key) { return SE[key].map(function (on, i) { return '<button type="button" class="day-toggle se-day' + (on ? ' selected' : '') + '" data-se-' + key + '="' + i + '">' + DAY_SHORT[i].charAt(0) + '</button>'; }).join(''); };
+  var opts = SE.type === 'days'
+    ? '<p class="sleep-label">Required days</p><div class="se-days">' + dayBtns('req') + '</div><p class="sleep-label">Flexible days <small>(optional, do them when you can)</small></p><div class="se-days">' + dayBtns('flex') + '</div><div class="se-row">Times per day <input type="number" class="sleep-input se-num" data-se-field="per" min="1" max="20" value="' + SE.per + '"></div>'
+    : SE.type === 'interval'
+      ? '<div class="se-row">Every <input type="number" class="sleep-input se-num" data-se-field="every" min="1" max="365" value="' + SE.every + '"> days</div><div class="se-row">Cycle starts on <input type="date" class="sleep-input se-date" data-se-field="cycle" value="' + SE.cycle + '"></div>'
+      : '<div class="se-row"><input type="number" class="sleep-input se-num" data-se-field="times" min="1" max="31" value="' + SE.times + '"> times per month, any day</div>';
+  var left = '<p class="se-title">' + (h.icon || '✅') + ' ' + moneyEsc(h.name) + (h.archived ? ' <small>(archived)</small>' : '') + '</p>' +
+    '<p class="sleep-label">Current schedule</p><div class="se-cur"><b>' + moneyEsc(schedDescribe(schedCurrent(h))) + '</b><span>Next due: ' + moneyEsc(seNextDue(h)) + '</span></div>' +
+    '<p class="sleep-label">New schedule</p><div class="se-seg">' + segBtn('days', 'Specific days') + segBtn('interval', 'Every X days') + segBtn('monthly', 'X times per month') + '</div>' +
+    '<div class="se-opts">' + opts + '</div>' +
+    '<p class="sleep-label">Change starts on</p><input type="date" class="sleep-input se-date" data-se-field="eff" value="' + SE.eff + '"' + (rewrite ? ' disabled' : '') + '>' +
+    '<p class="sleep-label">Apply it how?</p>' +
+    '<label class="se-radio"><input type="radio" name="se-mode" value="keep"' + (!rewrite ? ' checked' : '') + (SCHED_TABLE_OK ? '' : ' disabled') + '> From that date on (keep the past as it was)</label>' +
+    '<label class="se-radio"><input type="radio" name="se-mode" value="rewrite"' + (rewrite ? ' checked' : '') + '> Rewrite all history with the new schedule</label>' +
+    (SCHED_TABLE_OK ? '' : '<p class="sleep-msg error">To keep the past as it was, run the schedule-history SQL in Supabase first. Until then you can only rewrite all history.</p>') +
+    '<div class="se-btns"><button type="button" class="settings-btn" data-se-save="1">Save</button><button type="button" class="sleep-q-btn" data-se-cancel="1">Cancel</button></div>' +
+    '<p class="sleep-msg ok" id="se-msg">' + moneyEsc(SE.msg) + '</p>';
+
+  // Preview month: the month the change starts in (or the month on screen when rewriting)
+  var pm = rewrite ? { y: currentYear, m: currentMonth } : { y: +SE.eff.slice(0, 4), m: +SE.eff.slice(5, 7) };
+  var dim = new Date(pm.y, pm.m, 0).getDate(), hid = String(h.id), ym = pm.y + '-' + String(pm.m).padStart(2, '0');
+  var logs = allTimeLogs[hid] || {}, effDay = (!rewrite && SE.eff.slice(0, 7) === ym) ? +SE.eff.slice(8) : (rewrite ? 1 : 99);
+  var kindOf = function (hh, d) { var r = schedReq(hh, pm.y, pm.m, d); return r.kind === 'monthly' ? 'any' : r.req > 0 ? 'req' : 'no'; };
+  var cellHtml = function (k, n, mark) { return '<div class="se-b' + (k === 'req' ? ' req' : k === 'any' ? ' any' : '') + (n ? (k === 'no' ? ' bonus' : ' done') : '') + (mark ? ' mark' : '') + '"></div>'; };
+  var rowHtml = function (fn) {
+    var out = '';
+    [[1, 16], [17, dim]].forEach(function (rg) {
+      var hd = '', bx = '';
+      for (var d = rg[0]; d <= rg[1]; d++) { var dt = new Date(pm.y, pm.m - 1, d); hd += '<div class="se-cell">' + 'MTWTFSS'.charAt((dt.getDay() + 6) % 7) + '<br>' + d + '</div>'; bx += fn(d); }
+      for (d = rg[1] + 1; d < rg[0] + 16; d++) { hd += '<div></div>'; bx += '<div></div>'; }
+      out += '<div class="se-grid">' + hd + bx + '</div>';
+    });
+    return out;
+  };
+  var newH = { id: h.id, freq_type: nv.freq_type, freq_value: nv.freq_value, start_date: nv.start_date, _sched: nv.days };
+  var before = rowHtml(function (d) { var iso = ym + '-' + String(d).padStart(2, '0'); return cellHtml(kindOf(habitAt(h, iso), d), logs[iso] > 0, false); });
+  var after = rowHtml(function (d) { var iso = ym + '-' + String(d).padStart(2, '0'); var use = d >= effDay ? newH : habitAt(h, iso); return cellHtml(kindOf(use, d), logs[iso] > 0, !rewrite && d === effDay); });
+  var monthName = new Date(pm.y, pm.m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  var sum;
+  if (rewrite) sum = 'All history: ' + schedDescribe(nv) + '. Days you logged that no longer fit become bonus check-ins (nothing is deleted).';
+  else if (effDay > dim) sum = 'The change starts after ' + monthName + '.';
+  else {
+    var oldPart = effDay > 1 ? monthName.split(' ')[0].slice(0, 3) + ' 1–' + (effDay - 1) + ': ' + schedDescribe(schedCurrent(h)) + '. ' : '';
+    if (nv.freq_type === 'monthly') { var rem = dim - effDay + 1; sum = oldPart + 'From ' + monthName.split(' ')[0].slice(0, 3) + ' ' + effDay + ': any day, goal about ' + Math.round(nv.freq_value * rem / dim) + ' for the rest of the month (prorated: ' + nv.freq_value + ' × ' + rem + '/' + dim + ' days). After that: ' + nv.freq_value + ' a month.'; }
+    else sum = oldPart + 'From ' + monthName.split(' ')[0].slice(0, 3) + ' ' + effDay + ': ' + schedDescribe(nv) + '.';
+  }
+  var right = '<div class="se-box"><p class="se-sub"><b>Preview · ' + monthName + '</b></p><p class="se-sum">' + moneyEsc(sum) + '</p>' +
+    '<p class="se-rowlbl">Before</p>' + before + '<p class="se-rowlbl">After saving</p>' + after +
+    '<div class="se-key"><span><i class="se-b req"></i>required</span><span><i class="se-b req done"></i>done</span><span><i class="se-b any"></i>any day (times per month)</span><span><i class="se-b bonus"></i>bonus</span><span><i class="se-key-mark"></i>change date</span></div></div>' +
+    '<div class="se-box"><p class="se-sub"><b>Schedule history</b> <small>· also on this habit\'s card in Every habit</small></p>' + schedHistoryHtml(h, true) + '</div>';
+  document.getElementById('sched-dialog').innerHTML = '<div class="se-left">' + left + '</div><div class="se-right">' + right + '</div><button type="button" class="se-x" data-se-cancel="1" title="Close">✕</button>';
+}
+
+async function writeCurrentSchedule(hid, v) {
+  var upd = { freq_type: v.freq_type, freq_value: v.freq_type === 'days' ? null : v.freq_value };
+  if (v.freq_type === 'interval') upd.start_date = v.start_date;
+  var r = await sb.from('habits').update(upd).eq('id', hid); if (r && r.error) return r.error.message;
+  r = await sb.from('habit_schedule').delete().eq('habit_id', hid); if (r && r.error) return r.error.message;
+  var rows = Object.keys(v.days || {}).map(function (k) { return { habit_id: hid, day_of_week: +k, times_required: v.days[k].required, is_flexible: !!v.days[k].flexible }; });
+  if (rows.length) { r = await sb.from('habit_schedule').insert(rows); if (r && r.error) return r.error.message; }
+  return '';
+}
+function seVersionRow(hid, eff, v) { return { user_id: currentUser.id, habit_id: hid, effective_from: eff, freq_type: v.freq_type, freq_value: v.freq_value, start_date: v.start_date || null, days: v.days || {} }; }
+
+async function seSave() {
+  var h = SE.h, hid = h.id, nv = seNew(), rewrite = SE.mode === 'rewrite', err = '';
+  if (nv.freq_type === 'days' && !Object.keys(nv.days).length) { SE.msg = 'Pick at least one day.'; return seRender(); }
+  if (nv.freq_type === 'interval' && (!(nv.freq_value >= 1) || !nv.start_date)) { SE.msg = 'Enter how many days and when the cycle starts.'; return seRender(); }
+  if (nv.freq_type === 'monthly' && !(nv.freq_value >= 1)) { SE.msg = 'Enter how many times per month.'; return seRender(); }
+  if (!rewrite && !/^\d{4}-\d{2}-\d{2}$/.test(SE.eff)) { SE.msg = 'Pick the date the change starts.'; return seRender(); }
+  if (rewrite && !confirm('Rewrite ALL of "' + h.name + '"\'s history with the new schedule?\n\nYour logs stay, but past days are re-judged by the new schedule. Any saved schedule history for this habit is cleared.')) return;
+  SE.msg = 'Saving…'; seRender();
+  var vs = SCHED_VERSIONS[String(hid)] || [];
+  if (rewrite) {
+    if (vs.length) { var d = await sb.from('habit_schedule_versions').delete().eq('habit_id', hid); if (d && d.error) err = d.error.message; }
+  } else {
+    if (!vs.length) {   // first change: save the old schedule as the starting version
+      var a = await sb.from('habit_schedule_versions').insert(seVersionRow(hid, SCHED_BEGIN, schedCurrent(h))); if (a && a.error) err = a.error.message;
+    } else {
+      for (var i = 0; i < vs.length && !err; i++) if (vs[i].effective_from >= SE.eff && vs[i].effective_from > SCHED_BEGIN) { var x = await sb.from('habit_schedule_versions').delete().eq('id', vs[i].id); if (x && x.error) err = x.error.message; }
+    }
+    if (!err) { var b = await sb.from('habit_schedule_versions').insert(seVersionRow(hid, SE.eff, nv)); if (b && b.error) err = b.error.message; }
+  }
+  if (!err) err = await writeCurrentSchedule(hid, nv);
+  if (err) { SE.msg = 'Could not save: ' + err; return seRender(); }
+  await loadHabits(); renderEverything(); ehRender();
+  SE.h = allHabits().filter(function (x) { return x.id === hid; })[0] || h;
+  SE.msg = 'Saved ✓'; seRender();
+  victory('pop', 'Schedule saved 📅');
+}
+
+async function undoScheduleVersion(hid, vid) {
+  var vs = (SCHED_VERSIONS[String(hid)] || []).slice(), idx = vs.findIndex(function (v) { return v.id === vid; }); if (idx < 1) return;
+  if (!confirm('Undo the schedule change from ' + moneyDay(vs[idx].effective_from) + '?')) return;
+  var r = await sb.from('habit_schedule_versions').delete().eq('id', vid);
+  if (r && r.error) { alert('Could not undo: ' + r.error.message); return; }
+  var wasLast = idx === vs.length - 1; vs.splice(idx, 1);
+  if (wasLast) { var e = await writeCurrentSchedule(hid, vs[vs.length - 1]); if (e) { alert('Could not restore the schedule: ' + e); } }
+  if (vs.length === 1) await sb.from('habit_schedule_versions').delete().eq('id', vs[0].id);   // only the start is left: no history needed
+  await loadHabits(); renderEverything(); ehRender();
+  if (SE) { SE.h = allHabits().filter(function (x) { return x.id === hid; })[0] || SE.h; SE.msg = 'Change undone.'; seRender(); }
+}
+
+document.addEventListener('click', function (e) {
+  if (!SE) return;
+  var modal = document.getElementById('sched-modal');
+  if (e.target === modal) { closeScheduleEditor(); return; }
+  if (!modal.contains(e.target)) return;
+  var t = e.target.closest('[data-se-type],[data-se-req],[data-se-flex],[data-se-save],[data-se-cancel]'); if (!t) return;
+  if (t.hasAttribute('data-se-cancel')) { closeScheduleEditor(); return; }
+  if (t.hasAttribute('data-se-save')) { seSave(); return; }
+  if (t.hasAttribute('data-se-type')) SE.type = t.getAttribute('data-se-type');
+  if (t.hasAttribute('data-se-req')) { var i = +t.getAttribute('data-se-req'); SE.req[i] = !SE.req[i]; if (SE.req[i]) SE.flex[i] = false; }
+  if (t.hasAttribute('data-se-flex')) { var j = +t.getAttribute('data-se-flex'); SE.flex[j] = !SE.flex[j]; if (SE.flex[j]) SE.req[j] = false; }
+  SE.msg = ''; seRender();
+});
+document.addEventListener('change', function (e) {
+  if (!SE || !e.target.closest || !e.target.closest('#sched-modal')) return;
+  var f = e.target.getAttribute('data-se-field');
+  if (f === 'per' || f === 'every' || f === 'times') SE[f] = Math.max(1, parseInt(e.target.value, 10) || 1);
+  else if (f) SE[f] = e.target.value;
+  if (e.target.name === 'se-mode') SE.mode = e.target.value;
+  SE.msg = ''; seRender();
+});
+
+
+// ============================================
+// HIGHLIGHT CURRENT DAY AND WEEKENDS (Settings toggle)
+// Checklist: today's column pops, Sat/Sun columns are softly shaded.
+// Charts with dates (Daily habit count, Daily trend, Actual vs intended, Month progress pace,
+// XP growth, XP speed and acceleration, Mood over the month) get the same bands behind the data.
+// ============================================
+var highlightDays = false;
+try { highlightDays = localStorage.getItem('habitTrackerHighlightDays') === '1'; } catch (e) {}
+document.body.classList.toggle('hl-days', highlightDays);
+(function () { var cb = document.getElementById('highlight-days-toggle'); if (cb) cb.checked = highlightDays; })();
+SYNCED_PREFS.push({ meta: 'highlight_days', local: 'habitTrackerHighlightDays', box: 'highlight-days-toggle',
+  get: function () { return highlightDays; }, set: function (v) { highlightDays = v; document.body.classList.toggle('hl-days', v); } });
+
+function toggleHighlightDays(on) {
+  highlightDays = on;
+  document.body.classList.toggle('hl-days', on);
+  try { localStorage.setItem('habitTrackerHighlightDays', on ? '1' : '0'); } catch (e) {}
+  savePref({ highlight_days: on });
+  if (currentUser) { renderEverything(); if (typeof renderMoodLine === 'function') renderMoodLine(); }
+}
+// Class for a day of the month on screen: 'hl-today', 'hl-we' (Sat/Sun), or ''.
+function hlDayClass(d) {
+  var now = new Date(), dow = (firstDayMonBased + d - 1) % 7;
+  if (now.getFullYear() === currentYear && now.getMonth() + 1 === currentMonth && now.getDate() === d) return 'hl-today' + (dow >= 5 ? ' hl-we' : '');
+  return dow >= 5 ? 'hl-we' : '';
+}
+var HL_MONTH_CHARTS = { barChart: 1, lineChart: 1, actualVsIntendedChart: 1, paceChart: 1 };
+function hlDateFor(chart, label) {
+  var id = chart.canvas && chart.canvas.id, pad = function (n) { return String(n).padStart(2, '0'); };
+  if (typeof label === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(label)) return label;   // charts labelled with dates (XP charts)
+  var d = +label; if (!(d >= 1 && d <= 31)) return null;
+  if (HL_MONTH_CHARTS[id]) return currentYear + '-' + pad(currentMonth) + '-' + pad(d);
+  if (id === 'moodLineChart' && typeof moodYear !== 'undefined') return moodYear + '-' + pad(moodMonth) + '-' + pad(d);
+  return null;
+}
+function hlRgba(varName, a, fallback) { var c = getThemeColor(varName); return hexToRgb(c) ? hexToRgba(c, a) : fallback; }
+if (typeof Chart !== 'undefined') Chart.register({
+  id: 'dayHighlight',
+  beforeDatasetsDraw: function (chart) {
+    if (!highlightDays || chart.options.indexAxis === 'y') return;
+    var x = chart.scales.x, area = chart.chartArea, labels = chart.data.labels || [];
+    if (!x || !area || !labels.length) return;
+    var today = localISO(new Date()), w = (x.right - x.left) / labels.length, ctx = chart.ctx;
+    var weFill = hlRgba('--c-text-muted', 0.13, 'rgba(128,128,128,0.13)'), tFill = hlRgba('--c-pink', 0.26, 'rgba(255,105,180,0.26)'), tLine = getThemeColor('--c-pink') || '#ff69b4';
+    ctx.save();
+    for (var i = 0; i < labels.length; i++) {
+      var iso = hlDateFor(chart, labels[i]); if (!iso) continue;
+      var dow = (isoToDate(iso).getDay() + 6) % 7, isToday = iso === today;
+      if (!isToday && dow < 5) continue;
+      var cx = x.getPixelForValue(i), left = Math.max(area.left, cx - w / 2), right = Math.min(area.right, cx + w / 2);
+      ctx.fillStyle = isToday ? tFill : weFill;
+      ctx.fillRect(left, area.top, right - left, area.bottom - area.top);
+      if (isToday) { ctx.strokeStyle = tLine; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.moveTo(cx, area.top); ctx.lineTo(cx, area.bottom); ctx.stroke(); ctx.setLineDash([]); }
+    }
+    ctx.restore();
+  }
+});
+
+// ============================================
+// NEW DAY CHECK: when the date changes while the tracker is open (past midnight, or the laptop
+// wakes up the next morning), redraw everything so "today" moves without a refresh.
+// ============================================
+var lastSeenDay = localISO(new Date());
+function checkNewDay() {
+  var today = localISO(new Date());
+  if (today === lastSeenDay) return;
+  var before = lastSeenDay; lastSeenDay = today;
+  if (!currentUser) return;
+  var viewing = currentYear + '-' + String(currentMonth).padStart(2, '0');
+  if (before.slice(0, 7) !== today.slice(0, 7) && viewing === before.slice(0, 7)) { jumpToCurrentMonth(); return; }   // new month: move to it
+  renderEverything();
+}
+setInterval(checkNewDay, 60000);   // every minute while the page is open
+document.addEventListener('visibilitychange', function () { if (!document.hidden) checkNewDay(); });   // coming back to the tab
+window.addEventListener('focus', checkNewDay);   // clicking back into the window (e.g. after the laptop slept overnight)
+
+// ============================================
+// MOVABLE DASHBOARD: snap-to-grid boxes you can drag by the title bar, minimize, resize or send to the dock.
+// The three little dots on each title bar:  1st = minimize,  2nd = change size,  3rd = send to the dock.
+// Layout is saved to your account: one layout for computers, a separate one for phones.
+// ============================================
+var DASH_SPANS = { 'summary': 3, 'weeks': 5, 'category-star-map': 4, 'month-progress': 12, 'rank-your-tasks': 12,
+  'daily-habit-count': 7, 'habit-count-by-category': 5, 'todays-required-habits': 12, 'daily-trend': 12,
+  'daily-checklist-monthly-progress': 12, 'top-habits-this-month': 6, 'habit-correlations': 6,
+  'weekly-planned-tasks': 8, 'planned-vs-actual': 4, 'year-heatmap': 12, 'actual-vs-intended-completions': 6,
+  'xp-growth': 6, 'best-streaks': 4, 'personal-bests': 4, 'habit-age': 4, 'xp-speed-and-acceleration': 12 };
+var DASH_SIZES = [3, 4, 6, 8, 12];   // the size button cycles through these (out of 12 columns)
+var DASH_DEFAULT = [], dashLayoutCache = null;
+
+function dashSlug(t) { return (t || '').toLowerCase().replace(/&amp;/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''); }
+function dashGrid() { return document.getElementById('dash-grid'); }
+function dashBoxes() { var g = dashGrid(); return g ? Array.prototype.slice.call(g.children).filter(function (b) { return b.classList.contains('dash-box'); }) : []; }
+function dashDevice() { return window.innerWidth <= 700 ? 'phone' : 'desktop'; }
+
+// Build the grid once: move every dashboard box out of the old tables into one grid, in today's order.
+(function dashBuild() {
+  var screen = document.getElementById('tracker-screen'); if (!screen) return;
+  var trackers = screen.querySelectorAll('.tracker'); if (!trackers.length) return;
+  var boxes = Array.prototype.slice.call(screen.querySelectorAll('.tracker .cell-border')).filter(function (b) { return !b.parentElement.closest('.cell-border'); });
+  var grid = document.createElement('div'); grid.id = 'dash-grid'; grid.className = 'dash-grid';
+  trackers[0].insertBefore(grid, trackers[0].firstChild);
+  var used = {};
+  boxes.forEach(function (b) {
+    var t = b.querySelector('.title-text'), id = dashSlug(t ? t.textContent : 'box');
+    while (used[id]) id += '-2'; used[id] = 1;
+    var tr = b.closest('tr');
+    if (tr && tr.id === 'xp-rank-row') { tr.id = ''; b.id = 'xp-rank-row'; b.style.display = tr.style.display; }   // XP Mode shows/hides this box
+    b.classList.add('dash-box'); b.dataset.box = id;
+    b.dataset.span = DASH_SPANS[id] || 12;
+    var dots = b.querySelectorAll('.title-bar .title-dots span');
+    ['min', 'size', 'dock'].forEach(function (act, i) { if (dots[i]) { dots[i].dataset.dashAct = act; dots[i].title = ['Minimize / open', 'Change size', 'Send to the dock'][i]; } });
+    var bar = b.querySelector('.title-bar'); if (bar) bar.title = 'Drag to move (long-press on phones)';
+    grid.appendChild(b);
+    DASH_DEFAULT.push(id);
+  });
+  // remove the now-empty old tables (anything that still has content stays)
+  screen.querySelectorAll('.tracker table.layout').forEach(function (tb) { if (!tb.textContent.trim()) tb.remove(); });
+  for (var i = 1; i < trackers.length; i++) if (!trackers[i].textContent.trim()) trackers[i].remove();
+  var dock = document.createElement('div'); dock.id = 'dash-dock'; dock.className = 'dash-dock'; document.body.appendChild(dock);
+})();
+
+function dashReadLayouts() {
+  var m = currentUser && currentUser.user_metadata && currentUser.user_metadata.dash_layout;
+  if (m && typeof m === 'object') return m;
+  try { var l = JSON.parse(localStorage.getItem('habitTrackerDashLayout') || 'null'); if (l) return l; } catch (e) {}
+  return {};
+}
+function dashCurrentLayout() {
+  var L = { order: [], span: {}, min: {}, dock: {} };
+  dashBoxes().forEach(function (b) {
+    var id = b.dataset.box; L.order.push(id);
+    if (+b.dataset.span !== (DASH_SPANS[id] || 12)) L.span[id] = +b.dataset.span;
+    if (b.classList.contains('dash-min')) L.min[id] = 1;
+    if (b.classList.contains('dash-docked')) L.dock[id] = 1;
+  });
+  return L;
+}
+var dashSaveTimer = null;
+function dashSave() {
+  var all = dashReadLayouts(); all = JSON.parse(JSON.stringify(all || {}));
+  all[dashDevice()] = dashCurrentLayout();
+  try { localStorage.setItem('habitTrackerDashLayout', JSON.stringify(all)); } catch (e) {}
+  clearTimeout(dashSaveTimer);
+  dashSaveTimer = setTimeout(function () { savePref({ dash_layout: all }); }, 800);   // waits a moment so a drag saves once
+  dashRenderDock();
+}
+function dashApplyLayout() {
+  var g = dashGrid(); if (!g) return;
+  var L = (dashReadLayouts() || {})[dashDevice()] || null;
+  var byId = {}; dashBoxes().forEach(function (b) { byId[b.dataset.box] = b; });
+  var order = (L && L.order ? L.order.filter(function (id) { return byId[id]; }) : []);
+  DASH_DEFAULT.forEach(function (id, i) { if (order.indexOf(id) < 0) order.splice(Math.min(i, order.length), 0, id); });   // new boxes slot in at their usual place
+  order.forEach(function (id) { g.appendChild(byId[id]); });
+  dashBoxes().forEach(function (b) {
+    var id = b.dataset.box;
+    b.dataset.span = (L && L.span && L.span[id]) || DASH_SPANS[id] || 12;
+    b.classList.toggle('dash-min', !!(L && L.min && L.min[id]));
+    b.classList.toggle('dash-docked', !!(L && L.dock && L.dock[id]));
+  });
+  dashRenderDock();
+}
+function dashResetLayout() {
+  if (!confirm('Put every dashboard box back where it started? (This resets the ' + (dashDevice() === 'phone' ? 'phone' : 'computer') + ' layout.)')) return;
+  var all = JSON.parse(JSON.stringify(dashReadLayouts() || {})); delete all[dashDevice()];
+  try { localStorage.setItem('habitTrackerDashLayout', JSON.stringify(all)); } catch (e) {}
+  savePref({ dash_layout: all });
+  dashApplyLayout();
+  victory('pop', 'Layout reset ✨');
+}
+function dashBoxTitle(b) { var t = b.querySelector('.title-text'); return t ? t.textContent.trim() : b.dataset.box; }
+function dashRenderDock() {
+  var dock = document.getElementById('dash-dock'); if (!dock) return;
+  var docked = dashBoxes().filter(function (b) { return b.classList.contains('dash-docked') && b.style.display !== 'none'; });
+  dock.innerHTML = docked.map(function (b) { return '<button type="button" class="dash-chip" data-undock="' + b.dataset.box + '" title="Open this box">▣ ' + moneyEsc(dashBoxTitle(b)) + '</button>'; }).join('');
+  dock.style.display = docked.length ? 'flex' : 'none';
+}
+
+// Dot buttons (minimize / size / dock) and dock chips
+document.addEventListener('click', function (e) {
+  var chip = e.target.closest && e.target.closest('[data-undock]');
+  if (chip) {
+    var b = dashBoxes().filter(function (x) { return x.dataset.box === chip.getAttribute('data-undock'); })[0];
+    if (b) { b.classList.remove('dash-docked'); b.classList.remove('dash-min'); dashSave(); b.scrollIntoView({ behavior: 'smooth', block: 'center' }); b.classList.add('dash-flash'); setTimeout(function () { b.classList.remove('dash-flash'); }, 900); }
+    return;
+  }
+  var dot = e.target.closest && e.target.closest('[data-dash-act]'); if (!dot) return;
+  var box = dot.closest('.dash-box'); if (!box) return;
+  var act = dot.getAttribute('data-dash-act');
+  if (act === 'min') box.classList.toggle('dash-min');
+  if (act === 'dock') { box.classList.add('dash-docked'); }
+  if (act === 'size') {
+    var cur = +box.dataset.span, next = DASH_SIZES.filter(function (s) { return s > cur; })[0] || DASH_SIZES[0];
+    box.dataset.span = next;
+  }
+  dashSave();
+});
+
+// Dragging by the title bar (mouse: press and move; touch: long-press, then move)
+var dashDrag = null;
+document.addEventListener('pointerdown', function (e) {
+  var g = dashGrid(); if (!g) return;
+  var bar = e.target.closest && e.target.closest('.title-bar'); if (!bar || !g.contains(bar)) return;
+  if (e.target.closest('.title-dots') || e.target.closest('button,input,select,a')) return;
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  var box = bar.closest('.dash-box'); if (!box || box.parentElement !== g) return;
+  dashDrag = { box: box, x: e.clientX, y: e.clientY, active: false, timer: null };
+  if (e.pointerType !== 'mouse') dashDrag.timer = setTimeout(function () { if (dashDrag) dashStartDrag(); }, 420);
+});
+function dashStartDrag() {
+  var d = dashDrag; if (!d || d.active) return;
+  clearTimeout(d.timer); d.active = true;
+  d.box.classList.add('dash-dragging'); document.body.classList.add('dash-is-dragging');
+  var ghost = document.createElement('div'); ghost.className = 'dash-ghost'; ghost.textContent = '✥ ' + dashBoxTitle(d.box);
+  document.body.appendChild(ghost); d.ghost = ghost;
+  ghost.style.left = d.x + 'px'; ghost.style.top = d.y + 'px';
+  if (navigator.vibrate) try { navigator.vibrate(15); } catch (e) {}
+}
+document.addEventListener('pointermove', function (e) {
+  var d = dashDrag; if (!d) return;
+  var dist = Math.hypot(e.clientX - d.x, e.clientY - d.y);
+  if (!d.active) {
+    if (d.timer) { if (dist > 10) { clearTimeout(d.timer); dashDrag = null; } return; }   // touch moved before the long-press finished: it's a scroll
+    if (dist < 6) return;
+    dashStartDrag();
+  }
+  e.preventDefault();
+  d.ghost.style.left = e.clientX + 'px'; d.ghost.style.top = e.clientY + 'px';
+  var el = document.elementFromPoint(e.clientX, e.clientY), t = el && el.closest('.dash-box'), g = dashGrid();
+  if (t && t !== d.box && t.parentElement === g) {
+    var r = t.getBoundingClientRect(), wide = r.width > g.clientWidth * 0.7;
+    var before = wide ? e.clientY < r.top + r.height / 2 : e.clientX < r.left + r.width / 2;
+    var ref = before ? t : t.nextSibling;
+    if (ref !== d.box && d.box.nextSibling !== ref) g.insertBefore(d.box, ref);
+  }
+  if (e.clientY < 70) window.scrollBy(0, -14); else if (e.clientY > window.innerHeight - 70) window.scrollBy(0, 14);   // scroll while dragging near the edges
+}, { passive: false });
+function dashEndDrag() {
+  var d = dashDrag; dashDrag = null; if (!d) return;
+  clearTimeout(d.timer);
+  if (!d.active) return;
+  d.box.classList.remove('dash-dragging'); document.body.classList.remove('dash-is-dragging');
+  if (d.ghost) d.ghost.remove();
+  dashSave();
+}
+document.addEventListener('pointerup', dashEndDrag);
+document.addEventListener('pointercancel', dashEndDrag);
+document.addEventListener('contextmenu', function (e) { if (e.target.closest && e.target.closest('#dash-grid .title-bar')) e.preventDefault(); });   // no phone pop-up menu on long-press
+
+// Switching between computer and phone size swaps to that layout
+var dashLastDevice = dashDevice();
+window.addEventListener('resize', function () { var dv = dashDevice(); if (dv !== dashLastDevice) { dashLastDevice = dv; dashApplyLayout(); } });
+dashApplyLayout();
+
+// ============================================
+// BUTTON RIBBON: the last button folds the ribbon away, leaving ⚙ Settings and the button to open it again.
+// ============================================
+var ribbonMin = false;
+try { ribbonMin = localStorage.getItem('habitTrackerRibbonMin') === '1'; } catch (e) {}
+function applyRibbon() {
+  var q = document.getElementById('quick-buttons'); if (!q) return;
+  q.classList.toggle('ribbon-min', ribbonMin);
+  var t = document.getElementById('ribbon-toggle');
+  if (t) { t.textContent = ribbonMin ? '»' : '«'; t.title = ribbonMin ? 'Show all buttons' : 'Fold the buttons away'; }
+}
+function toggleRibbon() {
+  ribbonMin = !ribbonMin;
+  try { localStorage.setItem('habitTrackerRibbonMin', ribbonMin ? '1' : '0'); } catch (e) {}
+  savePref({ ribbon_min: ribbonMin });
+  applyRibbon();
+}
+SYNCED_PREFS.push({ meta: 'ribbon_min', local: 'habitTrackerRibbonMin', box: '', get: function () { return ribbonMin; }, set: function (v) { ribbonMin = v; applyRibbon(); } });
+applyRibbon();
