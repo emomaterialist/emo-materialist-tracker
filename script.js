@@ -106,7 +106,7 @@ async function handleSignup() {
   showMsg('signup-msg','Account created! Check your email to confirm, then log in.','success');
 }
 async function handleLogout() {
-  await sb.auth.signOut(); currentUser = null;
+  await sb.auth.signOut({ scope: 'local' }); currentUser = null;   // 'local' = only this device; your other devices stay logged in
   document.getElementById('tracker-screen').style.display = 'none';
   document.getElementById('auth-screen').style.display = 'flex';
   toggleSettings(false);
@@ -5023,7 +5023,11 @@ function settingSet(k, v) {
   clearTimeout(settingTimers[k]);
   settingTimers[k] = setTimeout(function () {
     sb.from('user_settings').upsert({ user_id: currentUser.id, key: k, value: v, updated_at: new Date().toISOString() }, { onConflict: 'user_id,key' })
-      .then(function (r) { if (r && r.error) showAppError('Could not save ' + k.replace(/_/g, ' ') + ': ' + r.error.message); });
+      .then(function (r) {
+        if (!r || !r.error) return;
+        if (/row-level security|JWT|not authenticated/i.test(r.error.message)) showAppError('Your login on this device expired, so ' + k.replace(/_/g, ' ') + ' could not be saved. Log out (⚙ Settings) and log back in.');
+        else showAppError('Could not save ' + k.replace(/_/g, ' ') + ': ' + r.error.message);
+      });
   }, 600);
 }
 
@@ -5983,3 +5987,11 @@ function renderDashPresets() {
   el.innerHTML = h;
 }
 renderDashPresets();
+
+
+// If this device gets signed out in the background (for example the login expired), say so instead of failing quietly.
+sb.auth.onAuthStateChange(function (event) {
+  if (event === 'SIGNED_OUT' && currentUser) {
+    setTimeout(function () { showAppError('You were logged out on this device. Log in again to keep saving your changes.'); }, 0);
+  }
+});
