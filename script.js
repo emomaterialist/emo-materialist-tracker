@@ -3,14 +3,23 @@
 // ============================================
 const SUPABASE_URL = 'https://tzdajmzulwabvrvrjqxc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_R-TDdmRXXc-m167WxjYemg_R4gvEp7f';
-// Every request to Supabase gives up after 20 seconds and shows an error, instead of freezing forever.
-function fetchWithTimeout(url, opts) {
-  opts = Object.assign({}, opts || {});
-  var ctrl = new AbortController(), timer = setTimeout(function () { ctrl.abort(); }, 20000);
-  if (opts.signal) opts.signal.addEventListener('abort', function () { ctrl.abort(); });
-  opts.signal = ctrl.signal;
-  return fetch(url, opts).finally(function () { clearTimeout(timer); });
+// Every request to Supabase gives up after 30 seconds and shows an error, instead of freezing forever.
+// Loading requests (not saves) get one automatic second try, in case a phone connection was just slow.
+function fetchWithTimeout(url, opts, isRetry) {
+  var o = Object.assign({}, opts || {}), outer = o.signal;
+  var ctrl = new AbortController(), timedOut = false;
+  var timer = setTimeout(function () { timedOut = true; ctrl.abort(); }, 30000);
+  if (outer) outer.addEventListener('abort', function () { ctrl.abort(); });
+  o.signal = ctrl.signal;
+  var method = String(o.method || 'GET').toUpperCase();
+  return fetch(url, o).then(function (r) { clearTimeout(timer); return r; }, function (err) {
+    clearTimeout(timer);
+    if (timedOut && !isRetry && (method === 'GET' || method === 'HEAD')) return fetchWithTimeout(url, opts, true);
+    if (timedOut) { var e = new Error('Supabase took too long to answer (no reply in 30 seconds). Check your internet connection and reload.'); e.name = 'TimeoutError'; throw e; }
+    throw err;
+  });
 }
+function isReachError(msg) { return /too long to answer|Abort|Failed to fetch|Load failed|NetworkError|network connection/i.test(String(msg || '')); }
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { global: { fetch: fetchWithTimeout } });
 
 // ============================================
@@ -4983,7 +4992,12 @@ async function loadUserSettings() {
   if (USER_SETTINGS !== null || !currentUser) return;
   USER_SETTINGS = {};
   var r = await sb.from('user_settings').select('key,value').eq('user_id', currentUser.id);
-  if (r.error) { USER_SETTINGS_OK = false; showAppError('Run the new user_settings SQL in Supabase so your layouts and money rules can be saved (' + r.error.message + ')'); return; }
+  if (r.error) {
+    USER_SETTINGS_OK = false; USER_SETTINGS = null;   // try again next load
+    if (isReachError(r.error.message)) showAppError('Could not reach Supabase to load your settings: ' + r.error.message);
+    else showAppError('Run the new user_settings SQL in Supabase so your layouts and money rules can be saved (' + r.error.message + ')');
+    return;
+  }
   USER_SETTINGS_OK = true;
   (r.data || []).forEach(function (row) { USER_SETTINGS[row.key] = row.value; });
   // Move anything bulky still stored in the profile into the table, then remove it from the profile.
