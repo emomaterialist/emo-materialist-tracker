@@ -1673,6 +1673,16 @@ body { --dot-glyph: var(--c-dark); /* symbol shown on a dot when you hover it (t
   .quick-buttons { max-width: calc(100vw - 16px); overflow-x: auto; gap: 4px !important; /* phone button row scrolls sideways when it doesn't fit */ }
 }
 
+/* ===== On-screen error box (shows problems on phones, where there's no console) ===== */
+.app-error { position: fixed; left: 50%; top: 10px; transform: translateX(-50%); z-index: 20000; display: flex; flex-direction: column; gap: 6px; width: min(560px, calc(100vw - 20px)); }
+.app-error-row { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; font-family: inherit; font-size: 12px; line-height: 1.4; word-break: break-word; border-radius: 6px;
+  color: #7A1020; /* error text (dark red) */
+  background: #FFE8EC; /* error box (pale pink) */
+  border: 2px solid #C2304B; /* error outline (red) */
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.25); }
+.app-error-row span { flex: 1; }
+.app-error-row button { flex: none; padding: 0 4px; font-size: 14px; cursor: pointer; background: none; border: none; color: #7A1020; }
+
 /* ===== Victory animations (colors come from the theme) ===== */
 #victory-layer { position: fixed; inset: 0; z-index: 10000; pointer-events: none; overflow: hidden; }
 .vic-word { position: fixed; transform: translate(-50%, -50%); white-space: nowrap; padding: 3px 11px; font-size: 14px; font-weight: 800; border-radius: 999px;

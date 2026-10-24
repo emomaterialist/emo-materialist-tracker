@@ -3,7 +3,32 @@
 // ============================================
 const SUPABASE_URL = 'https://tzdajmzulwabvrvrjqxc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_R-TDdmRXXc-m167WxjYemg_R4gvEp7f';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Every request to Supabase gives up after 20 seconds and shows an error, instead of freezing forever.
+function fetchWithTimeout(url, opts) {
+  opts = Object.assign({}, opts || {});
+  var ctrl = new AbortController(), timer = setTimeout(function () { ctrl.abort(); }, 20000);
+  if (opts.signal) opts.signal.addEventListener('abort', function () { ctrl.abort(); });
+  opts.signal = ctrl.signal;
+  return fetch(url, opts).finally(function () { clearTimeout(timer); });
+}
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { global: { fetch: fetchWithTimeout } });
+
+// ============================================
+// ON-SCREEN ERROR BOX (phones don't show the browser console, so problems appear here instead)
+// ============================================
+function showAppError(msg) {
+  msg = String(msg || 'Something went wrong');
+  if (/kofiwidget|^Script error\.?$/i.test(msg)) return;   // the Ko-fi button's own harmless error
+  var box = document.getElementById('app-error');
+  if (!box) { box = document.createElement('div'); box.id = 'app-error'; box.className = 'app-error'; document.body.appendChild(box); }
+  var row = document.createElement('div'); row.className = 'app-error-row';
+  var t = document.createElement('span'); t.textContent = '⚠ ' + msg;
+  var x = document.createElement('button'); x.type = 'button'; x.textContent = '✕'; x.title = 'Dismiss'; x.onclick = function () { row.remove(); };
+  row.appendChild(t); row.appendChild(x); box.appendChild(row);
+  while (box.children.length > 4) box.firstChild.remove();
+}
+window.addEventListener('error', function (e) { showAppError((e && e.message) + (e && e.lineno ? ' (script line ' + e.lineno + ')' : '')); });
+window.addEventListener('unhandledrejection', function (e) { var r = e && e.reason; showAppError('Request failed: ' + ((r && r.message) || r)); });
 
 // ============================================
 // APP STATE
@@ -504,7 +529,8 @@ function renderArchiveList() {
 // DATA LOADING
 // ============================================
 async function loadHabits() {
-  var { data } = await sb.from('habits').select('*, habit_schedule(*)').eq('user_id',currentUser.id);
+  var { data, error } = await sb.from('habits').select('*, habit_schedule(*)').eq('user_id',currentUser.id);
+  if (error) { showAppError('Could not load your habits: ' + error.message); return; }
   await fixIntervalStartDates(data||[]);
   await loadScheduleVersions();
   RAW_HABITS = (data||[]).filter(function(h){return !h.archived;});
@@ -549,7 +575,11 @@ function buildScheduleLookup() {
   });
 }
 async function loadAndRender() {
-  await loadHabits(); await loadLogs(); await loadAllTimeLogs(); await loadWeeklyTasks(); await loadTaskXpOtherMonths();
+  // Each step is protected: if one fails, the error shows on screen and the rest still loads.
+  var steps = [['your settings', loadUserSettings], ['your habits', loadHabits], ['this month\'s check-ins', loadLogs], ['your history', loadAllTimeLogs], ['weekly tasks', loadWeeklyTasks], ['task XP', loadTaskXpOtherMonths]];
+  for (var i = 0; i < steps.length; i++) {
+    try { await steps[i][1](); } catch (e) { showAppError('Could not load ' + steps[i][0] + ': ' + ((e && e.message) || e)); }
+  }
   DAYS_IN_MONTH = new Date(currentYear,currentMonth,0).getDate();
   firstDayMonBased = (new Date(currentYear,currentMonth-1,1).getDay()+6)%7;
   renderEverything();
@@ -3243,7 +3273,7 @@ function moneySums(list) {
 }
 
 // ---- Categories and accounts: defaults + ones you added + ones already used in your entries ----
-function moneyMeta(key) { var m = currentUser && currentUser.user_metadata; return (m && Array.isArray(m[key])) ? m[key] : []; }
+function moneyMeta(key) { var v = settingGet(key); return Array.isArray(v) ? v : []; }
 function moneyUnique(list) {
   var seen = {}, out = [];
   list.forEach(function (x) { var k = String(x || '').trim(); if (k && !seen[k.toLowerCase()]) { seen[k.toLowerCase()] = 1; out.push(k); } });
@@ -3537,7 +3567,7 @@ function impRuleFor(t) {
 function impPersistRules(list) {
   currentUser.user_metadata = currentUser.user_metadata || {};
   currentUser.user_metadata.money_rules = list;
-  sb.auth.updateUser({ data: { money_rules: list } }).then(function (r) { if (r && r.data && r.data.user) currentUser = r.data.user; });
+  savePref({ money_rules: list });
 }
 function impSaveRule(match, kind, cat, acc, amt, tol) {
   var key = impWords(match).join(' ');
@@ -3721,7 +3751,7 @@ function confirmColumns() {
   list.push({ key: key, map: m });
   currentUser.user_metadata = currentUser.user_metadata || {};
   currentUser.user_metadata.money_csv_maps_list = list;
-  sb.auth.updateUser({ data: { money_csv_maps_list: list } }).then(function (r) { if (r && r.data && r.data.user) currentUser = r.data.user; });
+  savePref({ money_csv_maps_list: list });
 
   var rows = impBuildRows(importTable, m, document.getElementById('money-import-flip').checked);
   var status = document.getElementById('money-import-status');
@@ -3898,8 +3928,7 @@ async function clearMoneyRules() {
   currentUser.user_metadata = currentUser.user_metadata || {};
   currentUser.user_metadata.money_rules = [];
   currentUser.user_metadata.money_csv_maps_list = [];
-  var res = await sb.auth.updateUser({ data: { money_rules: [], money_csv_maps_list: [] } });
-  if (res && res.data && res.data.user) currentUser = res.data.user;
+  savePref({ money_rules: [], money_csv_maps_list: [] });
   renderRules();
   document.getElementById('money-import-status').textContent = 'All sorting rules cleared.';
 }
@@ -4926,11 +4955,62 @@ var SYNCED_PREFS = [
   { meta: 'victory_anim',  local: 'habitTrackerVictory',      box: 'victory-toggle',       get: function () { return victoryOn; },        set: function (v) { victoryOn = v; } }
 ];
 
+// Small settings go to your account profile (sent in batches, not one request per click).
+// Bulky ones (layouts, presets, money rules, bank column setups) go to the user_settings table, so the login pass stays small.
+var prefQueue = {}, prefTimer = null;
 function savePref(obj) {
   if (!currentUser) return;
   currentUser.user_metadata = currentUser.user_metadata || {};
-  Object.keys(obj).forEach(function (k) { currentUser.user_metadata[k] = obj[k]; });
-  sb.auth.updateUser({ data: obj }).then(function (r) { if (r && r.data && r.data.user) currentUser = r.data.user; });
+  Object.keys(obj).forEach(function (k) {
+    if (BIG_KEYS[k]) { settingSet(k, obj[k]); return; }
+    currentUser.user_metadata[k] = obj[k]; prefQueue[k] = obj[k];
+  });
+  clearTimeout(prefTimer);
+  if (Object.keys(prefQueue).length) prefTimer = setTimeout(flushPrefs, 700);
+}
+function flushPrefs() {
+  var data = prefQueue; prefQueue = {};
+  if (!Object.keys(data).length) return;
+  sb.auth.updateUser({ data: data }).then(function (r) {
+    if (r && r.error) { showAppError('Could not save a setting: ' + r.error.message); return; }
+    if (r && r.data && r.data.user) currentUser = r.data.user;
+  });
+}
+
+var BIG_KEYS = { dash_layout: 1, dash_presets: 1, money_rules: 1, money_csv_maps_list: 1 };
+var USER_SETTINGS = null, USER_SETTINGS_OK = false, settingTimers = {};
+async function loadUserSettings() {
+  if (USER_SETTINGS !== null || !currentUser) return;
+  USER_SETTINGS = {};
+  var r = await sb.from('user_settings').select('key,value').eq('user_id', currentUser.id);
+  if (r.error) { USER_SETTINGS_OK = false; showAppError('Run the new user_settings SQL in Supabase so your layouts and money rules can be saved (' + r.error.message + ')'); return; }
+  USER_SETTINGS_OK = true;
+  (r.data || []).forEach(function (row) { USER_SETTINGS[row.key] = row.value; });
+  // Move anything bulky still stored in the profile into the table, then remove it from the profile.
+  var m = currentUser.user_metadata || {}, clear = {};
+  for (var k in BIG_KEYS) {
+    if (m[k] === undefined || m[k] === null) continue;
+    if (!(k in USER_SETTINGS)) { USER_SETTINGS[k] = m[k]; await sb.from('user_settings').upsert({ user_id: currentUser.id, key: k, value: m[k] }, { onConflict: 'user_id,key' }); }
+    clear[k] = null;
+  }
+  if (Object.keys(clear).length) { Object.keys(clear).forEach(function (k) { m[k] = null; }); sb.auth.updateUser({ data: clear }); }
+}
+function settingGet(k) {
+  if (BIG_KEYS[k]) {
+    if (USER_SETTINGS && k in USER_SETTINGS) return USER_SETTINGS[k];
+    try { var l = localStorage.getItem('habitTrackerSetting_' + k); if (l) return JSON.parse(l); } catch (e) {}
+  }
+  var m = currentUser && currentUser.user_metadata; return m ? m[k] : undefined;
+}
+function settingSet(k, v) {
+  USER_SETTINGS = USER_SETTINGS || {}; USER_SETTINGS[k] = v;
+  try { localStorage.setItem('habitTrackerSetting_' + k, JSON.stringify(v)); } catch (e) {}
+  if (!currentUser || !USER_SETTINGS_OK) return;
+  clearTimeout(settingTimers[k]);
+  settingTimers[k] = setTimeout(function () {
+    sb.from('user_settings').upsert({ user_id: currentUser.id, key: k, value: v, updated_at: new Date().toISOString() }, { onConflict: 'user_id,key' })
+      .then(function (r) { if (r && r.error) showAppError('Could not save ' + k.replace(/_/g, ' ') + ': ' + r.error.message); });
+  }, 600);
 }
 
 async function applySyncedPrefs() {
@@ -5669,7 +5749,7 @@ function dashDevice() { return window.innerWidth <= 700 ? 'phone' : 'desktop'; }
 })();
 
 function dashReadLayouts() {
-  var m = currentUser && currentUser.user_metadata && currentUser.user_metadata.dash_layout;
+  var m = settingGet('dash_layout');
   if (m && typeof m === 'object') return m;
   try { var l = JSON.parse(localStorage.getItem('habitTrackerDashLayout') || 'null'); if (l) return l; } catch (e) {}
   return {};
@@ -5851,7 +5931,7 @@ applyRibbon();
 // ============================================
 var DASH_PRESET_COUNT = 4;
 function dashPresets() {
-  var m = currentUser && currentUser.user_metadata, p = m && m.dash_presets;
+  var p = settingGet('dash_presets');
   if (p && typeof p === 'object') return p;
   try { return JSON.parse(localStorage.getItem('habitTrackerDashPresets') || '{}') || {}; } catch (e) { return {}; }
 }
