@@ -4946,6 +4946,7 @@ async function applySyncedPrefs() {
   });
   if (Object.keys(push).length) savePref(push);
   if (typeof dashApplyLayout === 'function') dashApplyLayout();   // movable dashboard: use this account's saved layout
+  if (typeof renderDashPresets === 'function') renderDashPresets();
   var t = meta.preferred_theme;   // same fix for the theme
   if (t && t !== document.body.getAttribute('data-theme')) { var sel = document.getElementById('theme-select'); if (sel) sel.value = t; changeTheme(t); }
   else if (changed) renderEverything();
@@ -5814,3 +5815,47 @@ function toggleRibbon() {
 }
 SYNCED_PREFS.push({ meta: 'ribbon_min', local: 'habitTrackerRibbonMin', box: '', get: function () { return ribbonMin; }, set: function (v) { ribbonMin = v; applyRibbon(); } });
 applyRibbon();
+
+// ============================================
+// LAYOUT PRESETS: save up to 4 dashboard layouts and switch between them (Settings > Dashboard layout)
+// ============================================
+var DASH_PRESET_COUNT = 4;
+function dashPresets() {
+  var m = currentUser && currentUser.user_metadata, p = m && m.dash_presets;
+  if (p && typeof p === 'object') return p;
+  try { return JSON.parse(localStorage.getItem('habitTrackerDashPresets') || '{}') || {}; } catch (e) { return {}; }
+}
+function dashStorePresets(p) {
+  try { localStorage.setItem('habitTrackerDashPresets', JSON.stringify(p)); } catch (e) {}
+  savePref({ dash_presets: p });
+}
+function dashSavePreset(n) {
+  var p = JSON.parse(JSON.stringify(dashPresets()));
+  if (p[n] && !confirm('Preset ' + n + ' already has a layout. Replace it with the current layout?')) return;
+  p[n] = { layout: dashCurrentLayout(), saved: localISO(new Date()), device: dashDevice() };
+  dashStorePresets(p);
+  renderDashPresets();
+  victory('pop', 'Saved to preset ' + n + ' 💾');
+}
+function dashLoadPreset(n) {
+  var pr = dashPresets()[n];
+  if (!pr || !pr.layout) { alert('Preset ' + n + ' is empty. Arrange your boxes, then press "Save current layout to preset ' + n + '".'); return; }
+  var all = JSON.parse(JSON.stringify(dashReadLayouts() || {}));
+  all[dashDevice()] = JSON.parse(JSON.stringify(pr.layout));
+  try { localStorage.setItem('habitTrackerDashLayout', JSON.stringify(all)); } catch (e) {}
+  savePref({ dash_layout: all });
+  dashApplyLayout();
+  victory('pop', 'Preset ' + n + ' loaded ✨');
+}
+function renderDashPresets() {
+  var el = document.getElementById('dash-presets'); if (!el) return;
+  var p = dashPresets(), h = '';
+  for (var n = 1; n <= DASH_PRESET_COUNT; n++) {
+    var pr = p[n], info = pr ? 'saved ' + moneyDay(pr.saved).replace(/, \d{4}$/, '') + (pr.device === 'phone' ? ' on a phone' : ' on a computer') : 'empty';
+    h += '<div class="dash-preset-row"><p class="dash-preset-name">Preset ' + n + ' <span>' + info + '</span></p>' +
+      '<div class="dash-preset-btns"><button type="button" class="settings-btn" onclick="dashSavePreset(' + n + ')">💾 Save current layout to preset ' + n + '</button>' +
+      '<button type="button" class="settings-btn"' + (pr ? '' : ' disabled') + ' onclick="dashLoadPreset(' + n + ')">Load</button></div></div>';
+  }
+  el.innerHTML = h;
+}
+renderDashPresets();

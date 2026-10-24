@@ -1621,6 +1621,13 @@ body.dash-is-dragging, body.dash-is-dragging * { cursor: grabbing !important; us
   background: var(--c-body-bg); /* dock button */
   border: 2px solid var(--c-dark); /* dock button outline */ }
 .dash-chip:hover { background: var(--c-pink); color: var(--c-dark); /* dock button hover */ }
+/* Layout presets in Settings */
+.dash-presets { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.dash-preset-name { margin: 0 0 4px; font-size: 11px; font-weight: 700; }
+.dash-preset-name span { font-weight: 400; opacity: 0.7; /* "saved Oct 23 on a computer" / "empty" */ }
+.dash-preset-btns { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+.dash-preset-btns .settings-btn { width: auto; padding: 6px 8px; font-size: 11px; }
+.dash-preset-btns .settings-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 /* Button ribbon folded away: only ⚙ Settings and the » button stay */
 .quick-buttons.ribbon-min > button:not(:first-child):not(.ribbon-toggle) { display: none !important; }
 @media (max-width: 1100px) {
