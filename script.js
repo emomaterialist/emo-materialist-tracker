@@ -918,7 +918,7 @@ function renderCharts() {
     c.save(); c.strokeStyle=bColor; c.lineWidth=2; c.setLineDash([3,2]);
     bonusDays.forEach(function(b,i){ if(!b.count||!m0.data[i]||!m1.data[i])return; c.beginPath(); c.moveTo(m0.data[i].x,m0.data[i].y); c.lineTo(m1.data[i].x,m1.data[i].y); c.stroke(); });
     c.restore(); }};
-  lineChartInstance=new Chart(document.getElementById('lineChart'),{type:'line',data:{labels:dayLabels,datasets:lineSets},plugins:[stemPlugin],options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{title:function(items){return items.length?monthDayLabel(+items[0].label):'';},label:function(ctx){if(ctx.dataset._bonus)return bonusTooltipLines(ctx.dataset._bonus[ctx.dataIndex]);return 'Habits done: '+Math.round(ctx.parsed.y*10)/10;}}}},scales:{y:{beginAtZero:true,ticks:{color:axisTextColor}},x:{ticks:{color:axisTextColor,autoSkip:true,maxRotation:0,font:{size:9}}}}}});
+  lineChartInstance=new Chart(document.getElementById('lineChart'),{type:'line',data:{labels:dayLabels,datasets:lineSets},plugins:[stemPlugin],options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:14}},plugins:{legend:{display:false},tooltip:{callbacks:{title:function(items){return items.length?monthDayLabel(+items[0].label):'';},label:function(ctx){if(ctx.dataset._bonus)return bonusTooltipLines(ctx.dataset._bonus[ctx.dataIndex]);return 'Habits done: '+Math.round(ctx.parsed.y*10)/10;}}}},scales:{y:{beginAtZero:true,ticks:{color:axisTextColor}},x:{ticks:{color:axisTextColor,autoSkip:true,maxRotation:0,font:{size:9}}}}}});
   renderCategoryChart(axisTextColor);
   renderStarMap();
   renderXpGrowth();

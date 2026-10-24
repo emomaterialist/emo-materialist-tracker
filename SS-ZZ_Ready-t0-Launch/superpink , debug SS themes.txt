@@ -228,3 +228,75 @@ body[data-theme="superpink"] .settings-section .cell-subtitle { color: #D70087 !
 body[data-theme="superpink"] #best-month-container span { color: #D70087 !important; }
 
 
+
+
+
+
+
+* ---- DEBUG THEME: Every element a unique color for identification ---- */
+body[data-theme="debug"] {
+  --c-dark: hsl(0, 100%, 50%);           /* Red */
+  --c-pink: hsl(30, 100%, 50%);          /* Orange */
+  --c-purple: hsl(60, 100%, 50%);        /* Yellow */
+  --c-orange: hsl(90, 100%, 50%);        /* Yellow-green */
+  --c-body-bg: hsl(120, 100%, 40%);      /* Green */
+  --c-body-bg-alt: hsl(150, 100%, 40%);  /* Cyan-green */
+  --c-text: hsl(180, 100%, 40%);         /* Cyan */
+  --c-text-muted: hsl(210, 100%, 50%);   /* Light blue */
+  --c-page-bg-1: hsl(240, 100%, 50%);    /* Blue */
+  --c-page-bg-2: hsl(270, 100%, 50%);    /* Purple */
+  --c-grid-dot: hsl(300, 100%, 50%);     /* Magenta */
+  --c-font: monospace;
+  --radius-outer: 8px;
+  --radius-inner: 6px;
+  --radius-sm: 4px;
+  /* Weekly colors - rainbow */
+  --week-1-bg: hsl(0, 100%, 50%);
+  --week-2-bg: hsl(60, 100%, 50%);
+  --week-3-bg: hsl(120, 100%, 40%);
+  --week-4-bg: hsl(180, 100%, 40%);
+  --week-5-bg: hsl(240, 100%, 50%);
+  --week-1-text: #000000;
+  --week-2-text: #000000;
+  --week-3-text: #000000;
+  --week-4-text: #000000;
+  --week-5-text: #000000;
+  --donut-label-color: hsl(0, 100%, 50%);
+  --checkbox-required-empty: '🔴';
+  --checkbox-required-done: '🟢';
+  --checkbox-flexible-empty: '🔵';
+  --day-toggle-color: hsl(60, 100%, 50%);
+  --habit-text-color: #000000;
+  --chart-bg: hsl(150, 100%, 50%);
+}
+
+/* Debug-specific overrides */
+body[data-theme="debug"] .habit-del-btn { background: hsl(330, 100%, 50%) !important; color: #000000 !important; border-color: #000000 !important; }
+body[data-theme="debug"] .habit-list-row { background: hsl(45, 100%, 50%) !important; color: #000000 !important; }
+body[data-theme="debug"] .settings-panel { background: hsl(210, 100%, 60%) !important; border: 3px solid #000000 !important; }
+body[data-theme="debug"] .settings-section { background: hsl(90, 100%, 50%) !important; }
+body[data-theme="debug"] .cell-body { background: hsl(180, 100%, 50%) !important; }
+body[data-theme="debug"] .cell-border { background: hsl(120, 100%, 50%) !important; border: 2px solid #000000 !important; }
+body[data-theme="debug"] .correlation-card { background: hsl(270, 100%, 50%) !important; color: #000000 !important; }
+body[data-theme="debug"] .day-box { background: hsl(30, 100%, 50%) !important; }
+body[data-theme="debug"] .grid-cell { background: hsl(75, 100%, 50%) !important; }
+body[data-theme="debug"] .checkbox-grid { background: hsl(165, 100%, 50%) !important; }
+body[data-theme="debug"] #grid-table td { background: hsl(195, 100%, 50%) !important; }
+body[data-theme="debug"] .progress-cell { background: hsl(225, 100%, 50%) !important; }
+body[data-theme="debug"] .progress-track { background: hsl(255, 100%, 50%) !important; }
+body[data-theme="debug"] .chart-container { background: hsl(15, 100%, 50%) !important; }
+body[data-theme="debug"] canvas { background: hsl(45, 100%, 50%) !important; }
+body[data-theme="debug"] .settings-label { color: #000000 !important; background: hsl(90, 100%, 50%) !important; }
+body[data-theme="debug"] .field-group label { color: #000000 !important; background: hsl(120, 100%, 50%) !important; }
+body[data-theme="debug"] .title-bar { background: hsl(300, 100%, 50%) !important; color: #000000 !important; }
+body[data-theme="debug"] .donut-label { color: #000000 !important; }
+body[data-theme="debug"] .settings-section .cell-subtitle { color: #000000 !important; background: hsl(60, 100%, 50%) !important; }
+body[data-theme="debug"] .checkbox-grid th { color: #000000 !important; background: hsl(150, 100%, 50%) !important; }
+
+
+
+
+
+
+
+

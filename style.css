@@ -1602,6 +1602,10 @@ body.hl-days #grid-table tr:last-child td.hl-today { border-radius: 0 0 4px 4px;
 .dash-grid { position: relative; }
 .dash-grid > .dash-box { position: relative; }
 .dash-grid .title-bar { user-select: none; -webkit-user-select: none; }
+/* Charts stretch to fill their box when a taller box next to them makes the row taller (no empty space under the chart) */
+.dash-grid > .dash-box > .cell-body:has(> .chart-wrap) { display: flex; flex-direction: column; }
+.dash-grid > .dash-box > .cell-body > .chart-wrap { flex: 1 1 auto; }
+.dash-grid > .dash-box > .cell-body > .chart-wrap > canvas { position: absolute; inset: 0; /* the chart follows the box size instead of pushing it taller */ }
 /* Top-left button = move. The invisible ::after makes it easier to grab without making it look bigger. */
 .dash-grid .title-glyph.dash-move { position: relative; cursor: grab; touch-action: none; }
 .dash-grid .title-glyph.dash-move::after { content: ''; position: absolute; inset: -9px; }
