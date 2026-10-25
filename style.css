@@ -583,6 +583,7 @@ body {
   text-decoration: line-through;
   color: var(--c-text-muted);
 }
+.task-row.soft-stripe input[type="text"].task-done { opacity: .55; /* finished tasks fade on the soft-stripe themes */ }
 .task-row input[type="text"]:focus {
   outline: 1px solid var(--c-pink);
 }
