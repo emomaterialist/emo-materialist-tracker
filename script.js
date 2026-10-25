@@ -2519,7 +2519,8 @@ function getXpGrowth() {
       perDay[iso] = (perDay[iso] || 0) + Math.min(n, cap) * per;
     });
   });
-  chestEarned().forEach(function (c) { perDay[c.iso] = (perDay[c.iso] || 0) + CHESTS[c.type].xp; });   // treasure chests
+  var todayIso = localISO(new Date());
+  chestEarned().forEach(function (c) { var d = c.iso > todayIso ? todayIso : c.iso; perDay[d] = (perDay[d] || 0) + CHESTS[c.type].xp; });   // treasure chests
   var days = Object.keys(perDay).sort();
   var labels = ['Start'], xp = [0];
   if (days.length) {
@@ -4162,10 +4163,11 @@ function computeGold() {
 // TREASURE CHESTS
 // Nothing is stored except which of today's chests you opened (chest_open in your account).
 // Everything else is worked out from your check-ins, so unchecking a habit locks the chest again.
-//   Daily chest   – every required habit done today            +10 G (+15 XP in XP Mode)
-//   7-day streak  – every 7th perfect day in a row              +50 G (+50 XP)
-//   Week chest    – a week block (days 1–7, 8–14 …) hits 100%   +25 G (+40 XP)
-//   Month chest   – the whole month hits 100%                   +100 G (+150 XP)
+//   Daily chest   – today's required check-ins reach the target      +10 G (+15 XP in XP Mode)
+//   7-day streak  – every 7th day in a row that reaches its target   +50 G (+50 XP)
+//   Week chest    – a week block (days 1–7, 8–14 …) reaches target   +25 G (+40 XP)
+//   Month chest   – the whole month reaches the target               +100 G (+150 XP)
+//   Targets are 100% unless changed in Settings (50–100%).
 // Chests from past days pay out on their own. Today's chest pays out when you tap it open.
 // ============================================
 var CHESTS = {
@@ -4178,41 +4180,79 @@ var CHEST_SIDES = { today: ['day', 'streak'], month: ['week', 'month'] };
 
 function chestOpened() { var m = currentUser && currentUser.user_metadata; return (m && m.chest_open) || {}; }
 
+// Open targets (Settings → Treasure chest targets). 100 = every required check-in; 80 = 80% is enough.
+// The streak target is how good each day has to be to count toward the 7 in a row.
+var CHEST_TARGET_MIN = 50;
+function chestTargets() {
+  var m = currentUser && currentUser.user_metadata, t = (m && m.chest_targets) || {}, out = {};
+  Object.keys(CHESTS).forEach(function (k) { var v = Number(t[k]); out[k] = (v >= CHEST_TARGET_MIN && v <= 100) ? Math.round(v) : 100; });
+  return out;
+}
+function toggleChestTargets() {
+  var el = document.getElementById('chest-targets'); if (!el) return;
+  var opening = el.style.display === 'none';
+  el.style.display = opening ? '' : 'none';
+  if (!opening) return;
+  var t = chestTargets(), labels = { day: 'Daily chest: today is at least', streak: '7-day streak: each day is at least', week: 'Week chest: the week is at least', month: 'Month chest: the month is at least' };
+  el.innerHTML = '';
+  Object.keys(CHESTS).forEach(function (k) {
+    var row = document.createElement('label'); row.className = 'chest-target-row';
+    row.innerHTML = '<span>' + labels[k] + '</span><span><input type="number" min="' + CHEST_TARGET_MIN + '" max="100" step="5" value="' + t[k] + '" data-chest="' + k + '"> %</span>';
+    el.appendChild(row);
+  });
+  var reset = document.createElement('button'); reset.type = 'button'; reset.className = 'settings-btn'; reset.textContent = 'Back to 100% for all';
+  reset.addEventListener('click', function () { el.querySelectorAll('input').forEach(function (i) { i.value = 100; }); saveChestTargets(); });
+  el.appendChild(reset);
+  el.querySelectorAll('input').forEach(function (i) { i.addEventListener('change', saveChestTargets); });
+}
+function saveChestTargets() {
+  var el = document.getElementById('chest-targets'), t = {};
+  el.querySelectorAll('input[data-chest]').forEach(function (i) {
+    var v = Math.round(Number(i.value)); if (!(v >= CHEST_TARGET_MIN)) v = CHEST_TARGET_MIN; if (v > 100) v = 100;
+    i.value = v; t[i.dataset.chest] = v;
+  });
+  savePref({ chest_targets: t });
+  renderChests(); renderXpStats();
+}
+
 // Required habits on one date: how many are due and whether all are done.
 function chestDay(dt) {
-  var iso = localISO(dt), y = dt.getFullYear(), m = dt.getMonth() + 1, d = dt.getDate(), need = 0, met = true;
+  var iso = localISO(dt), y = dt.getFullYear(), m = dt.getMonth() + 1, d = dt.getDate(), need = 0, req = 0, got = 0;
   RAW_HABITS.forEach(function (h) {
     if (isHardOptional(h)) return;   // "Hard habits optional" on: hard habits don't block a chest
     var created = h.created_at ? localISO(new Date(h.created_at)) : '';
     if (created && iso < created) return;
     var r = habitRequiredOn(h, y, m, d);
     if (!r) return;
-    need++;
-    if (((allTimeLogs[String(h.id)] || {})[iso] || 0) < r) met = false;
+    need++; req += r;
+    got += Math.min(((allTimeLogs[String(h.id)] || {})[iso] || 0), r);
   });
-  return { iso: iso, need: need, met: need > 0 && met };
+  var pct = req ? Math.floor(got / req * 100) : 0;
+  return { iso: iso, need: need, pct: pct };
 }
 
 // Every chest earned from your first check-in up to today, plus where today's chests stand.
+// Week and month chests are dated the last day of their week/month, so this week's chest can open early
+// once the whole week (days still to come count as not done) already reaches its target.
 function chestScan() {
-  var first = null;
+  var first = null, T = chestTargets();
   allHabits().forEach(function (h) { Object.keys(allTimeLogs[String(h.id)] || {}).forEach(function (iso) { if ((allTimeLogs[String(h.id)][iso] || 0) > 0 && (!first || iso < first)) first = iso; }); });
   var now = new Date(); now.setHours(0, 0, 0, 0);
-  var today = localISO(now), list = [], run = 0, todayInfo = null, blk = null, mon = null;
+  var today = localISO(now), list = [], run = 0, todayInfo = null;
   if (!first) first = today;
   var p = first.split('-'), dt = new Date(+p[0], +p[1] - 1, 1);   // start at the 1st so week/month blocks are whole
   for (; dt <= now; dt.setDate(dt.getDate() + 1)) {
     var y = dt.getFullYear(), m = dt.getMonth() + 1, d = dt.getDate(), dim = new Date(y, m, 0).getDate();
-    var info = chestDay(dt), iso = info.iso;
-    if (d === 1) mon = { ok: true, need: 0 };
-    if ((d - 1) % 7 === 0) blk = { ok: true, need: 0 };
-    if (info.need) { blk.need++; mon.need++; if (!info.met) { blk.ok = false; mon.ok = false; } }
-    if (info.met) { if (iso >= first) list.push({ type: 'day', iso: iso }); run++; if (run % 7 === 0) list.push({ type: 'streak', iso: iso }); }
-    else if (info.need && iso !== today) run = 0;
-    var blkEnd = Math.min(d - ((d - 1) % 7) + 6, dim);
-    if (d === blkEnd && blk.ok && blk.need) list.push({ type: 'week', iso: iso });
-    if (d === dim && mon.ok && mon.need) list.push({ type: 'month', iso: iso });
-    if (iso === today) todayInfo = info;
+    var info = chestDay(dt), iso = info.iso, isToday = iso === today;
+    info.met = info.need > 0 && info.pct >= T.day;
+    if (info.met) list.push({ type: 'day', iso: iso, cur: isToday });
+    if (info.need && info.pct >= T.streak) { run++; if (run % 7 === 0) list.push({ type: 'streak', iso: iso, cur: isToday }); }
+    else if (info.need && !isToday) run = 0;
+    var ws = d - ((d - 1) % 7), we = Math.min(ws + 6, dim);
+    var endIso = function (dd) { return y + '-' + String(m).padStart(2, '0') + '-' + String(dd).padStart(2, '0'); };
+    if (d === we || isToday) { var wp = chestPct(y, m, ws, we); if (wp.req && wp.pct >= T.week) list.push({ type: 'week', iso: endIso(we), cur: endIso(we) >= today }); }
+    if (d === dim || isToday) { var mp = chestPct(y, m, 1, dim); if (mp.req && mp.pct >= T.month) list.push({ type: 'month', iso: endIso(dim), cur: endIso(dim) >= today }); }
+    if (isToday) todayInfo = info;
   }
   return { list: list, today: today, todayInfo: todayInfo, run: run };
 }
@@ -4221,7 +4261,7 @@ function chestScan() {
 function chestEarned(scan) {
   scan = scan || chestScan();
   var open = chestOpened();
-  return scan.list.filter(function (c) { return c.iso < scan.today || open[c.type] === c.iso; });
+  return scan.list.filter(function (c) { return !c.cur || open[c.type] === c.iso; });
 }
 
 // Percent of the required check-ins done between two days of a month (future days count as not done yet).
@@ -4229,13 +4269,15 @@ function chestPct(y, m, d1, d2) {
   var req = 0, got = 0;
   RAW_HABITS.forEach(function (h) {
     if (isHardOptional(h)) return;
+    var created = h.created_at ? localISO(new Date(h.created_at)) : '';
     for (var d = d1; d <= d2; d++) {
-      var r = habitRequiredOn(h, y, m, d); if (!r) continue;
       var iso = y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+      if (created && iso < created) continue;   // days before the habit existed don't count
+      var r = habitRequiredOn(h, y, m, d); if (!r) continue;
       req += r; got += Math.min(((allTimeLogs[String(h.id)] || {})[iso]) || 0, r);
     }
   });
-  return req ? Math.floor(got / req * 100) : 0;
+  return { req: req, pct: req ? Math.floor(got / req * 100) : 0 };
 }
 
 function chestSvg() {
@@ -4252,35 +4294,35 @@ function renderChests() {
   var scan = chestScan(), open = chestOpened(), today = scan.today, now = new Date();
   var y = now.getFullYear(), m = now.getMonth() + 1, d = now.getDate(), dim = new Date(y, m, 0).getDate();
   var ws = d - ((d - 1) % 7), we = Math.min(ws + 6, dim);
-  var earnedToday = {}; scan.list.forEach(function (c) { if (c.iso === today) earnedToday[c.type] = true; });
+  var earnedToday = {}, T = chestTargets(); scan.list.forEach(function (c) { if (c.cur) earnedToday[c.type] = c.iso; });
   var ti = scan.todayInfo || { need: 0, met: false }, doneToday = 0;
   if (ti.need) RAW_HABITS.forEach(function (h) { if (isHardOptional(h)) return; var r = habitRequiredOn(h, y, m, d); if (r && (((allTimeLogs[String(h.id)] || {})[today]) || 0) >= r) doneToday++; });
   var status = {
-    day: ti.need ? doneToday + ' / ' + ti.need + ' done' : 'nothing due today',
+    day: ti.need ? (T.day < 100 ? ti.pct + '% of ' + T.day + '%' : doneToday + ' / ' + ti.need + ' done') : 'nothing due today',
     streak: 'day ' + (scan.run % 7 || (earnedToday.streak ? 7 : 0)) + ' of 7',
-    week: chestPct(y, m, ws, we) + '% this week',
-    month: chestPct(y, m, 1, dim) + '% this month'
+    week: chestPct(y, m, ws, we).pct + '% of ' + T.week + '%',
+    month: chestPct(y, m, 1, dim).pct + '% of ' + T.month + '%'
   };
   Object.keys(CHEST_SIDES).forEach(function (side) {
     var el = sides[side]; if (!el) return;
     el.innerHTML = '';
     CHEST_SIDES[side].forEach(function (type) {
-      var c = CHESTS[type], state = !earnedToday[type] ? 'locked' : open[type] === today ? 'open' : 'ready';
+      var c = CHESTS[type], state = !earnedToday[type] ? 'locked' : open[type] === earnedToday[type] ? 'open' : 'ready';
       var reward = '+' + c.gold + ' G' + (xpMode ? ' · +' + c.xp + ' XP' : '');
       var box = document.createElement('div');
       box.className = 'chest chest-' + state;
-      box.title = c.name + ': ' + reward + (type === 'day' ? ' when every required habit is done today' : type === 'streak' ? ' every 7th perfect day in a row' : type === 'week' ? ' when this week block reaches 100%' : ' when the whole month reaches 100%');
+      box.title = c.name + ': ' + reward + (type === 'day' ? ' when today reaches ' + T.day + '%' : type === 'streak' ? ' every 7th day in a row at ' + T.streak + '% or more' : type === 'week' ? ' when this week block reaches ' + T.week + '%' : ' when the whole month reaches ' + T.month + '%') + ' (change targets in ⚙ Settings)';
       box.innerHTML = chestSvg() + '<div class="chest-name">' + c.name + '</div><div class="chest-status">' +
         (state === 'ready' ? 'tap to open!' : state === 'open' ? reward + ' ✓' : status[type]) + '</div>';
-      if (state === 'ready') { box.setAttribute('role', 'button'); box.tabIndex = 0; box.addEventListener('click', function () { openChest(type, box); }); }
+      if (state === 'ready') { box.setAttribute('role', 'button'); box.tabIndex = 0; box.addEventListener('click', function () { openChest(type, box, earnedToday[type]); }); }
       el.appendChild(box);
     });
   });
 }
 
-function openChest(type, box) {
-  var today = localISO(new Date()), open = Object.assign({}, chestOpened()), c = CHESTS[type];
-  open[type] = today;
+function openChest(type, box, key) {
+  var open = Object.assign({}, chestOpened()), c = CHESTS[type];
+  open[type] = key;   // the day this chest is dated (today, or the last day of this week/month)
   savePref({ chest_open: open });
   box.className = 'chest chest-open';
   for (var i = 0; i < 12; i++) {   // coins fly out of the chest

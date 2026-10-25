@@ -134,6 +134,11 @@
     </label>
   </div>
   <div class="settings-section">
+    <p class="settings-label">Treasure chest targets <span style="font-size:10px;font-weight:400;opacity:0.7;">How much has to be done for each chest to open (50–100%)</span></p>
+    <button class="settings-btn" onclick="toggleChestTargets()">🎁 Edit chest targets</button>
+    <div id="chest-targets" class="chest-targets" style="display:none"></div>
+  </div>
+  <div class="settings-section">
     <p class="settings-label">Dashboard layout <span style="font-size:10px;font-weight:400;opacity:0.7;">Drag the top-left button of a box to move it. Drag a box's right edge to change its width. The 3 dots on the right: minimize · change size · send to the dock</span></p>
     <button class="settings-btn" onclick="dashResetLayout()">↺ Reset layout</button>
     <div id="dash-presets" class="dash-presets"></div>
