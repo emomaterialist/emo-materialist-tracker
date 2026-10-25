@@ -1162,7 +1162,7 @@ function renderGridLegend() {
     var lab=document.createElement('span'); lab.textContent=it.label;
     row.appendChild(box); row.appendChild(lab); el.appendChild(row);
   });
-  var tip=document.createElement('p'); tip.className='grid-legend-tip'; tip.textContent='Tap a box to add a tick. Right-click a box to take one tick away.';
+  var tip=document.createElement('p'); tip.className='grid-legend-tip'; tip.textContent='Tap a box to add a tick. Click again to take one tick away.';
   el.appendChild(tip);
 }
 
@@ -3441,6 +3441,29 @@ function moneyDistSetStart(iso) {
   renderMoneyDist();
   var pay = document.getElementById('mt-s-pay'); if (pay) pay.value = iso;
 }
+// ---- Account filter on Home: "All accounts" or one account at a time (remembered on this device) ----
+var moneyAccFilter = (function () { try { return localStorage.getItem('moneyAccFilter') || ''; } catch (e) { return ''; } })();
+function moneyShown() { return moneyAccFilter ? moneyLogs.filter(function (r) { return r.account === moneyAccFilter; }) : moneyLogs; }
+function setMoneyAccFilter(a) {
+  moneyAccFilter = a;
+  try { localStorage.setItem('moneyAccFilter', a); } catch (e) {}
+  renderMoney();
+}
+function renderMoneyAccFilter() {
+  var el = document.getElementById('money-acc-filter'); if (!el) return;
+  var used = moneyUnique(moneyLogs.map(function (r) { return r.account; }));
+  if (moneyAccFilter && used.indexOf(moneyAccFilter) < 0) moneyAccFilter = '';
+  el.innerHTML = '';
+  if (used.length < 2) { el.style.display = 'none'; return; }   // only one account so far: nothing to filter
+  el.style.display = '';
+  [['', 'All accounts']].concat(used.map(function (a) { return [a, a]; })).forEach(function (a) {
+    var b = document.createElement('button'); b.type = 'button';
+    b.className = 'sleep-q-btn' + (moneyAccFilter === a[0] ? ' on' : ''); b.textContent = a[1];
+    b.onclick = function () { setMoneyAccFilter(a[0]); };
+    el.appendChild(b);
+  });
+}
+
 function renderMoneyDist() {
   var canvas = document.getElementById('moneyDistChart'); if (!canvas) return;
   var modes = document.getElementById('money-dist-modes'); modes.innerHTML = '';
@@ -3459,7 +3482,7 @@ function renderMoneyDist() {
   if (moneyDistMode === '2wk') document.getElementById('money-dist-start').value = fromIso;
 
   var by = {}, total = 0;
-  moneyLogs.forEach(function (x) {
+  moneyShown().forEach(function (x) {
     if (x.kind !== 'expense' || x.fund_id || x.log_date < fromIso || x.log_date > toIso) return;   // savings transfers aren't spending
     var c = x.category || 'Other', a = Math.abs(Number(x.amount)) || 0;
     by[c] = (by[c] || 0) + a; total += a;
@@ -3486,13 +3509,14 @@ function renderMoneyDist() {
 
 function renderMoney() {
   var per = mtPeriod(new Date()), pf = localISO(per.from), pt = localISO(per.to), m = { inc: 0, exp: 0, sav: 0 };
-  moneyLogs.forEach(function (r) {
+  renderMoneyAccFilter();
+  moneyShown().forEach(function (r) {
     if (r.log_date < pf || r.log_date > pt) return;
     if (r.kind === 'income') m.inc += r.amount; else if (r.fund_id) m.sav += r.amount; else m.exp += r.amount;
   });
   var left = m.inc - m.exp - m.sav;
   renderMoneyDist();
-  document.getElementById('mt-home-title').textContent = mtPeriodLabel(per);
+  document.getElementById('mt-home-title').textContent = mtPeriodLabel(per) + (moneyAccFilter ? ' · ' + moneyAccFilter : '');
   document.getElementById('money-inc').textContent = moneyFmt(m.inc);
   document.getElementById('money-exp').textContent = moneyFmt(m.exp);
   var net = document.getElementById('money-net');
@@ -3512,8 +3536,8 @@ function renderMoney() {
   });
 
   var out = document.getElementById('money-out'), today = localISO(new Date()), h;
-  if (moneyView === 'today') h = moneyTable(moneyLogs.filter(function (r) { return r.log_date === today; }));
-  else if (moneyView === 'all') h = moneyTable(moneyLogs);
+  if (moneyView === 'today') h = moneyTable(moneyShown().filter(function (r) { return r.log_date === today; }));
+  else if (moneyView === 'all') h = moneyTable(moneyShown());
   else if (moneyView === 'day') h = moneyGrouped(function (r) { return r.log_date; }, 'Day', moneyDay);
   else if (moneyView === 'month') h = moneyGrouped(function (r) { return r.log_date.slice(0, 7); }, 'Month', moneyMonthName);
   else if (moneyView === 'cat') h = '<div class="money-pad"><p class="money-sub">Where your money went</p>' + moneyBars('expense') + '<p class="money-sub">Where your money came from</p>' + moneyBars('income') + '</div>';
@@ -3536,9 +3560,10 @@ function moneyTable(list) {
 }
 
 function moneyGrouped(keyFn, label, nameFn) {
-  if (!moneyLogs.length) return moneyEmpty();
+  var list = moneyShown();
+  if (!list.length) return moneyEmpty();
   var g = {};
-  moneyLogs.forEach(function (r) { var k = keyFn(r); (g[k] = g[k] || []).push(r); });
+  list.forEach(function (r) { var k = keyFn(r); (g[k] = g[k] || []).push(r); });
   var h = '<table class="money-table"><tr><th>' + label + '</th><th class="money-num">Expense</th><th class="money-num">Income</th><th class="money-num">Net</th><th class="money-num">Entries</th></tr>';
   Object.keys(g).sort().reverse().forEach(function (k) {
     var s = moneySums(g[k]);
@@ -3549,7 +3574,7 @@ function moneyGrouped(keyFn, label, nameFn) {
 
 function moneyBars(kind) {
   var g = {};
-  moneyLogs.filter(function (r) { return r.kind === kind; }).forEach(function (r) { g[r.category] = (g[r.category] || 0) + r.amount; });
+  moneyShown().filter(function (r) { return r.kind === kind; }).forEach(function (r) { g[r.category] = (g[r.category] || 0) + r.amount; });
   var keys = Object.keys(g).sort(function (a, b) { return g[b] - g[a]; });
   if (!keys.length) return '<p class="sleep-empty">Nothing here yet.</p>';
   var max = Math.max.apply(null, keys.map(function (k) { return g[k]; }));
@@ -3705,7 +3730,7 @@ function impParse(text, flip) {
 }
 
 // ---- Step 1: upload, then ask the user to confirm the columns ----
-var importTable = null, importFileName = '';
+var importTable = null, importFileName = '', importAccount = '';
 function impHeaderKey(head) { return head.map(function (h) { return h.toLowerCase().trim(); }).join('|'); }
 
 function onImportFile(input) {
@@ -3728,7 +3753,8 @@ function onImportFile(input) {
 
 function renderColumnCheck() {
   var t = importTable, saved = (moneyMeta('money_csv_maps_list').filter(function (m) { return m.key === impHeaderKey(t.head); })[0] || {}).map;
-  var g = saved || impGuessColumns(t);
+  var savedEntry = moneyMeta('money_csv_maps_list').filter(function (m) { return m.key === impHeaderKey(t.head); })[0] || {};
+  var g = saved || impGuessColumns(t), accs = moneyAccountList();
   function opts(chosen, allowNone) {
     return (allowNone ? '<option value="-1">(none)</option>' : '') + t.head.map(function (h, i) {
       return '<option value="' + i + '"' + (i === chosen ? ' selected' : '') + '>' + moneyEsc(h || ('Column ' + (i + 1))) + '</option>';
@@ -3738,6 +3764,10 @@ function renderColumnCheck() {
     '<div class="money-colcheck">' +
     '<p class="money-import-done">Is this right? Pick the column that holds each piece.</p>' +
     (saved ? '<p class="mood-note">Using the setup you confirmed last time for this bank. Change anything that looks off.</p>' : '<p class="mood-note">These are the app\'s best guesses. Change any that look wrong.</p>') +
+    '<div class="money-colcheck-acc"><p class="sleep-label">Which account is this file from?</p>' +
+    '<select id="col-acc" class="sleep-input" onchange="document.getElementById(\'col-acc-new\').style.display=this.value===\'__custom__\'?\'\':\'none\'">' + impOptions(accs, savedEntry.acc || accs[0]) + '<option value="__custom__">+ New account…</option></select>' +
+    '<input type="text" id="col-acc-new" class="sleep-input" placeholder="e.g. Chase Checking" style="display:none">' +
+    '<p class="mood-note">Every transaction in this file is saved to this account. Next time you import a file from this bank, it is picked for you.</p></div>' +
     '<div class="money-colcheck-grid">' +
     '<div><p class="sleep-label">Date</p><select id="col-date" class="sleep-input">' + opts(g.date) + '</select></div>' +
     '<div><p class="sleep-label">Name / description</p><select id="col-desc" class="sleep-input">' + opts(g.desc) + '</select></div>' +
@@ -3789,10 +3819,19 @@ function confirmColumns() {
   if (m.date < 0 || m.desc < 0 || (m.mode === 'single' ? m.amount < 0 : (m.debit < 0 && m.credit < 0))) {
     document.getElementById('col-warn').textContent = 'Pick a column for the date, the name and the amount.'; return;
   }
-  // Remember this bank's column setup (matched by its heading line) for next time.
+  // Which account this file belongs to (a new name is added to your account list).
+  var accSel = document.getElementById('col-acc').value;
+  if (accSel === '__custom__') {
+    var nv = document.getElementById('col-acc-new').value.trim();
+    if (!nv) { document.getElementById('col-warn').textContent = 'Type a name for the new account.'; return; }
+    accSel = nv.charAt(0).toUpperCase() + nv.slice(1);
+    savePref({ money_accounts: moneyUnique(moneyMeta('money_accounts').concat([accSel])) });
+  }
+  importAccount = accSel;
+  // Remember this bank's column setup and account (matched by its heading line) for next time.
   var key = impHeaderKey(importTable.head);
   var list = moneyMeta('money_csv_maps_list').filter(function (x) { return x.key !== key; });
-  list.push({ key: key, map: m });
+  list.push({ key: key, map: m, acc: accSel });
   currentUser.user_metadata = currentUser.user_metadata || {};
   currentUser.user_metadata.money_csv_maps_list = list;
   savePref({ money_csv_maps_list: list });
@@ -3838,7 +3877,7 @@ function renderImport() {
     '<p class="mood-note">A transaction matches when its description has <b>all</b> of these words (highlighted).</p>' +
     '<p class="sleep-label">Amount is about (optional)</p><div class="money-import-amtrow">$ <input type="number" id="imp-amt" class="sleep-input" min="0" step="0.01" placeholder="any amount" value="' + (rule && rule.amt != null ? rule.amt : '') + '"> ± $ <input type="number" id="imp-tol" class="sleep-input" min="0" step="1" value="' + (rule && rule.tol != null ? rule.tol : 25) + '"></div>' +
     '<div class="money-import-grid"><div><p class="sleep-label">Category' + (rule ? ' (suggested)' : '') + '</p><select id="imp-cat" class="sleep-input" onchange="onImpCatSelect(this)">' + impOptions(cats, rule && rule.cat) + '<option value="__custom__">+ Add new category…</option></select><div id="imp-cat-new" class="money-new-row" style="display:none;"><input type="text" class="sleep-input" placeholder="New category name"><button type="button" class="settings-btn" onclick="addImpCustomCat()">Add</button></div></div>' +
-    '<div><p class="sleep-label">Account</p><select id="imp-acc" class="sleep-input">' + impOptions(accs, rule ? rule.acc : accs[0]) + '</select></div></div>' +
+    '<div><p class="sleep-label">Account</p><select id="imp-acc" class="sleep-input">' + impOptions(accs, importAccount || (rule ? rule.acc : accs[0])) + '</select></div></div>' +
     '<div id="imp-sim" class="money-import-sim"></div><div id="imp-btns" class="money-import-btns"></div>';
   ['imp-match', 'imp-amt', 'imp-tol'].forEach(function (id) { document.getElementById(id).addEventListener('input', renderImportSimilar); });
   renderImportSimilar();
@@ -4742,7 +4781,7 @@ function renderMemList() {
 // money_logs got 4 new columns: plan_id + due_date (which calendar item a tick paid),
 // fund_id (money put into a savings fund) and debt_id (a payment toward a debt).
 // ============================================
-var MT_TABS = [['setup', 'Setup', '⚙️'], ['home', 'Home', '🏠'], ['today', 'Today', '☀️'], ['cal', 'Calendar', '📅'], ['goals', 'Goals', '🎯'],
+var MT_TABS = [['help', 'How to use', '❓'], ['setup', 'Setup', '⚙️'], ['home', 'Home', '🏠'], ['today', 'Today', '☀️'], ['cal', 'Calendar', '📅'], ['goals', 'Goals', '🎯'],
   ['sav', 'Savings', '🐷'], ['debt', 'Debt', '💳'], ['env', 'Envelopes', '✉️'], ['set', 'Settings', '🔧']];
 var MT_KIND_NAMES = { income: 'Income', bill: 'Bill', savings: 'Savings transfer', debt: 'Debt payment', note: 'Note' };
 var MT_KIND_CATS = { income: 'Salary', bill: 'Bills', savings: 'Savings', debt: 'Credit' };

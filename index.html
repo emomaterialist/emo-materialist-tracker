@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Emo Materialist Habit Tracker</title>
 <link rel="icon" type="image/png" href="favicon.png">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=20261025c">
 <link href="https://fonts.googleapis.com/css2?family=Monsieur+La+Doulaise&family=Sacramento&family=Roboto+Mono:wght@400;600;700&family=Nunito:wght@400;600;700&family=Great+Vibes&family=Cormorant+Garamond:wght@500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=Press+Start+2P&family=Pixelify+Sans:wght@400;600;700&family=UnifrakturMaguntia&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-<script src="script.js" defer></script>
+<script src="script.js?v=20261025c" defer></script>
 </head>
 <body data-theme="vaporwave">
 
@@ -432,9 +432,78 @@
       </div>
   </section>
 
+  <!-- ===== HOW TO USE ===== -->
+  <section class="mt-tab" data-mt="help">
+    <p class="mt-hi">How to use</p><p class="mt-sub">Where to start, and how the tabs work together.</p>
+    <div class="cell-border">
+      <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Start here (about 15 minutes, once)</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+      <div class="cell-body">
+        <ol class="mt-steps">
+          <li><b>Pick your currency.</b> <button type="button" class="sleep-q-btn" onclick="mtGo('setup')">Setup ▸</button></li>
+          <li><b>Import your first bank file.</b> On your bank's website, download your transactions as a <b>CSV</b> (a plain spreadsheet file; look for "Download" or "Export" next to your transactions). In Setup, click <b>Choose a .csv file</b>, then:
+            <ul><li>Pick <b>which account</b> the file is from (or make a new one, like "Chase Checking").</li>
+            <li>Check the date, name and amount columns, then <b>Continue</b>.</li>
+            <li>Give each purchase a category. "Use for all" sorts every similar purchase at once and remembers it for next time.</li></ul></li>
+          <li><b>Add your regular paychecks and bills</b> to the calendar and set them to repeat. <button type="button" class="sleep-q-btn" onclick="mtGo('cal')">Calendar ▸</button></li>
+          <li><b>Set a monthly limit per category</b> (groceries, eating out…). <button type="button" class="sleep-q-btn" onclick="mtGo('env')">Envelopes ▸</button></li>
+          <li><b>Optional:</b> add funds you're saving for and debts you're paying down. <button type="button" class="sleep-q-btn" onclick="mtGo('sav')">Savings ▸</button> <button type="button" class="sleep-q-btn" onclick="mtGo('debt')">Debt ▸</button></li>
+        </ol>
+      </div>
+    </div>
+    <div class="cell-border">
+      <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Two (or more) bank accounts</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+      <div class="cell-body">
+        <ol class="mt-steps">
+          <li>Download a CSV from <b>each</b> bank. Import them <b>one at a time</b> in Setup.</li>
+          <li>When it asks <b>"Which account is this file from?"</b>, give each bank its own account name (for example "Chase Checking" and "Amex Card"). The app remembers it, so next time that bank's file picks its account by itself.</li>
+          <li>To see one account's spending on its own, open <b>Home</b> and tap that account's button at the top (next to <b>All accounts</b>). The totals, the spending donut and the tables all switch to that account.</li>
+          <li>To compare accounts side by side, use <b>Home → Income &amp; expenses → Per account</b>.</li>
+        </ol>
+        <p class="mood-note"><b>Tip:</b> when you pay a credit card from your checking account, that payment shows up in <b>both</b> files. Skip it in one of them (the checking side is usually easiest), or the same money gets counted twice.</p>
+      </div>
+    </div>
+    <div class="cell-border">
+      <div class="title-bar"><span class="title-glyph"></span><span class="title-text">How the tabs feed each other</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+      <div class="cell-body">
+        <div class="mt-howto">
+          <p><b>Entries are the base.</b> Everything you import or add with <b>+ Track spending</b> is an entry. Entries fill <b>Home</b> (totals and the donut) and your <b>Envelopes</b> (spending by category).</p>
+          <p><b>Calendar → Today.</b> Paychecks and bills you put on the calendar show under <b>Today → Coming up</b>. Ticking one turns it into a real entry, so you don't add it twice.</p>
+          <p><b>"Goes to" → Savings and Debt.</b> When an entry or calendar item "goes to" a savings fund, it fills that fund's bar. When it goes to a debt, it lowers that balance.</p>
+          <p><b>Today pulls it together.</b> Safe to spend = this month's money in (plus paychecks still coming), minus what you spent, minus bills and transfers still due.</p>
+          <p><b>Goals stand on their own.</b> They're your checklist for the bigger picture.</p>
+        </div>
+      </div>
+    </div>
+    <div class="cell-border">
+      <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Your routine after that</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+      <div class="cell-body">
+        <div class="mt-howto">
+          <p><b>Once a week (or month):</b> download a new CSV from each bank and import it. Transactions you already imported are skipped automatically, and purchases you sorted before come pre-filled.</p>
+          <p><b>Cash or something not in a bank file?</b> Add it with <b>+ Track spending</b>.</p>
+          <p><b>Check Home</b> to see where the month is going, and <b>Today</b> to see what's safe to spend.</p>
+        </div>
+      </div>
+    </div>
+    <div class="cell-border">
+      <div class="title-bar"><span class="title-glyph"></span><span class="title-text">What each tab is for</span><span class="title-dots"><span></span><span></span><span></span></span></div>
+      <div class="cell-body">
+        <div class="mt-howto">
+          <p><b>Home</b> — the whole month at a glance: income, spending, where the money goes.</p>
+          <p><b>Today</b> — your money right now: what you saved, what you owe, what's safe to spend, and what's due next.</p>
+          <p><b>Calendar</b> — tap a day to add a paycheck, bill, transfer or note. Set it to repeat and it fills in future months by itself.</p>
+          <p><b>Goals</b> — the bigger picture. Tap a goal's status to switch between not started, in progress and done.</p>
+          <p><b>Savings</b> — funds you're filling up (an emergency cushion, a trip), each with its own progress bar.</p>
+          <p><b>Debt</b> — balances you're paying down, with interest and minimum payments.</p>
+          <p><b>Envelopes</b> — a spending limit per category each month. Your spending fills them automatically.</p>
+          <p><b>+ Track spending</b> — add something you spent or earned.</p>
+        </div>
+      </div>
+    </div>
+
+    </section>
   <!-- ===== SETUP ===== -->
   <section class="mt-tab" data-mt="setup">
-    <p class="mt-hi">Getting started</p><p class="mt-sub">A quick tour, plus your currency and bank import.</p>
+    <p class="mt-hi">Setup</p><p class="mt-sub">Your currency and bank import. New here? Open <a href="#" onclick="mtGo('help');return false;">How to use</a>.</p>
     <div class="cell-border">
       <div class="title-bar"><span class="title-glyph"></span><span class="title-text">Your currency</span><span class="title-dots"><span></span><span></span><span></span></span></div>
       <div class="cell-body">
@@ -456,27 +525,12 @@
           <div id="money-import-review"></div>
         </div>
       </div>
-    <div class="cell-border">
-      <div class="title-bar"><span class="title-glyph"></span><span class="title-text">How each tab works</span><span class="title-dots"><span></span><span></span><span></span></span></div>
-      <div class="cell-body">
-        <div class="mt-howto">
-          <p><b>Home</b> — the whole month at a glance: income, spending, where the money goes.</p>
-          <p><b>Today</b> — your money right now: what you saved, what you owe, what's safe to spend, and what's due next.</p>
-          <p><b>Calendar</b> — tap a day to add a paycheck, bill, transfer or note. Set it to repeat and it fills in future months by itself.</p>
-          <p><b>Goals</b> — the bigger picture. Tap a goal's status to switch between not started, in progress and done.</p>
-          <p><b>Savings</b> — funds you're filling up (an emergency cushion, a trip), each with its own progress bar.</p>
-          <p><b>Debt</b> — balances you're paying down, with interest and minimum payments.</p>
-          <p><b>Envelopes</b> — a spending limit per category each month. Your spending fills them automatically.</p>
-          <p><b>+ Track spending</b> — add something you spent or earned.</p>
-        </div>
-      </div>
-    </div>
-
-  </section>
+</section>
 
   <!-- ===== HOME ===== -->
   <section class="mt-tab" data-mt="home">
     <p class="mt-hi" id="mt-home-title">This month</p><p class="mt-sub">The whole month at a glance.</p>
+    <div id="money-acc-filter" class="mood-styles money-acc-filter" style="display:none"></div>
     <div class="money-tiles">
       <div class="sleep-tile"><div class="money-tile-label">Income</div><div id="money-inc" class="sleep-big money-in">$0.00</div></div>
       <div class="sleep-tile"><div class="money-tile-label">Spent</div><div id="money-exp" class="sleep-big money-out">$0.00</div></div>

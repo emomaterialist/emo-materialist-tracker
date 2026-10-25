@@ -3116,3 +3116,11 @@ body[data-theme="sage-lilac"] .donut-label { color: #776C8A !important; }
 body[data-theme="sage-lilac"] .settings-section .cell-subtitle { color: #776C8A !important; }
 body[data-theme="sage-lilac"] .xp-tile-num.xp-total { color: #7656A6; /* Total XP number (purple) */ }
 body[data-theme="sage-lilac"] .xp-tile-num.xp-level { color: #6E9160; /* Level number (deep sage) */ }
+
+/* ===== Money tracker: How to use page, account filter, import account picker ===== */
+.mt-steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 10px; font-size: 13px; line-height: 1.5; color: var(--c-text); /* step text */ }
+.mt-steps ul { margin: 6px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.mt-steps .sleep-q-btn { margin-left: 4px; padding: 2px 8px; font-size: 11px; vertical-align: middle; }
+.money-acc-filter { margin: 0 0 12px; }
+.money-colcheck-acc { margin: 6px 0 12px; display: flex; flex-direction: column; gap: 6px; max-width: 360px; }
+.money-colcheck-acc .sleep-label, .money-colcheck-acc .mood-note { margin: 0; }
