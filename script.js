@@ -1121,6 +1121,13 @@ function renderGrid() {
 }
 
 // Key next to the checklist: real sample boxes drawn the same way as the grid, so they always match the theme.
+var legendMin=false;   // key folded down to a small chip (remembered on this device only)
+try { legendMin = localStorage.getItem('habitTrackerLegendMin') === '1'; } catch (e) {}
+function toggleLegend() {
+  legendMin = !legendMin;
+  try { localStorage.setItem('habitTrackerLegendMin', legendMin ? '1' : '0'); } catch (e) {}
+  renderGridLegend();
+}
 function renderGridLegend() {
   var el=document.getElementById('grid-legend'); if(!el)return;
   var todayWeek=0; (function(){ var now=new Date(); if(now.getFullYear()===currentYear&&now.getMonth()+1===currentMonth) todayWeek=Math.min(4,Math.floor((now.getDate()-1)/7)); })();
@@ -1129,13 +1136,25 @@ function renderGridLegend() {
     {label:'To do: scheduled, not done yet', make:function(b){ b.dataset.required='true'; applyBoxVisual(b,0,1,w,false); }},
     {label:'Done', make:function(b){ b.dataset.required='true'; applyBoxVisual(b,1,1,w,false); }},
     {label:'Partly done (e.g. 1 of 2 times)', make:function(b){ b.dataset.required='true'; applyBoxVisual(b,1,2,w,false); }},
-    {label:'Flexible: optional, do it when you can', make:function(b){ b.dataset.required='false'; applyBoxVisual(b,0,1,w,true); }},
+    {label:'Extra credit: done more times than required', make:function(b){ b.dataset.required='true'; applyBoxVisual(b,3,2,w,false); }},
+    {label:'Flexible or "X times a month": do it any day you can', make:function(b){ b.dataset.required='false'; applyBoxVisual(b,0,1,w,true); }},
     {label:'Flexible, done', make:function(b){ b.dataset.required='false'; applyBoxVisual(b,1,1,w,true); }},
     {label:'Rest day: not scheduled (tap for a bonus)', make:function(b){ b.dataset.required='false'; applyBoxVisual(b,0,1,w,true); b.style.opacity='0.3'; }},
     {label:'Bonus: done on a rest day', make:function(b){ b.dataset.required='false'; b.style.display='flex'; b.style.alignItems='center'; b.style.justifyContent='center';
-      b.style.background=base; b.style.color=weekTextColors[w]||'#fff'; b.textContent='\u2713'; b.style.fontSize='11px'; b.style.fontWeight='700'; b.style.border='1.5px dashed '+base; }}
+      b.style.background=base; b.style.color=weekTextColors[w]||'#fff'; b.textContent='✓'; b.style.fontSize='11px'; b.style.fontWeight='700'; b.style.border='1.5px dashed '+base; }},
+    {label:'Schedule changed starting this day', make:function(b){ b.dataset.required='true'; applyBoxVisual(b,0,1,w,false); b.classList.add('sched-change'); }},
+    {label:'Today\'s column (Highlight setting)', cls:'grid-legend-hl-today', make:function(b){ b.style.border='2px solid var(--c-pink)'; b.style.background='color-mix(in srgb, var(--c-pink) 30%, transparent)'; }},
+    {label:'Weekend columns (Highlight setting)', make:function(b){ b.style.border='none'; b.style.background='color-mix(in srgb, var(--c-text-muted) 14%, transparent)'; }}
   ];
-  el.innerHTML='<p class="grid-legend-title">Key</p>';
+  el.classList.toggle('min', legendMin);
+  el.innerHTML='';
+  var head=document.createElement('div'); head.className='grid-legend-head';
+  head.innerHTML='<p class="grid-legend-title">🔑 Key</p>';
+  var btn=document.createElement('button'); btn.type='button'; btn.className='grid-legend-btn';
+  btn.textContent=legendMin?'Show ▸':'Hide ▾'; btn.title=legendMin?'Open the key':'Fold the key away';
+  btn.addEventListener('click', toggleLegend);
+  head.appendChild(btn); el.appendChild(head);
+  if(legendMin) return;
   items.forEach(function(it){
     var row=document.createElement('div'); row.className='grid-legend-row';
     var box=document.createElement('div'); box.className='day-box grid-legend-box';
@@ -1198,6 +1217,7 @@ function applyBoxVisual(box, timesLogged, timesRequired, week, isFlexible) {
       box.style.border='3px solid '+baseColor;
       box.style.boxShadow=isGlowTheme?'0 0 10px '+hexToRgba(baseColor,0.9)+', 0 0 20px '+hexToRgba(baseColor,0.5):'none';
     }
+    if(timesLogged>timesRequired){ box.style.border='3px solid '+bonusColor(); }   // extra credit: did it more times than required
   } else {
     var frac=timesLogged/timesRequired, opacity=0.15+frac*0.6;
     var rgb=hexToRgb(baseColor); var bg=rgb?'rgba('+rgb.r+','+rgb.g+','+rgb.b+','+opacity.toFixed(2)+')':baseColor;
@@ -1942,6 +1962,7 @@ function renderToday() {
     listEl.appendChild(bsub);
     bonusItems.forEach(function(it) { var el = makeTodayItem(it, iso, true); el.classList.add('bonus'); el.title = 'Click to un-log'; listEl.appendChild(el); });
   }
+  renderChests();   // treasure chests on the right of this box and the checklist
 }
 
 function setLocalLog(hid, iso, n) {
@@ -2000,6 +2021,7 @@ function toggleXpMode(on) {
   renderGrid();
   renderWeeklyTasks();
   renderXpRankPanel();
+  renderChests();   // chests show their XP only in XP Mode
 }
 
 // Easy -> Medium -> Hard -> Easy ... (an unranked item starts at Easy)
@@ -2167,7 +2189,9 @@ function computeXp() {
     });
   });
   var tasksXp = taskXpOtherMonths + shown;
-  return { total: total + tasksXp, byCat: byCat, tasksXp: tasksXp };
+  var chestXp = chestEarned().reduce(function (a, c) { return a + CHESTS[c.type].xp; }, 0);   // treasure chests
+  if (chestXp) byCat['Treasure chests'] = chestXp;
+  return { total: total + tasksXp + chestXp, byCat: byCat, tasksXp: tasksXp };
 }
 
 // How many times a habit is required on a given date (0 = not required that day).
@@ -2495,6 +2519,7 @@ function getXpGrowth() {
       perDay[iso] = (perDay[iso] || 0) + Math.min(n, cap) * per;
     });
   });
+  chestEarned().forEach(function (c) { perDay[c.iso] = (perDay[c.iso] || 0) + CHESTS[c.type].xp; });   // treasure chests
   var days = Object.keys(perDay).sort();
   var labels = ['Start'], xp = [0];
   if (days.length) {
@@ -4026,7 +4051,7 @@ function renderPaceChart() {
 // was first opened. Unchecking a habit takes its gold back. Spending is subtracted.
 // ============================================
 var GOLD_VALUES = { easy: 2, medium: 5, hard: 10 };   // gold per completion
-var GOLD_UNRANKED = 1, GOLD_PERFECT_DAY = 5, GOLD_STREAK_7 = 20;
+var GOLD_UNRANKED = 1;   // perfect days and streaks now pay out through the treasure chests (CHESTS)
 var SHOP_TIERS = [
   { k: 'tiny', n: 'Tiny', lo: 15, hi: 25, takes: '1 day' },
   { k: 'small', n: 'Small', lo: 50, hi: 80, takes: '3 days' },
@@ -4115,22 +4140,14 @@ function computeGold() {
     var gv = GOLD_VALUES[r.difficulty] || 0;
     if (wk >= start && gv) { earned += gv; tasks.count++; tasks.gold += gv; addDay(wk, gv); }
   });
-  // 3) Perfect days (+5) and every 7 perfect days in a row (+20).
-  var p0 = start.split('-'), d = new Date(+p0[0], +p0[1] - 1, +p0[2]), end = new Date(), run = 0, perfect = 0;
-  end.setHours(0, 0, 0, 0);
-  for (; d <= end; d.setDate(d.getDate() + 1)) {
-    var iso = localISO(d), need = 0, met = true;
-    RAW_HABITS.forEach(function (h) {
-      if (isHardOptional(h)) return;   // with "Hard habits optional" on, hard habits don't block a perfect day
-      var r = habitRequiredOn(h, d.getFullYear(), d.getMonth() + 1, d.getDate());
-      if (!r) return;
-      need++;
-      if (((allTimeLogs[String(h.id)] || {})[iso] || 0) < r) met = false;
-    });
-    if (!need) continue;
-    if (met) { perfect++; earned += GOLD_PERFECT_DAY; addDay(iso, GOLD_PERFECT_DAY); run++; if (run % 7 === 0) { earned += GOLD_STREAK_7; streaks++; addDay(iso, GOLD_STREAK_7); } }
-    else if (iso !== today) run = 0;
-  }
+  // 3) Treasure chests (daily, 7-day streak, week, month). Past ones count automatically; today's count once you open them.
+  var chestCount = { day: 0, streak: 0, week: 0, month: 0 }, perfect = 0;
+  chestEarned().forEach(function (c) {
+    if (c.iso < start) return;
+    var g = CHESTS[c.type].gold;
+    earned += g; chestCount[c.type]++; addDay(c.iso, g);
+  });
+  perfect = chestCount.day; streaks = chestCount.streak;
   var spent = shopPurchases.reduce(function (a, p) { return a + Number(p.price); }, 0);
   var daySpend = {};
   shopPurchases.forEach(function (p) {
@@ -4138,7 +4155,144 @@ function computeGold() {
     if (iso < start) iso = start; if (iso > today) iso = today;
     daySpend[iso] = (daySpend[iso] || 0) + Number(p.price);
   });
-  return { start: start, earned: earned, spent: spent, balance: earned - spent, perfect: perfect, byHabit: byHabit, tasks: tasks, streaks: streaks, dayEarn: dayEarn, daySpend: daySpend };
+  return { start: start, earned: earned, spent: spent, balance: earned - spent, perfect: perfect, byHabit: byHabit, tasks: tasks, streaks: streaks, chests: chestCount, dayEarn: dayEarn, daySpend: daySpend };
+}
+
+// ============================================
+// TREASURE CHESTS
+// Nothing is stored except which of today's chests you opened (chest_open in your account).
+// Everything else is worked out from your check-ins, so unchecking a habit locks the chest again.
+//   Daily chest   – every required habit done today            +10 G (+15 XP in XP Mode)
+//   7-day streak  – every 7th perfect day in a row              +50 G (+50 XP)
+//   Week chest    – a week block (days 1–7, 8–14 …) hits 100%   +25 G (+40 XP)
+//   Month chest   – the whole month hits 100%                   +100 G (+150 XP)
+// Chests from past days pay out on their own. Today's chest pays out when you tap it open.
+// ============================================
+var CHESTS = {
+  day:    { name: 'Daily chest',  gold: 10,  xp: 15 },
+  streak: { name: '7-day streak', gold: 50,  xp: 50 },
+  week:   { name: 'Week chest',   gold: 25,  xp: 40 },
+  month:  { name: 'Month chest',  gold: 100, xp: 150 }
+};
+var CHEST_SIDES = { today: ['day', 'streak'], month: ['week', 'month'] };
+
+function chestOpened() { var m = currentUser && currentUser.user_metadata; return (m && m.chest_open) || {}; }
+
+// Required habits on one date: how many are due and whether all are done.
+function chestDay(dt) {
+  var iso = localISO(dt), y = dt.getFullYear(), m = dt.getMonth() + 1, d = dt.getDate(), need = 0, met = true;
+  RAW_HABITS.forEach(function (h) {
+    if (isHardOptional(h)) return;   // "Hard habits optional" on: hard habits don't block a chest
+    var created = h.created_at ? localISO(new Date(h.created_at)) : '';
+    if (created && iso < created) return;
+    var r = habitRequiredOn(h, y, m, d);
+    if (!r) return;
+    need++;
+    if (((allTimeLogs[String(h.id)] || {})[iso] || 0) < r) met = false;
+  });
+  return { iso: iso, need: need, met: need > 0 && met };
+}
+
+// Every chest earned from your first check-in up to today, plus where today's chests stand.
+function chestScan() {
+  var first = null;
+  allHabits().forEach(function (h) { Object.keys(allTimeLogs[String(h.id)] || {}).forEach(function (iso) { if ((allTimeLogs[String(h.id)][iso] || 0) > 0 && (!first || iso < first)) first = iso; }); });
+  var now = new Date(); now.setHours(0, 0, 0, 0);
+  var today = localISO(now), list = [], run = 0, todayInfo = null, blk = null, mon = null;
+  if (!first) first = today;
+  var p = first.split('-'), dt = new Date(+p[0], +p[1] - 1, 1);   // start at the 1st so week/month blocks are whole
+  for (; dt <= now; dt.setDate(dt.getDate() + 1)) {
+    var y = dt.getFullYear(), m = dt.getMonth() + 1, d = dt.getDate(), dim = new Date(y, m, 0).getDate();
+    var info = chestDay(dt), iso = info.iso;
+    if (d === 1) mon = { ok: true, need: 0 };
+    if ((d - 1) % 7 === 0) blk = { ok: true, need: 0 };
+    if (info.need) { blk.need++; mon.need++; if (!info.met) { blk.ok = false; mon.ok = false; } }
+    if (info.met) { if (iso >= first) list.push({ type: 'day', iso: iso }); run++; if (run % 7 === 0) list.push({ type: 'streak', iso: iso }); }
+    else if (info.need && iso !== today) run = 0;
+    var blkEnd = Math.min(d - ((d - 1) % 7) + 6, dim);
+    if (d === blkEnd && blk.ok && blk.need) list.push({ type: 'week', iso: iso });
+    if (d === dim && mon.ok && mon.need) list.push({ type: 'month', iso: iso });
+    if (iso === today) todayInfo = info;
+  }
+  return { list: list, today: today, todayInfo: todayInfo, run: run };
+}
+
+// Chests that pay out: anything before today, and today's only once opened.
+function chestEarned(scan) {
+  scan = scan || chestScan();
+  var open = chestOpened();
+  return scan.list.filter(function (c) { return c.iso < scan.today || open[c.type] === c.iso; });
+}
+
+// Percent of the required check-ins done between two days of a month (future days count as not done yet).
+function chestPct(y, m, d1, d2) {
+  var req = 0, got = 0;
+  RAW_HABITS.forEach(function (h) {
+    if (isHardOptional(h)) return;
+    for (var d = d1; d <= d2; d++) {
+      var r = habitRequiredOn(h, y, m, d); if (!r) continue;
+      var iso = y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+      req += r; got += Math.min(((allTimeLogs[String(h.id)] || {})[iso]) || 0, r);
+    }
+  });
+  return req ? Math.floor(got / req * 100) : 0;
+}
+
+function chestSvg() {
+  return '<svg viewBox="0 0 70 58" aria-hidden="true"><ellipse class="chest-glow" cx="35" cy="26" rx="26" ry="12"/>' +
+    '<rect class="chest-wood" x="8" y="26" width="54" height="28" rx="3"/><rect class="chest-band" x="8" y="34" width="54" height="5"/>' +
+    '<rect class="chest-lock" x="31" y="31" width="8" height="11" rx="1.5"/>' +
+    '<g class="chest-lid"><path class="chest-lid-wood" d="M8 26 V18 Q35 4 62 18 V26 Z"/><path class="chest-lid-band" d="M8 22 Q35 9 62 22"/></g></svg>';
+}
+
+function renderChests() {
+  var sides = { today: document.getElementById('chests-today'), month: document.getElementById('chests-month') };
+  if (!sides.today && !sides.month) return;
+  if (!currentUser) return;
+  var scan = chestScan(), open = chestOpened(), today = scan.today, now = new Date();
+  var y = now.getFullYear(), m = now.getMonth() + 1, d = now.getDate(), dim = new Date(y, m, 0).getDate();
+  var ws = d - ((d - 1) % 7), we = Math.min(ws + 6, dim);
+  var earnedToday = {}; scan.list.forEach(function (c) { if (c.iso === today) earnedToday[c.type] = true; });
+  var ti = scan.todayInfo || { need: 0, met: false }, doneToday = 0;
+  if (ti.need) RAW_HABITS.forEach(function (h) { if (isHardOptional(h)) return; var r = habitRequiredOn(h, y, m, d); if (r && (((allTimeLogs[String(h.id)] || {})[today]) || 0) >= r) doneToday++; });
+  var status = {
+    day: ti.need ? doneToday + ' / ' + ti.need + ' done' : 'nothing due today',
+    streak: 'day ' + (scan.run % 7 || (earnedToday.streak ? 7 : 0)) + ' of 7',
+    week: chestPct(y, m, ws, we) + '% this week',
+    month: chestPct(y, m, 1, dim) + '% this month'
+  };
+  Object.keys(CHEST_SIDES).forEach(function (side) {
+    var el = sides[side]; if (!el) return;
+    el.innerHTML = '';
+    CHEST_SIDES[side].forEach(function (type) {
+      var c = CHESTS[type], state = !earnedToday[type] ? 'locked' : open[type] === today ? 'open' : 'ready';
+      var reward = '+' + c.gold + ' G' + (xpMode ? ' · +' + c.xp + ' XP' : '');
+      var box = document.createElement('div');
+      box.className = 'chest chest-' + state;
+      box.title = c.name + ': ' + reward + (type === 'day' ? ' when every required habit is done today' : type === 'streak' ? ' every 7th perfect day in a row' : type === 'week' ? ' when this week block reaches 100%' : ' when the whole month reaches 100%');
+      box.innerHTML = chestSvg() + '<div class="chest-name">' + c.name + '</div><div class="chest-status">' +
+        (state === 'ready' ? 'tap to open!' : state === 'open' ? reward + ' ✓' : status[type]) + '</div>';
+      if (state === 'ready') { box.setAttribute('role', 'button'); box.tabIndex = 0; box.addEventListener('click', function () { openChest(type, box); }); }
+      el.appendChild(box);
+    });
+  });
+}
+
+function openChest(type, box) {
+  var today = localISO(new Date()), open = Object.assign({}, chestOpened()), c = CHESTS[type];
+  open[type] = today;
+  savePref({ chest_open: open });
+  box.className = 'chest chest-open';
+  for (var i = 0; i < 12; i++) {   // coins fly out of the chest
+    var coin = document.createElement('i');
+    coin.className = 'chest-coin';
+    coin.style.setProperty('--dx', (Math.random() * 90 - 45) + 'px');
+    coin.style.setProperty('--dy', (-30 - Math.random() * 40) + 'px');
+    coin.style.animationDelay = (i * 0.03) + 's';
+    box.appendChild(coin);
+  }
+  victory('big', c.name + '! +' + c.gold + ' G' + (xpMode ? ' +' + c.xp + ' XP' : ''));
+  setTimeout(function () { renderChests(); renderXpStats(); }, 1100);
 }
 
 // "Gold over time" line: starts at 0 on your first day; each point is your balance at the END of that day
@@ -4182,8 +4336,7 @@ function renderGoldBreakdown(g) {
   if (!g.byHabit.length && !g.tasks.count && !g.perfect) h += '<p class="gold-bd-empty">Nothing earned yet. Check off a habit!</p>';
   g.byHabit.forEach(function (b) { h += row(moneyEsc(b.name), b.count + ' × ' + b.per + ' G', '+' + b.gold + ' G'); });
   if (g.tasks.count) h += row('Weekly tasks', g.tasks.count + ' done', '+' + g.tasks.gold + ' G');
-  if (g.perfect) h += row('Perfect days', g.perfect + ' × ' + GOLD_PERFECT_DAY + ' G', '+' + g.perfect * GOLD_PERFECT_DAY + ' G');
-  if (g.streaks) h += row('7-day streak bonus', g.streaks + ' × ' + GOLD_STREAK_7 + ' G', '+' + g.streaks * GOLD_STREAK_7 + ' G');
+  ['day', 'streak', 'week', 'month'].forEach(function (t) { var n = g.chests[t]; if (n) h += row(CHESTS[t].name + 's', n + ' × ' + CHESTS[t].gold + ' G', '+' + n * CHESTS[t].gold + ' G'); });
   h += row('Earned', '', g.earned + ' G', 'gold-total');
   if (g.spent) h += row('Spent in shop', '', '−' + g.spent + ' G');
   h += row('Balance', '', g.balance + ' G', 'gold-total');
