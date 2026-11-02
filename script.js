@@ -598,7 +598,42 @@ async function loadAndRender() {
 // COLOR HELPERS
 // ============================================
 function getThemeColor(varName) { return getComputedStyle(document.body).getPropertyValue(varName).trim(); }
-function getCheckboxSymbol(symbolType) { var varName='--checkbox-'+symbolType; var value=getComputedStyle(document.body).getPropertyValue(varName).trim(); return value.replace(/['"]/g,''); }
+function getCheckboxSymbol(symbolType) {
+  var own = symOverride()[SYM_KEYS[symbolType]];   // your own symbol for this theme (Key → Edit), if you set one
+  if (typeof own === 'string') return own;
+  return themeCheckboxSymbol(symbolType);
+}
+function themeCheckboxSymbol(symbolType) { var varName='--checkbox-'+symbolType; var value=getComputedStyle(document.body).getPropertyValue(varName).trim(); return value.replace(/['"]/g,''); }
+
+// ---- Your own checkbox symbols, saved per theme in your account (checkbox_syms: { theme: { todo, done, flex } }) ----
+var SYM_KEYS = { 'required-empty': 'todo', 'required-done': 'done', 'flexible-empty': 'flex' };
+function symTheme() { return document.body.getAttribute('data-theme') || 'vaporwave'; }
+function symAll() { var m = currentUser && currentUser.user_metadata; return (m && m.checkbox_syms) || {}; }
+function symOverride() { return symAll()[symTheme()] || {}; }
+// Keeps at most 2 characters (an emoji like ❤️ or 🕸️ counts as one).
+function symClean(v) {
+  v = String(v || '').trim();
+  try { if (window.Intl && Intl.Segmenter) return Array.from(new Intl.Segmenter().segment(v)).slice(0, 2).map(function (x) { return x.segment; }).join(''); } catch (e) {}
+  return Array.from(v).slice(0, 2).join('');
+}
+function symSet(key, val) {
+  var all = JSON.parse(JSON.stringify(symAll())), th = symTheme();
+  all[th] = all[th] || {};
+  all[th][key] = symClean(val);
+  savePref({ checkbox_syms: all });
+  symRefresh();
+}
+function symReset() {
+  var all = JSON.parse(JSON.stringify(symAll()));
+  delete all[symTheme()];
+  savePref({ checkbox_syms: all });
+  symRefresh(true);
+}
+var legendSkip = false;
+function symRefresh(fillInputs) {
+  legendSkip = true; try { renderGrid(); } finally { legendSkip = false; }   // redraw the checklist without rebuilding the editor you're typing in
+  renderGridLegend(fillInputs);
+}
 var HABIT_COLOR_CONFIG = {
   vaporwave:  { mode:'hsl-band', baseHue:0, hueRange:360, sat:80, light:62 },
   vaporwave2: { mode:'hsl-band', baseHue:180, hueRange:160, sat:85, light:55 },
@@ -1117,7 +1152,7 @@ function renderGrid() {
     ec.colSpan=DAYS_IN_MONTH+2; ec.className='grid-empty'; ec.textContent='No habits with this rank yet.';
     er.appendChild(ec); table.appendChild(er);
   }
-  renderGridLegend();
+  if(!legendSkip) renderGridLegend();
 }
 
 // Key next to the checklist: real sample boxes drawn the same way as the grid, so they always match the theme.
@@ -1128,6 +1163,61 @@ function toggleLegend() {
   try { localStorage.setItem('habitTrackerLegendMin', legendMin ? '1' : '0'); } catch (e) {}
   renderGridLegend();
 }
+var legendEditing=false;   // the "Edit symbols" panel in the key is open
+var SYM_PALETTE = { 'Marks': '✓ ✔ ✗ ✘ ★ ☆ ✦ ✧ ◆ ◇ ● ○ ■ □ ♥ ♡ ✿ ❀ ☾ ☀ ⚡ ? ! ·', 'Hearts & sparkle': '❤️ 🩷 💜 🖤 🤍 💖 ✨ 🌟 💫 ⭐',
+  'Cute': '🎀 🌸 🌷 🍓 🍒 🦋 🐾 👻 💀 🕸️', 'Nature': '🌿 🍀 🌙 🔥 💧 🌈 🍄 🌻', 'Done': '✅ ☑️ 🟢 💿 🏆 👑 💎 🎯' };
+var symPickFor = 'done';
+function toggleLegendEdit() { legendEditing = !legendEditing; renderGridLegend(true); }
+
+// The editor is built once and kept, so typing in it is never interrupted when the checklist redraws.
+function legendEditor(w) {
+  var ed = document.getElementById('grid-legend-ed');
+  if (!ed) {
+    ed = document.createElement('div'); ed.id = 'grid-legend-ed'; ed.className = 'grid-legend-ed';
+    var rows = [['todo', 'To do'], ['done', 'Done'], ['flex', 'Flexible']];
+    ed.innerHTML = '<p class="grid-legend-ed-title">Symbols for this theme</p>' + rows.map(function (r) {
+      return '<div class="grid-legend-erow"><div class="day-box grid-legend-box" data-sym-box="' + r[0] + '"></div><span>' + r[1] + '</span>' +
+        '<input type="text" class="grid-legend-sym" data-sym-in="' + r[0] + '" aria-label="' + r[1] + ' symbol" autocomplete="off">' +
+        '<button type="button" class="grid-legend-pick" data-sym-pick="' + r[0] + '" title="Pick an emoji">😀</button></div>';
+    }).join('') +
+      '<div class="grid-legend-pal" id="grid-legend-pal" style="display:none">' + Object.keys(SYM_PALETTE).map(function (k) {
+        return '<p>' + k + '</p><div>' + SYM_PALETTE[k].split(' ').map(function (e) { return '<button type="button">' + e + '</button>'; }).join('') + '</div>';
+      }).join('') + '</div>' +
+      '<p class="grid-legend-tip">Type or paste any symbol or emoji, or tap 😀 to pick one. Leave a box empty for a blank box.</p><p class="grid-legend-saved" id="grid-legend-saved"></p>';
+    ed.querySelectorAll('[data-sym-in]').forEach(function (inp) {
+      inp.addEventListener('input', function () { symSet(inp.dataset.symIn, inp.value); symSaved(); });
+      inp.addEventListener('blur', function () { inp.value = symClean(inp.value); });
+    });
+    var pal = ed.querySelector('#grid-legend-pal');
+    ed.querySelectorAll('[data-sym-pick]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var same = symPickFor === b.dataset.symPick && pal.style.display !== 'none';
+        symPickFor = b.dataset.symPick; pal.style.display = same ? 'none' : '';
+      });
+    });
+    pal.addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      symSet(symPickFor, b.textContent); symSaved();
+      var inp = ed.querySelector('[data-sym-in="' + symPickFor + '"]'); if (inp) inp.value = symClean(b.textContent);
+      pal.style.display = 'none';
+    });
+  }
+  // Sample boxes and boxes' values (values only when you're not typing in that box)
+  var make = { todo: function (b) { b.dataset.required = 'true'; applyBoxVisual(b, 0, 1, w, false); },
+    done: function (b) { b.dataset.required = 'true'; applyBoxVisual(b, 1, 1, w, false); },
+    flex: function (b) { b.dataset.required = 'false'; applyBoxVisual(b, 0, 1, w, true); } };
+  ed.querySelectorAll('[data-sym-box]').forEach(function (b) { applyCheckboxThemeStyle(b, b.dataset.symBox === 'flex'); make[b.dataset.symBox](b); b.removeAttribute('data-tip'); });
+  var names = { todo: 'required-empty', done: 'required-done', flex: 'flexible-empty' };
+  ed.querySelectorAll('[data-sym-in]').forEach(function (inp) { if (document.activeElement !== inp) inp.value = getCheckboxSymbol(names[inp.dataset.symIn]); inp.placeholder = 'blank'; });
+  return ed;
+}
+var symSavedTimer = null;
+function symSaved() {
+  var el = document.getElementById('grid-legend-saved'); if (!el) return;
+  el.textContent = 'Saved for this theme ✓';
+  clearTimeout(symSavedTimer); symSavedTimer = setTimeout(function () { el.textContent = ''; }, 1500);
+}
+
 function renderGridLegend() {
   var el=document.getElementById('grid-legend'); if(!el)return;
   var todayWeek=0; (function(){ var now=new Date(); if(now.getFullYear()===currentYear&&now.getMonth()+1===currentMonth) todayWeek=Math.min(4,Math.floor((now.getDate()-1)/7)); })();
@@ -1147,23 +1237,31 @@ function renderGridLegend() {
     {label:'Weekend columns (Highlight setting)', make:function(b){ b.style.border='none'; b.style.background='color-mix(in srgb, var(--c-text-muted) 14%, transparent)'; }}
   ];
   el.classList.toggle('min', legendMin);
-  el.innerHTML='';
+  var ed=document.getElementById('grid-legend-ed');
+  Array.from(el.childNodes).forEach(function(n){ if(n!==ed) el.removeChild(n); });   // keep the symbol editor (and whatever you're typing)
   var head=document.createElement('div'); head.className='grid-legend-head';
   head.innerHTML='<p class="grid-legend-title">🔑 Key</p>';
-  var btn=document.createElement('button'); btn.type='button'; btn.className='grid-legend-btn';
-  btn.textContent=legendMin?'Show ▸':'Hide ▾'; btn.title=legendMin?'Open the key':'Fold the key away';
-  btn.addEventListener('click', toggleLegend);
-  head.appendChild(btn); el.appendChild(head);
-  if(legendMin) return;
+  var btns=document.createElement('span'); btns.className='grid-legend-btns';
+  function addBtn(text,title,fn){ var b=document.createElement('button'); b.type='button'; b.className='grid-legend-btn'; b.textContent=text; b.title=title; b.addEventListener('click',fn); btns.appendChild(b); }
+  if(!legendMin){
+    addBtn(legendEditing?'✓ Done editing':'✏️ Edit', 'Change the symbols in the boxes for this theme', toggleLegendEdit);
+    addBtn('↺ Default', 'Go back to this theme\'s own symbols', function(){ symReset(); symSaved(); });
+  }
+  addBtn(legendMin?'Show ▸':'Hide ▾', legendMin?'Open the key':'Fold the key away', toggleLegend);
+  head.appendChild(btns);
+  el.insertBefore(head, ed||null);
+  if(legendMin){ if(ed) ed.style.display='none'; return; }
   items.forEach(function(it){
     var row=document.createElement('div'); row.className='grid-legend-row';
     var box=document.createElement('div'); box.className='day-box grid-legend-box';
     applyCheckboxThemeStyle(box, false); it.make(box); box.removeAttribute('data-tip');
     var lab=document.createElement('span'); lab.textContent=it.label;
-    row.appendChild(box); row.appendChild(lab); el.appendChild(row);
+    row.appendChild(box); row.appendChild(lab); el.insertBefore(row, ed||null);
   });
   var tip=document.createElement('p'); tip.className='grid-legend-tip'; tip.textContent='Tap a box to add a tick. Click again to take one tick away.';
-  el.appendChild(tip);
+  el.insertBefore(tip, ed||null);
+  if(legendEditing){ ed=legendEditor(w); if(ed.parentNode!==el) el.appendChild(ed); ed.style.display=''; }   // don't move it if it's already there (moving it would end your typing)
+  else if(ed) ed.style.display='none';
 }
 
 function applyCheckboxThemeStyle(box, isFlexible) {

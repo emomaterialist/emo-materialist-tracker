@@ -988,6 +988,23 @@ button.settings-btn:active { transform: translateY(0); }
 .grid-legend-btn { padding: 1px 7px; border: 1px solid var(--c-text-muted); /* button outline */ border-radius: var(--radius-sm); background: transparent; color: var(--c-text); /* button text */ font: inherit; font-size: 10px; cursor: pointer; height: auto; min-height: 0; }
 .grid-legend-head + .grid-legend-row { margin-top: 6px; }
 .grid-legend.min { padding: 5px 8px; }
+.grid-legend-head { flex-wrap: wrap; }
+.grid-legend-head .grid-legend-title { white-space: nowrap; }
+.grid-legend-btns { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; margin-left: auto; }
+.grid-legend-sym::placeholder { font-size: 10px; color: var(--c-text-muted); /* "blank" hint in an empty box */ }
+/* Key → Edit: your own symbols for this theme */
+.grid-legend-ed { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--c-text-muted); /* line above the editor */ }
+.grid-legend-ed-title { margin: 0 0 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--c-text); /* "Symbols for this theme" */ }
+.grid-legend-erow { display: grid; grid-template-columns: auto 1fr 46px 30px; align-items: center; gap: 6px; margin-top: 6px; }
+.grid-legend-sym { width: 100%; height: 28px; box-sizing: border-box; padding: 0; text-align: center; font-size: 15px; font-family: inherit;
+  color: var(--c-text); /* symbol you typed */ background: var(--c-body-bg); /* type-in box */ border: 1.5px solid var(--c-pink); /* type-in box outline */ border-radius: var(--radius-sm); }
+.grid-legend-pick { height: 28px; min-height: 0; padding: 0; font-size: 15px; cursor: pointer; background: var(--c-body-bg); /* emoji button */ border: 1.5px solid var(--c-text-muted); /* emoji button outline */ border-radius: var(--radius-sm); }
+.grid-legend-pal { margin-top: 6px; padding: 6px; background: var(--c-body-bg); /* picker background */ border: 1px solid var(--c-text-muted); /* picker outline */ border-radius: var(--radius-sm); }
+.grid-legend-pal p { margin: 4px 0 2px; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--c-text-muted); /* picker group names */ }
+.grid-legend-pal div { display: flex; flex-wrap: wrap; gap: 2px; }
+.grid-legend-pal button { width: 26px; height: 26px; min-height: 0; padding: 0; font-size: 15px; cursor: pointer; background: none; border: 1px solid transparent; border-radius: var(--radius-sm); color: var(--c-text); /* plain symbols like ★ */ }
+.grid-legend-pal button:hover { border-color: var(--c-pink); /* hovered symbol outline */ }
+.grid-legend-saved { min-height: 12px; margin: 2px 0 0; font-size: 10px; color: var(--c-text-muted); /* "Saved for this theme" */ }
 
 /* ===== Treasure chests (right side of Today's box and the checklist) ===== */
 .today-body.chest-host { flex-direction: row; align-items: stretch; gap: 14px; }
