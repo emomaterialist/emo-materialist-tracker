@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Monsieur+La+Doulaise&family=Sacramento&family=Roboto+Mono:wght@400;600;700&family=Nunito:wght@400;600;700&family=Great+Vibes&family=Cormorant+Garamond:wght@500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=Press+Start+2P&family=Pixelify+Sans:wght@400;600;700&family=UnifrakturMaguntia&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-<script src="script.js?v=20261101a" defer></script>
+<script src="script.js?v=20261115a" defer></script>
 </head>
 <body data-theme="vaporwave">
 
@@ -33,11 +33,20 @@
         <div id="login-msg" class="auth-msg"></div>
       </div>
       <div id="form-signup" style="display:none;">
-        <div class="field-group"><label>Purchase Code</label><input type="text" id="signup-code" placeholder="" style="text-transform:uppercase;"></div>
+        <p style="font-size:11px;color:var(--c-text-muted);margin:0 0 10px;">Create your account first. After you log in, you will enter your Etsy Order number to unlock the tracker.</p>
         <div class="field-group"><label>Email</label><input type="email" id="signup-email" placeholder="your@email.com"></div>
         <div class="field-group"><label>Password</label><input type="password" id="signup-password" placeholder="at least 6 characters"></div>
         <button class="auth-btn" onclick="handleSignup()">Create Account</button>
         <div id="signup-msg" class="auth-msg"></div>
+      </div>
+      <div id="form-unlock" style="display:none;">
+        <p style="font-size:12px;margin:0 0 10px;">Logged in as <strong id="unlock-who"></strong>. Enter your Etsy order details to unlock the tracker.</p>
+        <div class="field-group"><label>Etsy Order number</label><input type="text" id="unlock-order" inputmode="numeric" placeholder="e.g. 1234567890"></div>
+        <div class="field-group"><label>Email on your Etsy order</label><input type="email" id="unlock-email" placeholder="your@email.com"></div>
+        <button class="auth-btn" onclick="handleUnlock()">Unlock</button>
+        <button type="button" style="width:100%;padding:6px;background:none;border:none;color:var(--c-text-muted);cursor:pointer;font-size:11px;margin-top:8px;text-decoration:underline;" onclick="handleLogout()">Log out</button>
+        <div id="unlock-msg" class="auth-msg"></div>
+        <p style="font-size:11px;color:var(--c-text-muted);margin:8px 0 0;">Find the Order number in your Etsy purchase email or on your Etsy Purchases page. Just bought it? It can take up to 10 minutes to appear.</p>
       </div>
       <div style="text-align:center;padding:12px;font-size:11px;color:var(--c-text-muted);">
       Continued use means you agree to the <a href="#" id="terms-link" style="text-decoration:underline;color:var(--c-pink);cursor:pointer;">Terms and Conditions</a>

@@ -91,24 +91,50 @@ async function handleForgotPassword() {
   if (error) return showMsg('login-msg','Error: ' + error.message,'error');
   showMsg('login-msg','✅ Check your email for the reset link!','success');
 }
+var PRODUCT_ID = 'habit-tracker';   // which Etsy product this app unlocks (matches the Apps Script PRODUCTS list)
+
 async function handleSignup() {
-  var code = document.getElementById('signup-code').value.trim().toUpperCase();
   var email = document.getElementById('signup-email').value.trim();
   var pass = document.getElementById('signup-password').value;
-  if (!code||!email||!pass) return showMsg('signup-msg','Please fill in all fields.','error');
-  showMsg('signup-msg','Checking your code...','info');
-  var { data: codeRows } = await sb.from('codes').select('*').eq('code', code);
-  if (!codeRows||codeRows.length===0) return showMsg('signup-msg',"That code doesn't exist.",'error');
-  if (codeRows[0].is_redeemed) return showMsg('signup-msg','That code has already been used.','error');
+  if (!email||!pass) return showMsg('signup-msg','Please fill in all fields.','error');
+  showMsg('signup-msg','Creating your account...','info');
   var { data, error } = await sb.auth.signUp({ email, password: pass });
   if (error) return showMsg('signup-msg', error.message, 'error');
-  await sb.from('codes').update({ is_redeemed: true, redeemed_by: data.user.id, redeemed_at: new Date().toISOString() }).eq('code', code);
-  showMsg('signup-msg','Account created! Check your email to confirm, then log in.','success');
+  if (data && data.session) { currentUser = data.user; return onLoggedIn(); }   // email confirmation is off: already logged in
+  showMsg('signup-msg','Account created! Check your email to confirm, then log in. You will enter your Etsy Order number after you log in.','success');
+}
+
+function showUnlock() {
+  document.getElementById('tracker-screen').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.querySelector('.auth-tabs').style.display = 'none';
+  document.getElementById('form-login').style.display = 'none';
+  document.getElementById('form-signup').style.display = 'none';
+  document.getElementById('form-unlock').style.display = 'block';
+  document.getElementById('unlock-who').textContent = currentUser ? currentUser.email : '';
+}
+function hideUnlock() {
+  document.querySelector('.auth-tabs').style.display = '';
+  document.getElementById('form-unlock').style.display = 'none';
+  showTab('login');
+}
+async function handleUnlock() {
+  var order = document.getElementById('unlock-order').value.replace(/\D/g, '');   // keep digits only, so "#123" works too
+  var email = document.getElementById('unlock-email').value.trim();
+  if (!order || !email) return showMsg('unlock-msg','Please fill in both fields.','error');
+  showMsg('unlock-msg','Checking your order...','info');
+  var res = await sb.rpc('claim_order', { p_order_number: order, p_email: email, p_product: PRODUCT_ID });
+  if (res.error) return showMsg('unlock-msg',"Couldn't check your order. Check your connection and try again.",'error');
+  if (res.data !== true) return showMsg('unlock-msg',"Couldn't verify that order. Use the Order number and the email from your Etsy order. Just bought it? Wait up to 10 minutes and try again.",'error');
+  showMsg('unlock-msg','Unlocked!','success');
+  hideUnlock();
+  enterApp();
 }
 async function handleLogout() {
   await sb.auth.signOut({ scope: 'local' }); currentUser = null;   // 'local' = only this device; your other devices stay logged in
   document.getElementById('tracker-screen').style.display = 'none';
   document.getElementById('auth-screen').style.display = 'flex';
+  hideUnlock();
   toggleSettings(false);
 }
 async function checkSession() {
@@ -151,7 +177,18 @@ function initEmojiPicker() {
   });
 }
 
-function onLoggedIn() {
+async function onLoggedIn() {
+  // Only accounts with a claimed Etsy order get into the tracker; everyone else sees the unlock form.
+  var res = await sb.rpc('has_access', { p_product: PRODUCT_ID });
+  if (res.error) {
+    document.getElementById('auth-screen').style.display = 'flex';
+    showMsg('login-msg',"Couldn't check your account. Check your connection and try again.",'error');
+    return;
+  }
+  if (res.data === true) { hideUnlock(); enterApp(); } else { showUnlock(); }
+}
+
+function enterApp() {
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('tracker-screen').style.display = 'block';
   document.getElementById('settings-email').textContent = currentUser.email;
