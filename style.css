@@ -2652,6 +2652,7 @@ body[data-theme="dark-romantic"] { --shop-gold: #FFD45E; /* gold amounts (bright
 body[data-theme="dark-romantic"] { --xp-accel-color: #FF6F8E; /* XP" dashed line in "XP speed and acceleration" (bright pinkish red) */ }
 body[data-theme="dark-romantic"] .money-import-sim { border-color: #C9A0DC; /* dashed outline around the similar list (light lavender) */ }
 body[data-theme="dark-romantic"] { --bonus-color: #F2A65A; /* bonus check-ins: striped bars, trend dots, extra-credit ring (warm amber, readable on dark) */ }
+body[data-theme="dark-romantic"] .xp-stat-val { color: #FF6F8E; /* "Lv · XP" numbers in the Stats list (bright pinkish red, readable on dark) */ }
 
 /* ---- THEME: Coquette Bows 🎀 (cream paper, baby pink, rose, double-line frames) ---- */
 body[data-theme="coquette"] {
