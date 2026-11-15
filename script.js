@@ -2045,13 +2045,51 @@ function makeTodayItem(it, iso, optional) {
   return label;
 }
 
+// ---- Day picker for Today's box: arrows step one day, dropdowns jump to any date. null = today. ----
+var todayViewISO = null;
+function todayShownDate() { if (!todayViewISO) return new Date(); var p = todayViewISO.split('-'); return new Date(+p[0], +p[1] - 1, +p[2], 12); }
+function setTodayView(dt) {
+  var iso = localISO(dt);
+  todayViewISO = iso === localISO(new Date()) ? null : iso;
+  renderToday();
+}
+function stepTodayView(n) { var d = todayShownDate(); d.setDate(d.getDate() + n); setTodayView(d); }
+function renderTodayNav(now) {
+  var nav = document.getElementById('today-nav'); if (!nav) return;
+  var y = now.getFullYear(), m = now.getMonth(), d = now.getDate(), dim = new Date(y, m + 1, 0).getDate();
+  var thisYear = new Date().getFullYear(), firstYear = thisYear;
+  allHabits().forEach(function (h) { Object.keys(allTimeLogs[String(h.id)] || {}).forEach(function (iso) { var yy = +iso.slice(0, 4); if (yy && yy < firstYear) firstYear = yy; }); });
+  var opt = function (v, label, sel) { return '<option value="' + v + '"' + (sel ? ' selected' : '') + '>' + label + '</option>'; };
+  var months = '', days = '', years = '';
+  for (var i = 0; i < 12; i++) months += opt(i, new Date(2000, i, 1).toLocaleDateString('en-US', { month: 'short' }), i === m);
+  for (var j = 1; j <= dim; j++) days += opt(j, j, j === d);
+  for (var k = firstYear; k <= thisYear + 1; k++) years += opt(k, k, k === y);
+  nav.innerHTML = '<button type="button" class="today-nav-btn" data-step="-1" title="Previous day">◀</button>' +
+    '<select class="today-nav-sel" data-part="m" aria-label="Month">' + months + '</select>' +
+    '<select class="today-nav-sel" data-part="d" aria-label="Day">' + days + '</select>' +
+    '<select class="today-nav-sel" data-part="y" aria-label="Year">' + years + '</select>' +
+    '<button type="button" class="today-nav-btn" data-step="1" title="Next day">▶</button>' +
+    (todayViewISO ? '<button type="button" class="today-nav-btn today-nav-back" title="Back to today">↺ Today</button>' : '');
+  nav.querySelectorAll('[data-step]').forEach(function (b) { b.onclick = function () { stepTodayView(+b.dataset.step); }; });
+  var back = nav.querySelector('.today-nav-back'); if (back) back.onclick = function () { setTodayView(new Date()); };
+  nav.querySelectorAll('select').forEach(function (sel) {
+    sel.onchange = function () {
+      var mm = +nav.querySelector('[data-part="m"]').value, yy = +nav.querySelector('[data-part="y"]').value, dd = +nav.querySelector('[data-part="d"]').value;
+      dd = Math.min(dd, new Date(yy, mm + 1, 0).getDate());   // e.g. Mar 31 → Feb 28
+      setTodayView(new Date(yy, mm, dd, 12));
+    };
+  });
+}
+
 function renderToday() {
   var listEl = document.getElementById('today-list');
   if (!listEl) return;
-  var now = new Date();
-  var iso = localISO(now);
+  var now = todayShownDate();
+  var iso = localISO(now), isRealToday = !todayViewISO;
+  renderTodayNav(now);
+  var box = document.getElementById('today-box'); if (box) box.classList.toggle('today-past', !isRealToday);
   document.getElementById('today-dow').textContent = DAYS_OF_WEEK[(now.getDay()+6)%7];
-  document.getElementById('today-date').textContent = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+  document.getElementById('today-date').textContent = now.toLocaleDateString('en-US', now.getFullYear() === new Date().getFullYear() ? { month: 'long', day: 'numeric' } : { month: 'long', day: 'numeric', year: 'numeric' });
   listEl.innerHTML = '';
 
   var items = [], optItems = [];
@@ -2085,7 +2123,7 @@ function renderToday() {
     var empty = document.createElement('p');
     empty.className = 'today-empty';
     empty.style.gridColumn = '1 / -1';
-    empty.textContent = 'Nothing is required today. Enjoy the day off.';
+    empty.textContent = isRealToday ? 'Nothing is required today. Enjoy the day off.' : 'Nothing was required on this day.';
     listEl.appendChild(empty);
   }
 
@@ -2105,7 +2143,7 @@ function renderToday() {
     listEl.appendChild(bsub);
     bonusItems.forEach(function(it) { var el = makeTodayItem(it, iso, true); el.classList.add('bonus'); el.title = 'Click to un-log'; listEl.appendChild(el); });
   }
-  renderChests();   // treasure chests on the right of this box and the checklist
+  renderChests();   // treasure chests on the right of this box and the checklist (they're always about today)
 }
 
 function setLocalLog(hid, iso, n) {
